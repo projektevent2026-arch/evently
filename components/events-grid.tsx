@@ -1,51 +1,43 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { EventCard, type EventData } from "@/components/event-card"
 import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
-
-const events: EventData[] = [
-  {
-    id: 1,
-    title: "Open'er Festival 2026 - Letnia scena główna",
-    date: "28 czerwca 2026, 18:00",
-    city: "Gdynia, Kosakowo",
-    image: "/images/event-concert.jpg",
-    interested: 3842,
-    category: "Muzyka",
-    price: "od 299 zł",
-  },
-  {
-    id: 2,
-    title: "Warszawski Festiwal Street Foodu",
-    date: "15 marca 2026, 12:00",
-    city: "Warszawa, Powiśle",
-    image: "/images/event-food.jpg",
-    interested: 1256,
-    category: "Jedzenie",
-    price: "Wstęp wolny",
-  },
-  {
-    id: 3,
-    title: "Noc Muzeów - Sztuka współczesna w MNK",
-    date: "18 maja 2026, 19:00",
-    city: "Kraków, Stare Miasto",
-    image: "/images/event-culture.jpg",
-    interested: 2198,
-    category: "Kultura",
-    price: "od 25 zł",
-  },
-  {
-    id: 4,
-    title: "Night Run Poznań - Bieg nocny 10km",
-    date: "22 marca 2026, 21:00",
-    city: "Poznań, Centrum",
-    image: "/images/event-sport.jpg",
-    interested: 876,
-    category: "Sport",
-    price: "od 60 zł",
-  },
-]
+import { supabase } from "@/lib/supabase"
 
 export function EventsGrid() {
+  const [events, setEvents] = useState<EventData[]>([])
+
+  useEffect(() => {
+    async function fetchEvents() {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('start_date', { ascending: true })
+
+      if (error) {
+        console.error('Błąd:', error)
+        return
+      }
+
+      const mapped = (data || []).map((e) => ({
+        id: e.id,
+        title: e.title,
+        date: e.start_date ? new Date(e.start_date).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
+        city: e.city,
+        image: e.image || '/images/event-concert.jpg',
+        interested: e.interested_count || 0,
+        category: e.category || 'Inne',
+        price: e.price ? `od ${e.price} zł` : 'Wstęp wolny',
+      }))
+
+      setEvents(mapped)
+    }
+
+    fetchEvents()
+  }, [])
+
   return (
     <section className="mx-auto max-w-7xl px-6 pb-20 lg:px-8" id="discover">
       <div className="flex items-center justify-between">
@@ -57,7 +49,7 @@ export function EventsGrid() {
             Wybrane dla Ciebie na podstawie lokalizacji i zainteresowań
           </p>
         </div>
-        <Button variant="ghost" className="hidden gap-2 text-sm font-medium text-primary hover:text-primary/80 sm:flex">
+        <Button variant="ghost" className="hidden gap-2 text-sm font-medium text-primary hover:text-primary">
           Zobacz wszystkie
           <ArrowRight className="size-4" />
         </Button>
