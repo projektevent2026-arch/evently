@@ -48,7 +48,7 @@ export function Navbar() {
           >
             Zaloguj się
           </Button>
-          <Button size="sm" className="rounded-full">
+          <Button size="sm" className="rounded-full" onClick={() => window.location.href = '/admin'}>
             Dodaj wydarzenie
           </Button>
         </div>
