@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CalendarDays, MapPin, Users, Heart } from "lucide-react"
@@ -65,9 +66,12 @@ export function EventCard({ event }: { event: EventData }) {
       </div>
 
       <div className="flex flex-1 flex-col p-4">
-        <h3 className="line-clamp-2 text-base font-semibold leading-snug text-card-foreground transition-colors group-hover:text-primary">
-          {event.title}
-        </h3>
+      <Link href={`/events/${event.slug || event.id}`}>
+      
+  <h3 className="line-clamp-2 text-base font-semibold leading-snug text-card-foreground transition-colors group-hover:text-primary">
+    {event.title}
+  </h3>
+</Link>
 
         <div className="mt-3 flex flex-col gap-1.5">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
