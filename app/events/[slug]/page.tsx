@@ -60,7 +60,7 @@ export default function EventPage() {
   return (
     <main className="min-h-screen bg-background">
       <div className="relative h-72 w-full sm:h-96">
-        <Image src={event.image || "/images/event-concert.jpg"} alt={event.title} fill className="object-cover" />
+        <Image src={event.cover_image_url || "/images/event-concert.jpg"} alt={event.title} fill className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         <div className="absolute left-4 top-4">
           <Link href="/" className="flex items-center gap-2 rounded-full bg-black/40 px-4 py-2 text-sm text-white backdrop-blur-sm transition hover:bg-black/60">
