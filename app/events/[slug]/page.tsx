@@ -38,53 +38,29 @@ export default function EventPage() {
 
   const handleGoing = async () => {
     const { data: { session } } = await supabase.auth.getSession()
-
-    if (!session) {
-      window.location.href = "/login"
-      return
-    }
-
+    if (!session) { window.location.href = "/login"; return }
     const userId = session.user.id
     const eventId = event.id
-
     if (going) {
-      await supabase
-        .from("event_attendees")
-        .delete()
-        .eq("user_id", userId)
-        .eq("event_id", eventId)
+      await supabase.from("event_attendees").delete().eq("user_id", userId).eq("event_id", eventId)
       setGoing(false)
       setInterestedCount((prev) => prev - 1)
     } else {
-      await supabase
-        .from("event_attendees")
-        .insert({ user_id: userId, event_id: eventId })
+      await supabase.from("event_attendees").insert({ user_id: userId, event_id: eventId })
       setGoing(true)
       setInterestedCount((prev) => prev + 1)
     }
   }
 
-  if (loading) return (
-    <div className="flex min-h-screen items-center justify-center">
-      <p className="text-muted-foreground">Ładowanie...</p>
-    </div>
-  )
+  if (loading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Ładowanie...</p></div>
+  if (!event) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Nie znaleziono wydarzenia.</p></div>
 
-  if (!event) return (
-    <div className="flex min-h-screen items-center justify-center">
-      <p className="text-muted-foreground">Nie znaleziono wydarzenia.</p>
-    </div>
-  )
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address ?? event.city)}`
 
   return (
     <main className="min-h-screen bg-background">
       <div className="relative h-72 w-full sm:h-96">
-        <Image
-          src={event.image || "/images/event-concert.jpg"}
-          alt={event.title}
-          fill
-          className="object-cover"
-        />
+        <Image src={event.image || "/images/event-concert.jpg"} alt={event.title} fill className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         <div className="absolute left-4 top-4">
           <Link href="/" className="flex items-center gap-2 rounded-full bg-black/40 px-4 py-2 text-sm text-white backdrop-blur-sm transition hover:bg-black/60">
@@ -124,14 +100,24 @@ export default function EventPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 text-sm">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
-              <MapPin size={16} className="text-primary" />
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
+                <MapPin size={16} className="text-primary" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">{event.address || event.city}</p>
+                <p className="text-muted-foreground">{event.city}</p>
+              </div>
             </div>
-            <div>
-            <p className="font-medium text-foreground">{event.address || event.city}</p>
-              <p className="text-muted-foreground">{event.city}</p>
-            </div>
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
+            >
+              Nawiguj
+            </a>
           </div>
         </div>
 
