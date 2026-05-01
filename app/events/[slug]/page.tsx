@@ -16,7 +16,7 @@ export default function EventPage() {
       const { data, error } = await supabase
         .from("events")
         .select("*")
-        .or(`slug.eq.${slug},id.eq.${slug}`)
+        .eq("slug", slug)
         .single()
 
       if (!error) setEvent(data)

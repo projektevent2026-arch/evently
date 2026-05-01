@@ -3,9 +3,19 @@
 import { useState } from "react"
 import { MapPin, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/hooks/useAuth"
+import { supabase } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { user, loading } = useAuth()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/")
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border/60">
@@ -20,34 +30,36 @@ export function Navbar() {
         </a>
 
         <div className="hidden items-center gap-1 md:flex">
-          <a
-            href="#discover"
-            className="rounded-lg px-4 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
-          >
-            Odkryj
-          </a>
-          <a
-            href="#map"
-            className="rounded-lg px-4 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
-          >
-            Mapa
-          </a>
-          <a
-            href="#cities"
-            className="rounded-lg px-4 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
-          >
-            Miasta
-          </a>
+          <a href="#discover" className="rounded-lg px-4 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground">Odkryj</a>
+          <a href="#map" className="rounded-lg px-4 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground">Mapa</a>
+          <a href="#cities" className="rounded-lg px-4 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground">Miasta</a>
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
-          >
-            Zaloguj się
-          </Button>
+          {!loading && (
+            user ? (
+              <>
+                <span className="text-sm text-muted-foreground">{user.email}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-primary/30 text-primary hover:bg-primary/5"
+                  onClick={handleLogout}
+                >
+                  Wyloguj się
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
+                onClick={() => router.push("/login")}
+              >
+                Zaloguj się
+              </Button>
+            )
+          )}
           <Button size="sm" className="rounded-full" onClick={() => window.location.href = '/admin'}>
             Dodaj wydarzenie
           </Button>
@@ -65,36 +77,22 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div className="border-t border-border/60 bg-background px-6 py-4 md:hidden">
           <div className="flex flex-col gap-1">
-            <a
-              href="#discover"
-              className="rounded-lg px-4 py-2.5 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Odkryj
-            </a>
-            <a
-              href="#map"
-              className="rounded-lg px-4 py-2.5 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Mapa
-            </a>
-            <a
-              href="#cities"
-              className="rounded-lg px-4 py-2.5 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Miasta
-            </a>
+            <a href="#discover" className="rounded-lg px-4 py-2.5 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground" onClick={() => setMobileMenuOpen(false)}>Odkryj</a>
+            <a href="#map" className="rounded-lg px-4 py-2.5 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground" onClick={() => setMobileMenuOpen(false)}>Mapa</a>
+            <a href="#cities" className="rounded-lg px-4 py-2.5 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground" onClick={() => setMobileMenuOpen(false)}>Miasta</a>
           </div>
           <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full rounded-full border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
-            >
-              Zaloguj się
-            </Button>
+            {!loading && (
+              user ? (
+                <Button variant="outline" size="sm" className="w-full rounded-full border-primary/30 text-primary" onClick={handleLogout}>
+                  Wyloguj się
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" className="w-full rounded-full border-primary/30 text-primary" onClick={() => router.push("/login")}>
+                  Zaloguj się
+                </Button>
+              )
+            )}
             <Button size="sm" className="w-full rounded-full">
               Dodaj wydarzenie
             </Button>

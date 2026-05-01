@@ -17,12 +17,18 @@ export function EventsGrid() {
         .order('start_date', { ascending: true })
 
       if (error) {
-        console.error('Błąd:', error)
+        console.error('Błąd message:', error.message)
+        console.error('Błąd code:', error.code)
+        console.error('Błąd details:', error.details)
+        console.error('Błąd hint:', error.hint)
         return
       }
 
+      console.log('Dane z Supabase:', data)
+
       const mapped = (data || []).map((e) => ({
         id: e.id,
+        slug: e.slug,
         title: e.title,
         date: e.start_date ? new Date(e.start_date).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
         city: e.city,
