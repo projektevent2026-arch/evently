@@ -41,7 +41,7 @@ export function EventMap({ city, location }: EventMapProps) {
           }
         })
     })
-  }, [city, location])
+  }, [city, location, latitude, longitude])
 
   return (
     <div

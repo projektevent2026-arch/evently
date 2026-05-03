@@ -130,7 +130,7 @@ export default function EventPage() {
 
         <div className="mt-6">
           <h2 className="mb-3 text-lg font-semibold text-foreground">Lokalizacja</h2>
-          <EventMap city={event.city} location={event.address} />
+          <EventMap city={event.city} location={event.address} latitude={event.latitude} longitude={event.longitude} />
         </div>
       </div>
     </main>
