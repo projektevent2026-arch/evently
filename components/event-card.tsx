@@ -60,13 +60,11 @@ export function EventCard({ event }: { event: EventData }) {
     <Link href={`/events/${event.slug || event.id}`} className="block">
       <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
         <div className="relative aspect-[16/10] overflow-hidden">
-          <Image
-            src={event.image}
-            alt={event.title}
-            fill
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-          />
+        <img
+  src={event.image}
+  alt={event.title}
+  className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+/>
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
           <div className="absolute left-3 top-3">
