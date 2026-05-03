@@ -32,7 +32,7 @@ export function EventsGrid() {
         title: e.title,
         date: e.start_date ? new Date(e.start_date).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
         city: e.city,
-        image: e.image || '/images/event-concert.jpg',
+        image: e.cover_image_url || '/images/event-concert.jpg',
         interested: e.interested_count || 0,
         category: e.category || 'Inne',
         price: e.price ? `od ${e.price} zł` : 'Wstęp wolny',
