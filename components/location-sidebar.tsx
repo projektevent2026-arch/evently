@@ -20,7 +20,7 @@ const ICONS: Record<string, string> = {
 }
 
 export function LocationSidebar() {
-  const [city, setCity] = useState("Suwalki")
+  const [city, setCity] = useState("")
   const [radius, setRadius] = useState(25)
   const [locating, setLocating] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>([])
