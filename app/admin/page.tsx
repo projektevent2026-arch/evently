@@ -139,7 +139,7 @@ export default function AdminPage() {
           { label: "Dodaj wydarzenie", href: "#" },
         ].map((item, i) => (
           
-            key={i}
+            <a key={i}
             href={item.href}
             onClick={item.href === "#" ? (e) => { e.preventDefault(); setShowForm(true); setForm(emptyForm) } : undefined}
             style={{
