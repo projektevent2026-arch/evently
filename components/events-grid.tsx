@@ -33,6 +33,7 @@ export function EventsGrid() {
         slug: e.slug,
         title: e.title,
         date: e.start_date ? new Date(e.start_date).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
+        start_date: e.start_date,
         city: e.city,
         image: e.cover_image_url || '/images/event-concert.jpg',
         interested: e.interested_count || 0,
