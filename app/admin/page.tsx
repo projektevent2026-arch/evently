@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
-import { Plus, MapPin, Trash2, X, ChevronRight } from "lucide-react"
+import { Plus, MapPin, Trash2, X, ChevronRight, Edit } from "lucide-react"
 
 const CATEGORIES = ["culture","music","food","sport","family","technology"]
 const CATEGORY_LABELS: Record<string,string> = {
@@ -31,6 +31,7 @@ export default function AdminPage() {
   const [showForm, setShowForm] = useState(false)
   const [activeTab, setActiveTab] = useState("basic")
   const [filterStatus, setFilterStatus] = useState("all")
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [mobileShowList, setMobileShowList] = useState(true)
 
   useEffect(() => { fetchEvents() }, [])
