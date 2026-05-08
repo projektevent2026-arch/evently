@@ -52,15 +52,30 @@ export function LocationSidebar() {
 
         <p className="text-xs text-center text-muted-foreground mb-3">lub</p>
 
-        <select
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+        <div className="relative">
+  <input
+    type="text"
+    value={city}
+    onChange={(e) => setCity(e.target.value)}
+    placeholder="Wpisz miasto..."
+    className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+  />
+  {city.length > 0 && (
+    <ul className="absolute z-10 mt-1 w-full rounded-xl border border-border bg-background shadow-md overflow-hidden">
+      {CITIES.filter((c) =>
+        c.toLowerCase().startsWith(city.toLowerCase())
+      ).map((c) => (
+        <li
+          key={c}
+          onClick={() => setCity(c)}
+          className="cursor-pointer px-3 py-2.5 text-sm text-foreground hover:bg-accent"
         >
-          {CITIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
+          {c}
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
 
         {/* Promień */}
         <div className="mt-4">
