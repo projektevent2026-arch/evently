@@ -140,7 +140,7 @@ export default function AdminPage() {
         ].map((item, i) => (
           
             key={i}
-            href={item.href}
+            href={item.href || "#"}
             onClick={item.onClick ? (e) => { e.preventDefault(); item.onClick!() } : undefined}
             style={{
               padding: "0.6rem 0.75rem", borderRadius: 8, fontSize: "0.9rem",
