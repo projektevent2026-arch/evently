@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/navbar"
 import { HeroSection } from "@/components/hero-section"
 import { EventsGrid } from "@/components/events-grid"
+import { LocationSidebar } from "@/components/location-sidebar"
 import { Footer } from "@/components/footer"
 
 export default function HomePage() {
@@ -9,7 +10,16 @@ export default function HomePage() {
       <Navbar />
       <main className="flex-1">
         <HeroSection />
-        <EventsGrid />
+        <div className="mx-auto max-w-7xl px-6 lg:px-8 py-8">
+          <div className="flex gap-8">
+            <aside className="hidden lg:block w-72 shrink-0">
+              <LocationSidebar />
+            </aside>
+            <div className="flex-1 min-w-0">
+              <EventsGrid />
+            </div>
+          </div>
+        </div>
       </main>
       <Footer />
     </div>

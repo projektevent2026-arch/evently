@@ -52,7 +52,7 @@ export function EventsGrid() {
     : events
 
   return (
-    <section className="mx-auto max-w-7xl px-6 pb-20 lg:px-8" id="discover">
+<section className="pb-8" id="discover">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Popularne wydarzenia</h2>
