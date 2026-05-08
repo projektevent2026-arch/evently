@@ -42,14 +42,17 @@ const handleCityChange = async (val: string) => {
     return
   }
   try {
-    const params = new URLSearchParams({ q: val, limit: "5" })
+    const params = new URLSearchParams({ q: val, limit: "8" })
     const res = await fetch("https://photon.komoot.io/api/?" + params.toString())
     const data = await res.json()
     console.log("Photon response:", data.features?.[0])
     const cities: string[] = data.features
-      .filter((f: any) => ["city", "town", "village"].includes(f.properties.type))
-      .map((f: any) => String(f.properties.name))
-      .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
+    .filter((f: any) => 
+      ["city", "town", "village"].includes(f.properties.type) &&
+      f.properties.countrycode === "PL"
+    )
+    .map((f: any) => String(f.properties.name))
+    .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
     setSuggestions(cities)
     setShowSuggestions(cities.length > 0)
   } catch {
