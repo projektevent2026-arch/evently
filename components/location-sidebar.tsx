@@ -30,6 +30,24 @@ export function LocationSidebar() {
     )
   }
 
+  const handleCityChange = async (val: string) => {
+    setCity(val)
+    if (val.length < 2) { setSuggestions([]); setShowSuggestions(false); return }
+    try {
+      const url = "https://nominatim.openstreetmap.org/search?q=" + encodeURIComponent(val) + "+Poland&format=json&limit=8&addressdetails=1"
+      const res = await fetch(url)
+      const data = await res.json()
+      const cities = data
+        .filter((d: any) => d.address && (d.address.city || d.address.town || d.address.village))
+        .map((d: any) => d.address.city || d.address.town || d.address.village)
+        .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
+      setSuggestions(cities)
+      setShowSuggestions(cities.length > 0)
+    } catch {
+      setSuggestions([])
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6 sticky top-24">
 
@@ -54,23 +72,7 @@ export function LocationSidebar() {
           <input
             type="text"
             value={city}
-            onChange={async (e) => {
-              const val = e.target.value
-              setCity(val)
-              if (val.length < 2) { setSuggestions([]); return }
-              try {
-                const res = await fetch(
-                    https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&countrycodes=pl&addressdetails=1
-                )
-                const data = await res.json()
-                setSuggestions(
-                    data
-                      .filter((d: any) => ["city","town","village","hamlet"].includes(d.addresstype))
-                      .map((d: any) => d.name)
-                  )
-                setShowSuggestions(true)
-              } catch { setSuggestions([]) }
-            }}
+            onChange={(e) => handleCityChange(e.target.value)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
             placeholder="Wpisz miasto lub wieś..."
             className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
