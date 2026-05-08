@@ -34,28 +34,28 @@ export function LocationSidebar() {
     )
   }
 
-  const handleCityChange = async (val: string) => {
-    setCity(val)
-    if (val.length < 2) {
-      setSuggestions([])
-      setShowSuggestions(false)
-      return
-    }
-    try {
-      const params = new URLSearchParams({ q: val, limit: "5", lang: "pl" })
-      const res = await fetch("https://photon.komoot.io/api/?" + params.toString())
-      const data = await res.json()
-      console.log("Photon response:", data.features?.[0])
-      const cities: string[] = data.features
-        .filter((f: any) => ["city", "town", "village"].includes(f.properties.type))
-        .map((f: any) => String(f.properties.name))
-        .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
-      setSuggestions(cities)
-      setShowSuggestions(cities.length > 0)
-    } catch {
-      setSuggestions([])
-    }
+const handleCityChange = async (val: string) => {
+  setCity(val)
+  if (val.length < 2) {
+    setSuggestions([])
+    setShowSuggestions(false)
+    return
   }
+  try {
+    const params = new URLSearchParams({ q: val, limit: "5" })
+    const res = await fetch("https://photon.komoot.io/api/?" + params.toString())
+    const data = await res.json()
+    console.log("Photon response:", data.features?.[0])
+    const cities: string[] = data.features
+      .filter((f: any) => ["city", "town", "village"].includes(f.properties.type))
+      .map((f: any) => String(f.properties.name))
+      .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
+    setSuggestions(cities)
+    setShowSuggestions(cities.length > 0)
+  } catch {
+    setSuggestions([])
+  }
+}
 
   return (
     <div className="flex flex-col gap-6 sticky top-24">
