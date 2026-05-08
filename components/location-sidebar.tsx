@@ -42,7 +42,7 @@ export function LocationSidebar() {
       return
     }
     try {
-      const url = "https://photon.komoot.io/api/?q=" + encodeURIComponent(val) + "&limit=5&lang=pl&bbox=14.07,49.00,24.15,54.84"
+const url = "https://photon.komoot.io/api/?q=" + encodeURIComponent(val) + "&limit=5&lang=pl"
       const res = await fetch(url)
       const data = await res.json()
       const cities: string[] = data.features
