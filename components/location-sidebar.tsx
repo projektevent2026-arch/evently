@@ -7,16 +7,20 @@ const RADII = [5, 10, 25, 50]
 
 const CATEGORIES = [
   { value: "all", label: "Wszystkie" },
-  { value: "music", label: "Koncerty", icon: "🎵" },
-  { value: "family", label: "Dla dzieci", icon: "🎠" },
-  { value: "sport", label: "Sport", icon: "⚽" },
-  { value: "culture", label: "Kultura", icon: "🎭" },
-  { value: "food", label: "Jedzenie", icon: "🍕" },
-  { value: "technology", label: "Technologia", icon: "💻" },
+  { value: "music", label: "Koncerty", icon: "music" },
+  { value: "family", label: "Dla dzieci", icon: "family" },
+  { value: "sport", label: "Sport", icon: "sport" },
+  { value: "culture", label: "Kultura", icon: "culture" },
+  { value: "food", label: "Jedzenie", icon: "food" },
+  { value: "technology", label: "Technologia", icon: "tech" },
 ]
 
+const ICONS: Record<string, string> = {
+  music: "♪", family: "☺", sport: "●", culture: "★", food: "◆", tech: "▲"
+}
+
 export function LocationSidebar() {
-  const [city, setCity] = useState("Suwałki")
+  const [city, setCity] = useState("Suwalki")
   const [radius, setRadius] = useState(25)
   const [locating, setLocating] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>([])
@@ -32,14 +36,18 @@ export function LocationSidebar() {
 
   const handleCityChange = async (val: string) => {
     setCity(val)
-    if (val.length < 2) { setSuggestions([]); setShowSuggestions(false); return }
+    if (val.length < 2) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
     try {
       const url = "https://photon.komoot.io/api/?q=" + encodeURIComponent(val) + "&limit=5&lang=pl&bbox=14.07,49.00,24.15,54.84"
       const res = await fetch(url)
       const data = await res.json()
-      const cities = data.features
-        .filter((f: any) => ["city","town","village"].includes(f.properties.type))
-        .map((f: any) => f.properties.name)
+      const cities: string[] = data.features
+        .filter((f: any) => ["city", "town", "village"].includes(f.properties.type))
+        .map((f: any) => String(f.properties.name))
         .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
       setSuggestions(cities)
       setShowSuggestions(cities.length > 0)
@@ -50,7 +58,6 @@ export function LocationSidebar() {
 
   return (
     <div className="flex flex-col gap-6 sticky top-24">
-
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
           <MapPin className="size-4 text-primary" />
@@ -63,7 +70,7 @@ export function LocationSidebar() {
           className="w-full flex items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors mb-3"
         >
           <Navigation className="size-4 text-primary" />
-          {locating ? "Pobieranie..." : "Użyj mojej lokalizacji"}
+          {locating ? "Pobieranie..." : "Uzyj mojej lokalizacji"}
         </button>
 
         <p className="text-xs text-center text-muted-foreground mb-3">lub</p>
@@ -74,7 +81,7 @@ export function LocationSidebar() {
             value={city}
             onChange={(e) => handleCityChange(e.target.value)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-            placeholder="Wpisz miasto lub wieś..."
+            placeholder="Wpisz miasto lub wies..."
             className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
           {showSuggestions && suggestions.length > 0 && (
@@ -93,7 +100,7 @@ export function LocationSidebar() {
         </div>
 
         <div className="mt-4">
-          <p className="text-xs font-medium text-muted-foreground mb-2">Promień</p>
+          <p className="text-xs font-medium text-muted-foreground mb-2">Promien</p>
           <div className="grid grid-cols-4 gap-1.5">
             {RADII.map((r) => (
               <button
@@ -113,7 +120,7 @@ export function LocationSidebar() {
 
         <div className="mt-3 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2">
           <p className="text-xs text-primary font-medium">
-            Pokazujemy wydarzenia w promieniu {radius} km od {city}
+            Pokazujemy wydarzenia w promieniu {radius} km
           </p>
         </div>
       </div>
@@ -130,14 +137,13 @@ export function LocationSidebar() {
               className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-accent text-left"
             >
               <span className="flex items-center gap-2.5 text-foreground">
-                {cat.icon && <span className="text-base">{cat.icon}</span>}
+                {cat.icon && <span className="text-sm">{ICONS[cat.icon] || ""}</span>}
                 {cat.label}
               </span>
             </button>
           ))}
         </div>
       </div>
-
     </div>
   )
 }
