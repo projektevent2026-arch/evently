@@ -136,12 +136,12 @@ export default function AdminPage() {
         {[
           { label: "Panel główny", href: "/" },
           { label: "Wydarzenia", href: "/admin", active: true },
-          { label: "Dodaj wydarzenie", onClick: () => { setShowForm(true); setForm(emptyForm) } },
+          { label: "Dodaj wydarzenie", href: "#" },
         ].map((item, i) => (
           
             key={i}
-            href={item.href || "#"}
-            onClick={item.onClick ? (e) => { e.preventDefault(); item.onClick!() } : undefined}
+            href={item.href}
+            onClick={item.href === "#" ? (e) => { e.preventDefault(); setShowForm(true); setForm(emptyForm) } : undefined}
             style={{
               padding: "0.6rem 0.75rem", borderRadius: 8, fontSize: "0.9rem",
               background: item.active ? "#f0fdf4" : "transparent",
