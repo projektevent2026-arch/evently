@@ -60,7 +60,7 @@ export function LocationSidebar() {
               if (val.length < 2) { setSuggestions([]); return }
               try {
                 const res = await fetch(
-                  `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&countrycodes=pl`
+                    https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&countrycodes=pl&featuretype=city
                 )
                 const data = await res.json()
                 setSuggestions(data.map((d: any) => d.display_name.split(",")[0]))
