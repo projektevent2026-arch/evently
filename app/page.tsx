@@ -12,7 +12,7 @@ export default function HomePage() {
         <HeroSection />
         <div className="mx-auto max-w-7xl px-6 lg:px-8 py-8">
           <div className="flex gap-8">
-            <aside className="hidden lg:block w-72 shrink-0">
+          <aside className="block w-72 shrink-0">
               <LocationSidebar />
             </aside>
             <div className="flex-1 min-w-0">
