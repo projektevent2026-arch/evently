@@ -1,70 +1,91 @@
 "use client"
 
 import { useState } from "react"
-import { Search } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
+import { Search, MapPin } from "lucide-react"
 
 export function HeroSection() {
   const [query, setQuery] = useState("")
+  const router = useRouter()
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (query.trim()) router.push(`/?q=${encodeURIComponent(query)}`)
+  }
 
   return (
-    <section className="relative overflow-hidden bg-hero-bg">
-      <div className="absolute inset-0" aria-hidden="true">
-        <img
-          src="/images/hero-bg.jpg"
-          alt=""
-          className="h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-hero-bg/80" />
-        <div className="absolute inset-0 bg-gradient-to-b from-hero-bg/30 via-hero-bg/50 to-hero-bg" />
-      </div>
+    <section className="relative overflow-hidden bg-background">
+      <div className="relative mx-auto max-w-7xl px-6 py-16 lg:px-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-16 items-center">
 
-      <div className="relative mx-auto max-w-7xl px-6 py-20 md:py-32 lg:px-8 lg:py-40">
-        <div className="mx-auto max-w-3xl text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary backdrop-blur-sm">
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex size-2 rounded-full bg-primary" />
-            </span>
-            Ponad 5 000 wydarzeń w tym tygodniu
-          </div>
-
-          <h1 className="text-4xl font-bold leading-tight tracking-tight text-hero-foreground md:text-5xl lg:text-6xl text-balance">
-            Odkryj najlepsze wydarzenia w{" "}
-            <span className="text-primary">Twojej okolicy</span>
-          </h1>
-
-          <p className="mt-5 text-base leading-relaxed text-hero-foreground/60 md:text-lg text-pretty">
-            Koncerty, festiwale, warsztaty i spotkania. Znajdź to, co Cię interesuje, w jednym miejscu.
-          </p>
-
-          <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <div className="relative w-full max-w-lg">
-              <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Szukaj wydarzeń, artystów, miejsc..."
-                className="h-14 w-full rounded-xl border-0 bg-card/95 pl-12 pr-4 text-card-foreground shadow-lg backdrop-blur-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+          {/* Lewa kolumna — tekst */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <MapPin className="size-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Suwałki</span>
             </div>
-            <Button className="h-14 w-full rounded-xl px-8 text-base font-semibold shadow-lg transition-all hover:shadow-xl sm:w-auto sm:whitespace-nowrap">
-              Szukaj
-            </Button>
+
+            <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+              Co robisz dziś<br />
+              <span className="text-primary">w Suwałkach?</span>
+            </h1>
+
+            <p className="mt-4 text-lg text-muted-foreground max-w-md">
+              Odkryj najlepsze wydarzenia w swojej okolicy i spędź czas tak, jak lubisz.
+            </p>
+
+            {/* Wyszukiwarka */}
+            <form onSubmit={handleSearch} className="mt-8 flex gap-2 max-w-md">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Szukaj wydarzeń, artystów, miejsc..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <button
+                type="submit"
+                className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Szukaj
+              </button>
+            </form>
+
+            {/* Szybkie filtry */}
+            <div className="mt-6 flex flex-wrap gap-2">
+              {["Dziś", "Jutro", "Ten weekend", "Bezpłatne"].map((label) => (
+                <button
+                  key={label}
+                  className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-            <span className="text-sm text-hero-foreground/40">Popularne:</span>
-            {["Warszawa", "Kraków", "Suwałki", "Festiwale", "Stand-up"].map((tag) => (
-              <button
-                key={tag}
-                className="rounded-full border border-hero-foreground/15 px-3 py-1 text-sm text-hero-foreground/50 transition-colors hover:border-primary/50 hover:text-primary"
-              >
-                {tag}
-              </button>
-            ))}
+          {/* Prawa kolumna — zdjęcie */}
+          <div className="relative hidden lg:block">
+            <div className="relative h-[420px] w-full overflow-hidden rounded-3xl">
+              <img
+                src="https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800&q=80"
+                alt="Wydarzenie muzyczne"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent rounded-3xl" />
+
+              {/* Floating card */}
+              <div className="absolute bottom-6 left-6 right-6 rounded-2xl bg-background/90 backdrop-blur-sm p-4 border border-border/50">
+                <p className="text-xs font-medium text-primary mb-1">DZIŚ · 18:00</p>
+                <p className="text-sm font-semibold text-foreground">Dni Suwałk 2026</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Bulwary nad Czarną Hańczą</p>
+              </div>
+            </div>
           </div>
+
         </div>
       </div>
     </section>
