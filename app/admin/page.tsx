@@ -217,7 +217,7 @@ export default function AdminPage() {
       {showForm && (
         <div style={{position:"fixed", inset:0, zIndex:50, display:"flex", justifyContent:"flex-end"}}>
           <div onClick={closeForm} style={{position:"absolute", inset:0, background:"rgba(0,0,0,0.3)"}} />
-          <div style={{position:"relative", width:"100%", maxWidth:480, background:"white", boxShadow:"-4px 0 24px rgba(0,0,0,0.1)", display:"flex", flexDirection:"column", height:"100%", overflowY:"auto"}}>
+          <div style={{position:"relative", width:"100%", maxWidth:480, background:"white", boxShadow:"-4px 0 24px rgba(0,0,0,0.1)", display:"flex", flexDirection:"column", height:"100%", overflowY:"auto", animation:"slideIn 0.25s ease-out"}}>
 
             {/* Form header */}
             <div style={{padding:"1.25rem 1.5rem", borderBottom:"1px solid #e5e7eb", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, background:"white", zIndex:1}}>
