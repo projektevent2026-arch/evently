@@ -35,7 +35,9 @@ export function LocationSidebar() {
     if (val.length < 2) { setSuggestions([]); setShowSuggestions(false); return }
     try {
       const url = "https://nominatim.openstreetmap.org/search?q=" + encodeURIComponent(val) + "+Poland&format=json&limit=8&addressdetails=1"
-      const res = await fetch(url)
+      const res = await fetch(url, {
+        headers: { "User-Agent": "Evently/1.0" }
+      })
       const data = await res.json()
       const cities = data
         .filter((d: any) => d.address && (d.address.city || d.address.town || d.address.village))
