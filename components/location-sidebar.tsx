@@ -34,14 +34,12 @@ export function LocationSidebar() {
     setCity(val)
     if (val.length < 2) { setSuggestions([]); setShowSuggestions(false); return }
     try {
-      const url = "https://nominatim.openstreetmap.org/search?q=" + encodeURIComponent(val) + "+Poland&format=json&limit=8&addressdetails=1"
-      const res = await fetch(url, {
-        headers: { "User-Agent": "Evently/1.0" }
-      })
+      const url = "https://photon.komoot.io/api/?q=" + encodeURIComponent(val) + "&limit=5&lang=pl&bbox=14.07,49.00,24.15,54.84"
+      const res = await fetch(url)
       const data = await res.json()
-      const cities = data
-        .filter((d: any) => d.address && (d.address.city || d.address.town || d.address.village))
-        .map((d: any) => d.address.city || d.address.town || d.address.village)
+      const cities = data.features
+        .filter((f: any) => ["city","town","village"].includes(f.properties.type))
+        .map((f: any) => f.properties.name)
         .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
       setSuggestions(cities)
       setShowSuggestions(cities.length > 0)
