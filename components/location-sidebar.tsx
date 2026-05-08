@@ -45,6 +45,7 @@ export function LocationSidebar() {
 const url = "https://photon.komoot.io/api/?q=" + encodeURIComponent(val) + "&limit=5&lang=pl"
       const res = await fetch(url)
       const data = await res.json()
+      console.log("Photon response:", data.features?.[0])
       const cities: string[] = data.features
         .filter((f: any) => ["city", "town", "village"].includes(f.properties.type))
         .map((f: any) => String(f.properties.name))
