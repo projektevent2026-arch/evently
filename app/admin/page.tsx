@@ -229,10 +229,15 @@ export default function AdminPage() {
                       </span>
                     </td>
                     <td style={td}>
-                      <button onClick={() => handleDelete(event.id)} style={{background:"none", border:"none", color:"#ef4444", cursor:"pointer"}}>
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
+  <div style={{display:"flex", gap:8}}>
+    <button onClick={() => handleEdit(event)} style={{background:"none", border:"none", color:"#6b7280", cursor:"pointer"}}>
+      <Edit size={16} />
+    </button>
+    <button onClick={() => handleDelete(event.id)} style={{background:"none", border:"none", color:"#ef4444", cursor:"pointer"}}>
+      <Trash2 size={16} />
+    </button>
+  </div>
+</td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
