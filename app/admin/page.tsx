@@ -113,7 +113,7 @@ export default function AdminPage() {
         status: form.status,
       }])
     if (error) { setStatusMsg("Blad: " + error.message) }
-    else { setStatusMsg("Dodano!"); setForm(emptyForm); setShowForm(false); fetchEvents() }
+    else { setStatusMsg(editingId ? "Zapisano!" : "Dodano!"); setForm(emptyForm); setShowForm(false); setEditingId(null); fetchEvents() }
   }
   const handleEdit = (event: any) => {
     const startDate = event.start_date ? new Date(event.start_date) : null
@@ -161,7 +161,7 @@ export default function AdminPage() {
   }
 
   const openForm = () => { setForm(emptyForm); setActiveTab("basic"); setStatusMsg(""); setShowForm(true); setMobileShowList(false) }
-  const closeForm = () => { setShowForm(false); setMobileShowList(true) }
+  const closeForm = () => { setShowForm(false); setEditingId(null) }
 
   return (
     <div style={{display:"flex", minHeight:"100vh", fontFamily:"sans-serif", background:"#f9fafb"}}>
