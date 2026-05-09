@@ -75,7 +75,8 @@ export default function AdminPage() {
     setStatusMsg("Zapisywanie...")
     const start = form.start_date && form.start_time ? form.start_date + "T" + form.start_time : form.start_date
     const end = form.end_date && form.end_time ? form.end_date + "T" + form.end_time : (form.end_date || null)
-    const { error } = await supabase.from("events").insert([{
+    const { error } = editingId
+  ? await supabase.from("events").update({
       title: form.title, slug: form.slug,
       description: form.description || null,
       short_description: form.short_description || null,
@@ -92,7 +93,25 @@ export default function AdminPage() {
       latitude: form.latitude ? parseFloat(form.latitude) : null,
       longitude: form.longitude ? parseFloat(form.longitude) : null,
       status: form.status,
-    }])
+    }).eq("id", editingId)
+    : await supabase.from("events").insert([{
+        title: form.title, slug: form.slug,
+        description: form.description || null,
+        short_description: form.short_description || null,
+        start_date: start, end_date: end,
+        city: form.city, address: form.address || null,
+        venue_name: form.venue_name || null,
+        category: form.category,
+        cover_image_url: form.cover_image_url || null,
+        ticket_url: form.ticket_url || null,
+        website_url: form.website_url || null,
+        organizer_name: form.organizer_name || null,
+        is_free: form.is_free,
+        price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
+        latitude: form.latitude ? parseFloat(form.latitude) : null,
+        longitude: form.longitude ? parseFloat(form.longitude) : null,
+        status: form.status,
+      }])
     if (error) { setStatusMsg("Blad: " + error.message) }
     else { setStatusMsg("Dodano!"); setForm(emptyForm); setShowForm(false); fetchEvents() }
   }
