@@ -309,7 +309,9 @@ export default function AdminPage() {
         category: data.category || prev.category,
         is_free: data.is_free ?? prev.is_free,
         price_from: data.price_from?.toString() || prev.price_from,
-        schedule: data.schedule?.length ? data.schedule : prev.schedule,
+        schedule: data.schedule?.length 
+  ? [{ day: 1, label: 'Dzień 1', items: data.schedule }] 
+  : prev.schedule,
       }))
     
       // Auto-geocoding po skanowaniu
