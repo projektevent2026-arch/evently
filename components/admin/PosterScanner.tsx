@@ -26,6 +26,8 @@ export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
   const [scanning, setScanning] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
+
   const compressImage = (file: File): Promise<{ base64: string; mediaType: string }> => {
     return new Promise((resolve) => {
       const reader = new FileReader()
@@ -50,15 +52,13 @@ export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
       reader.readAsDataURL(file)
     })
   }
-  
+
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     if (!file.type.startsWith('image/')) { setStatus('Tylko pliki graficzne'); return }
-  
     setScanning(true)
     setStatus('Kompresuję i analizuję...')
-  
     try {
       const { base64, mediaType } = await compressImage(file)
       const res = await fetch('/api/scan-poster', {
@@ -72,41 +72,27 @@ export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
     } catch {
       setStatus('Błąd połączenia z AI')
     }
-  
     setScanning(false)
   }
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={scanning}
-        style={{
-          width: '100%',
-          padding: '0.75rem',
-          border: '2px dashed #16a34a',
-          borderRadius: 10,
-          background: scanning ? '#f0fdf4' : 'white',
-          cursor: scanning ? 'not-allowed' : 'pointer',
-          fontSize: '0.875rem',
-          color: '#16a34a',
-          fontWeight: 600,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-        }}
-      >
-        {scanning ? '🔍 Analizuję plakat...' : '🤖 Skanuj plakat AI'}
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFile}
-        style={{ display: 'none' }}
-      />
+      {scanning ? (
+        <div style={{ width: '100%', padding: '0.75rem', border: '2px dashed #16a34a', borderRadius: 10, background: '#f0fdf4', fontSize: '0.875rem', color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          🔍 Analizuję plakat...
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" onClick={() => inputRef.current?.click()} style={{ flex: 1, padding: '0.75rem', border: '2px dashed #16a34a', borderRadius: 10, background: 'white', cursor: 'pointer', fontSize: '0.875rem', color: '#16a34a', fontWeight: 600 }}>
+            🖼️ Z galerii
+          </button>
+          <button type="button" onClick={() => cameraRef.current?.click()} style={{ flex: 1, padding: '0.75rem', border: '2px dashed #16a34a', borderRadius: 10, background: 'white', cursor: 'pointer', fontSize: '0.875rem', color: '#16a34a', fontWeight: 600 }}>
+            📷 Aparat
+          </button>
+        </div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: 'none' }} />
       {status && (
         <p style={{ fontSize: '0.8rem', color: status.startsWith('✅') ? '#16a34a' : '#ef4444', marginTop: 6 }}>
           {status}
