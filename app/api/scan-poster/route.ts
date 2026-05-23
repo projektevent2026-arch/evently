@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5',
-      max_tokens: 1024,
+      max_tokens: 2048,
       messages: [
         {
           role: 'user',
@@ -41,8 +41,13 @@ export async function POST(req: NextRequest) {
   "organizer_name": "organizator lub null",
   "category": "jedna z: culture, music, food, sport, family, technology",
   "is_free": true lub false,
-  "price_from": liczba lub null
-}`,
+  "price_from": liczba lub null,
+  "schedule": [
+    { "time": "HH:MM", "title": "nazwa punktu programu", "description": "opcjonalny opis" }
+  ]
+}
+Jeśli na plakacie nie ma harmonogramu, zwróć "schedule": [].
+Jeśli wydarzenie trwa kilka dni i harmonogram jest podzielony na dni, połącz wszystkie punkty w jedną listę i dodaj datę do tytułu np. "22.05 - Otwarcie".`,
             },
           ],
         },
@@ -51,8 +56,7 @@ export async function POST(req: NextRequest) {
   })
 
   const data = await response.json()
-  
-  // Log błędu do terminala
+
   if (!response.ok) {
     console.error('Anthropic API error:', JSON.stringify(data))
     return NextResponse.json({ error: data.error?.message || 'API error' }, { status: 400 })
