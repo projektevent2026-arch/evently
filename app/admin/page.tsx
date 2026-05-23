@@ -1,5 +1,9 @@
 "use client"
 
+import ScheduleEditor from "@/components/admin/ScheduleEditor"
+import dynamic from 'next/dynamic'
+const LocationPicker = dynamic(() => import('@/components/admin/LocationPicker'), { ssr: false })
+import ImageUpload from "@/components/admin/ImageUpload"
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { Plus, MapPin, Trash2, X, ChevronRight, Edit } from "lucide-react"
@@ -20,7 +24,7 @@ const emptyForm = {
   city:"", address:"", venue_name:"",
   category:"culture", cover_image_url:"", ticket_url:"", website_url:"",
   organizer_name:"", price_from:"0", is_free:true,
-  latitude:"", longitude:"", status:"published",
+  latitude:"", longitude:"", status:"published",schedule: [] as {time:string; title:string; description?:string}[],
 }
 
 export default function AdminPage() {
@@ -92,7 +96,7 @@ export default function AdminPage() {
       price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
       latitude: form.latitude ? parseFloat(form.latitude) : null,
       longitude: form.longitude ? parseFloat(form.longitude) : null,
-      status: form.status,
+      status: form.status,schedule: form.schedule,
     }).eq("id", editingId)
     : await supabase.from("events").insert([{
         title: form.title, slug: form.slug,
@@ -110,7 +114,7 @@ export default function AdminPage() {
         price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
         latitude: form.latitude ? parseFloat(form.latitude) : null,
         longitude: form.longitude ? parseFloat(form.longitude) : null,
-        status: form.status,
+        status: form.status,schedule: form.schedule,
       }])
     if (error) { setStatusMsg("Blad: " + error.message) }
     else { setStatusMsg(editingId ? "Zapisano!" : "Dodano!"); setForm(emptyForm); setShowForm(false); setEditingId(null); fetchEvents() }
@@ -139,7 +143,7 @@ export default function AdminPage() {
       is_free: event.is_free ?? true,
       latitude: event.latitude?.toString() || "",
       longitude: event.longitude?.toString() || "",
-      status: event.status || "published",
+      status: event.status || "published",schedule: event.schedule || [],
     })
     setEditingId(event.id)
     setActiveTab("basic")
@@ -372,7 +376,13 @@ export default function AdminPage() {
                     <label style={lbl}>Cena od (PLN)</label>
                     <input name="price_from" type="number" min="0" step="0.01" value={form.price_from} onChange={handleChange} style={inp} />
                   </div>
-                )}
+                )}<div>
+                <label style={lbl}>Harmonogram imprezy</label>
+                <ScheduleEditor
+                  value={form.schedule}
+                  onChange={(items) => setForm(prev => ({ ...prev, schedule: items }))}
+                />
+              </div>
               </>}
 
               {activeTab === "location" && <>
@@ -403,25 +413,42 @@ export default function AdminPage() {
                     <input name="longitude" placeholder="22.9302" value={form.longitude} onChange={handleChange} style={{...inp, background:"#f9f9f9"}} />
                   </div>
                 </div>
+                <LocationPicker
+  latitude={form.latitude}
+  longitude={form.longitude}
+  onChange={(lat, lng) => setForm(prev => ({ ...prev, latitude: lat, longitude: lng }))}
+/>
+               
               </>}
 
               {activeTab === "media" && <>
-                <div>
-                  <label style={lbl}>URL zdjecia okladki</label>
-                  <input name="cover_image_url" placeholder="https://..." value={form.cover_image_url} onChange={handleChange} style={inp} />
-                </div>
-                {form.cover_image_url && (
-                  <img src={form.cover_image_url} alt="preview" style={{width:"100%", height:180, objectFit:"cover", borderRadius:8}} />
-                )}
-                <div>
-                  <label style={lbl}>Link do biletow</label>
-                  <input name="ticket_url" placeholder="https://..." value={form.ticket_url} onChange={handleChange} style={inp} />
-                </div>
-                <div>
-                  <label style={lbl}>Strona www</label>
-                  <input name="website_url" placeholder="https://..." value={form.website_url} onChange={handleChange} style={inp} />
-                </div>
-              </>}
+  <div>
+    <label style={lbl}>Zdjęcie okładki</label>
+    <ImageUpload
+      currentUrl={form.cover_image_url}
+      onUploadComplete={(url) =>
+        setForm(prev => ({ ...prev, cover_image_url: url }))
+      }
+    />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0' }}>
+      <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>lub wklej URL</span>
+      <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+    </div>
+    <input name="cover_image_url" placeholder="https://..." value={form.cover_image_url} onChange={handleChange} style={inp} />
+  </div>
+  {form.cover_image_url && (
+    <img src={form.cover_image_url} alt="preview" style={{width:"100%", height:180, objectFit:"cover", borderRadius:8}} />
+  )}
+  <div>
+    <label style={lbl}>Link do biletów</label>
+    <input name="ticket_url" placeholder="https://..." value={form.ticket_url} onChange={handleChange} style={inp} />
+  </div>
+  <div>
+    <label style={lbl}>Strona www</label>
+    <input name="website_url" placeholder="https://..." value={form.website_url} onChange={handleChange} style={inp} />
+  </div>
+</>}
 
               {statusMsg && <p style={{color: statusMsg.includes("lad") ? "#ef4444" : "#16a34a", fontSize:"0.875rem", margin:0}}>{statusMsg}</p>}
 

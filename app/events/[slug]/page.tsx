@@ -1,5 +1,6 @@
 "use client"
 
+import EventSchedule from '@/components/EventSchedule'
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
@@ -126,6 +127,8 @@ export default function EventPage() {
             <h2 className="mb-3 text-lg font-semibold text-foreground">O wydarzeniu</h2>
             <p className="leading-relaxed text-muted-foreground">{event.description}</p>
           </div>
+        )}{event.schedule && event.schedule.length > 0 && (
+          <EventSchedule schedule={event.schedule} eventDate={event.start_date} />
         )}
 
         <div className="mt-6">
