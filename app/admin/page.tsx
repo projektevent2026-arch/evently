@@ -309,9 +309,21 @@ export default function AdminPage() {
         category: data.category || prev.category,
         is_free: data.is_free ?? prev.is_free,
         price_from: data.price_from?.toString() || prev.price_from,
-        schedule: data.schedule?.length 
-  ? [{ day: 1, label: 'Dzień 1', items: data.schedule }] 
-  : prev.schedule,
+        schedule: data.schedule?.length
+        ? (() => {
+            const days: Record<number, any[]> = {}
+            data.schedule.forEach((item: any) => {
+              const d = item.day || 1
+              if (!days[d]) days[d] = []
+              days[d].push({ time: item.time, title: item.title, description: item.description })
+            })
+            return Object.entries(days).map(([d, items]) => ({
+              day: Number(d),
+              label: `Dzień ${d}`,
+              items
+            }))
+          })()
+        : prev.schedule,
       }))
     
       // Auto-geocoding po skanowaniu

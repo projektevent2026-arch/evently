@@ -47,7 +47,12 @@ export async function POST(req: NextRequest) {
   ]
 }
 Jeśli na plakacie nie ma harmonogramu, zwróć "schedule": [].
-Jeśli wydarzenie trwa kilka dni, umieść wszystkie punkty programu w jednej liście bez dodawania daty do tytułu punktu.`,
+Jeśli wydarzenie trwa kilka dni, podziel harmonogram według dni i zwróć osobną tablicę dla każdego dnia w formacie:
+"schedule": [
+  { "time": "HH:MM", "title": "nazwa punktu", "description": "opcjonalny opis", "day": 1 },
+  { "time": "HH:MM", "title": "nazwa punktu", "description": "opcjonalny opis", "day": 2 }
+]
+gdzie "day" to numer dnia (1, 2, 3...). Jeśli impreza trwa 1 dzień, wszystkie punkty mają "day": 1.`,
             },
           ],
         },
