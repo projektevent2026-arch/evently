@@ -96,6 +96,7 @@ export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
         ref={inputRef}
         type="file"
         accept="image/*"
+        capture="environment"
         onChange={handleFile}
         style={{ display: 'none' }}
       />
