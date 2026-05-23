@@ -1,16 +1,39 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Search, MapPin } from "lucide-react"
 
+const TIME_FILTERS = [
+  { label: "Dziś", value: "dzis" },
+  { label: "Jutro", value: "jutro" },
+  { label: "Ten weekend", value: "weekend" },
+  { label: "Bezpłatne", value: "bezplatne" },
+]
+
 export function HeroSection() {
-  const [query, setQuery] = useState("")
+  const searchParams = useSearchParams()
+  const [query, setQuery] = useState(searchParams.get("q") || "")
   const router = useRouter()
+  const activeTime = searchParams.get("time")
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    if (query.trim()) router.push(`/?q=${encodeURIComponent(query)}`)
+    const params = new URLSearchParams()
+    if (query.trim()) params.set("q", query.trim())
+    const time = searchParams.get("time")
+    if (time) params.set("time", time)
+    router.push(`/?${params.toString()}`)
+  }
+
+  const handleTimeFilter = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (params.get("time") === value) {
+      params.delete("time")
+    } else {
+      params.set("time", value)
+    }
+    router.push(`/?${params.toString()}`)
   }
 
   return (
@@ -18,7 +41,6 @@ export function HeroSection() {
       <div className="relative mx-auto max-w-7xl px-6 py-16 lg:px-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-16 items-center">
 
-          {/* Lewa kolumna — tekst */}
           <div>
             <div className="flex items-center gap-2 mb-4">
               <MapPin className="size-4 text-primary" />
@@ -34,7 +56,6 @@ export function HeroSection() {
               Odkryj najlepsze wydarzenia w swojej okolicy i spędź czas tak, jak lubisz.
             </p>
 
-            {/* Wyszukiwarka */}
             <form onSubmit={handleSearch} className="mt-8 flex gap-2 max-w-md">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -54,12 +75,16 @@ export function HeroSection() {
               </button>
             </form>
 
-            {/* Szybkie filtry */}
             <div className="mt-6 flex flex-wrap gap-2">
-              {["Dziś", "Jutro", "Ten weekend", "Bezpłatne"].map((label) => (
+              {TIME_FILTERS.map(({ label, value }) => (
                 <button
-                  key={label}
-                  className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                  key={value}
+                  onClick={() => handleTimeFilter(value)}
+                  className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+                    activeTime === value
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+                  }`}
                 >
                   {label}
                 </button>
@@ -67,7 +92,6 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* Prawa kolumna — zdjęcie */}
           <div className="relative hidden lg:block">
             <div className="relative h-[420px] w-full overflow-hidden rounded-3xl">
               <img
@@ -76,8 +100,6 @@ export function HeroSection() {
                 className="h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent rounded-3xl" />
-
-              {/* Floating card */}
               <div className="absolute bottom-6 left-6 right-6 rounded-2xl bg-background/90 backdrop-blur-sm p-4 border border-border/50">
                 <p className="text-xs font-medium text-primary mb-1">DZIŚ · 18:00</p>
                 <p className="text-sm font-semibold text-foreground">Dni Suwałk 2026</p>

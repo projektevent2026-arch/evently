@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { Navbar } from "@/components/navbar"
 import { HeroSection } from "@/components/hero-section"
 import { EventsGrid } from "@/components/events-grid"
@@ -9,14 +10,18 @@ export default function HomePage() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1">
-        <HeroSection />
+        <Suspense>
+          <HeroSection />
+        </Suspense>
         <div className="mx-auto max-w-7xl px-6 lg:px-8 py-8">
           <div className="flex gap-8">
-          <aside className="block w-72 shrink-0">
+            <aside className="block w-72 shrink-0">
               <LocationSidebar />
             </aside>
             <div className="flex-1 min-w-0">
-              <EventsGrid />
+              <Suspense>
+                <EventsGrid />
+              </Suspense>
             </div>
           </div>
         </div>

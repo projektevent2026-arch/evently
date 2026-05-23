@@ -1,5 +1,6 @@
 "use client"
 
+import PosterScanner from "@/components/admin/PosterScanner"
 import ScheduleEditor from "@/components/admin/ScheduleEditor"
 import dynamic from 'next/dynamic'
 const LocationPicker = dynamic(() => import('@/components/admin/LocationPicker'), { ssr: false })
@@ -62,12 +63,12 @@ export default function AdminPage() {
     }))
   }
 
-  const handleGeocode = async () => {
-    const query = [form.address, form.city].filter(Boolean).join(", ")
+  const handleGeocode = async (addressOverride?: string, cityOverride?: string) => {
+    const query = [addressOverride || form.address, cityOverride || form.city].filter(Boolean).join(", ")
     if (!query) return
     setGeocoding(true)
     try {
-      const res = await fetch("https://nominatim.openstreetmap.org/search?format=json&q=" + encodeURIComponent(query) + "&limit=1")
+      const res = await fetch("/api/geocode?q=" + encodeURIComponent(query))
       const data = await res.json()
       if (data[0]) setForm(prev => ({...prev, latitude: parseFloat(data[0].lat).toFixed(6), longitude: parseFloat(data[0].lon).toFixed(6)}))
     } catch {}
@@ -285,6 +286,38 @@ export default function AdminPage() {
                 <X size={20} />
               </button>
             </div>
+            <div style={{padding:"0 1.5rem 0.75rem"}}>
+  <PosterScanner
+    onScanComplete={async (data) => {
+      setForm(prev => ({
+        ...prev,
+        slug: (data.title || '').toLowerCase()
+  .replace(/ą/g,"a").replace(/ę/g,"e").replace(/ó/g,"o")
+  .replace(/ś/g,"s").replace(/ł/g,"l").replace(/ż/g,"z")
+  .replace(/ź/g,"z").replace(/ć/g,"c").replace(/ń/g,"n")
+  .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,""),
+        title: data.title || prev.title,
+        city: data.city || prev.city,
+        address: data.address || prev.address,
+        venue_name: data.venue_name || prev.venue_name,
+        start_date: data.start_date || prev.start_date,
+        start_time: data.start_time || prev.start_time,
+        end_date: data.end_date || prev.end_date,
+        end_time: data.end_time || prev.end_time,
+        description: data.description || prev.description,
+        organizer_name: data.organizer_name || prev.organizer_name,
+        category: data.category || prev.category,
+        is_free: data.is_free ?? prev.is_free,
+        price_from: data.price_from?.toString() || prev.price_from,
+      }))
+    
+      // Auto-geocoding po skanowaniu
+      const cleanAddress = (data.address || '').replace(/ul\.\s*/gi, '').replace(/al\.\s*/gi, '').replace(/os\.\s*/gi, '').trim()
+      await handleGeocode(cleanAddress, data.city)
+      setActiveTab("location")
+    }}
+  />
+</div>
 
             {/* Tabs */}
             <div style={{display:"flex", borderBottom:"1px solid #e5e7eb", padding:"0 1.5rem"}}>
@@ -398,7 +431,7 @@ export default function AdminPage() {
                   <label style={lbl}>Adres</label>
                   <div style={{display:"flex", gap:"0.5rem"}}>
                     <input name="address" placeholder="ul. Kosciuszki 1" value={form.address} onChange={handleChange} style={{...inp, flex:1}} />
-                    <button type="button" onClick={handleGeocode} disabled={geocoding} style={geoBtn}>
+                    <button type="button" onClick={() => handleGeocode()} disabled={geocoding} style={geoBtn}>
                       {geocoding ? "..." : "Geocode"}
                     </button>
                   </div>
