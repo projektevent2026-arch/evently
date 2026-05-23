@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   ]
 }
 Jeśli na plakacie nie ma harmonogramu, zwróć "schedule": [].
-Jeśli wydarzenie trwa kilka dni i harmonogram jest podzielony na dni, połącz wszystkie punkty w jedną listę i dodaj datę do tytułu np. "22.05 - Otwarcie".`,
+Jeśli wydarzenie trwa kilka dni, umieść wszystkie punkty programu w jednej liście bez dodawania daty do tytułu punktu.`,
             },
           ],
         },
