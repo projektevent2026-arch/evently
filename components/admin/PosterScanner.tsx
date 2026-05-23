@@ -95,22 +95,22 @@ export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            type="button"
-            className="scanner-gallery-btn"
-            onClick={() => inputRef.current?.click()}
-            style={{ padding: '0.75rem', border: '2px dashed #16a34a', borderRadius: 10, background: 'white', cursor: 'pointer', fontSize: '0.875rem', color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-          >
-            🤖 Skanuj plakat AI
-          </button>
-          <button
-            type="button"
-            className="scanner-camera-btn"
-            onClick={() => cameraRef.current?.click()}
-            style={{ flex: 1, padding: '0.75rem', border: '2px dashed #16a34a', borderRadius: 10, background: 'white', cursor: 'pointer', fontSize: '0.875rem', color: '#16a34a', fontWeight: 600, alignItems: 'center', justifyContent: 'center', gap: 8 }}
-          >
-            📷 Aparat
-          </button>
+         <button
+  type="button"
+  className="scanner-gallery-btn"
+  onClick={() => cameraRef.current?.click()}
+  style={{ padding: '0.75rem', border: '2px dashed #16a34a', borderRadius: 10, background: 'white', cursor: 'pointer', fontSize: '0.875rem', color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+>
+  🤖 Skanuj plakat AI
+</button>
+<button
+  type="button"
+  className="scanner-camera-btn"
+  onClick={() => inputRef.current?.click()}
+  style={{ flex: 1, padding: '0.75rem', border: '2px dashed #16a34a', borderRadius: 10, background: 'white', cursor: 'pointer', fontSize: '0.875rem', color: '#16a34a', fontWeight: 600, alignItems: 'center', justifyContent: 'center', gap: 8 }}
+>
+  🖼️ Galeria
+</button>
         </div>
       )}
 
