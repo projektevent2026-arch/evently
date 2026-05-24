@@ -328,8 +328,8 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
            🤖 Skanuj plakat AI
          </button>
         </div>
-        <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleScan} style={{ display:"none" }} />
-<input ref={cameraRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={handleScan} style={{ display:"none" }} />
+        <input ref={inputRef} type="file" onChange={handleScan} style={{ display:"none" }} />
+<input ref={cameraRef} type="file" capture="environment" onChange={handleScan} style={{ display:"none" }} />
 
         {/* Zawartość sekcji */}
         <div style={{ padding:"0 32px 40px" }}>
