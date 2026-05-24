@@ -84,7 +84,7 @@ export default function EventPage() {
       `}</style>
 
       {/* ═══ HERO ═══ */}
-      <div style={{position:"relative", aspectRatio:"21/9", minHeight:320, maxHeight:520, overflow:"hidden"}}>
+      <div style={{position:"relative", height:"min(520px, 45vw)", minHeight:320, overflow:"hidden"}}>
         <img
           src={event.cover_image_url||"/images/event-concert.jpg"}
           alt={event.title}
