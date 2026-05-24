@@ -181,7 +181,7 @@ export default function AdminPage() {
         </div>
         <a href="/" style={navItem(false)}>Panel glowny</a>
         <a href="/admin" style={navItem(true)}>Wydarzenia</a>
-        <button onClick={openForm} style={{...navItem(false), border:"none", textAlign:"left", cursor:"pointer"}}>Dodaj wydarzenie</button>
+        <a href="/admin/wydarzenia" style={navItem(false)}>Dodaj wydarzenie</a>
       </aside>
 
       {/* Main content */}
@@ -193,9 +193,9 @@ export default function AdminPage() {
             <h1 style={{fontSize:"1.4rem", fontWeight:700, margin:0}}>Wydarzenia</h1>
             <p style={{color:"#6b7280", fontSize:"0.85rem", margin:"4px 0 0"}}>Zarzadzaj wszystkimi wydarzeniami</p>
           </div>
-          <button onClick={openForm} style={{display:"flex", alignItems:"center", gap:6, background:"#16a34a", color:"white", border:"none", borderRadius:8, padding:"0.6rem 1rem", cursor:"pointer", fontWeight:600, fontSize:"0.875rem"}}>
-            <Plus size={16} /> Dodaj wydarzenie
-          </button>
+          <a href="/admin/wydarzenia" style={{display:"flex",alignItems:"center",gap:6,background:"#16a34a",color:"white",borderRadius:8,padding:"0.6rem 1rem",fontWeight:600,fontSize:"0.875rem",textDecoration:"none"}}>
+  <Plus size={16} /> Dodaj wydarzenie
+</a>
         </div>
 
         {/* Status tabs */}
