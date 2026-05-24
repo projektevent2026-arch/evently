@@ -10,9 +10,9 @@ export default function HomePage() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1">
-        <Suspense>
-          <HeroSection />
-        </Suspense>
+      <Suspense fallback={null}>
+  <HeroSection />
+</Suspense>
         <div className="mx-auto max-w-7xl px-6 lg:px-8 py-8">
           <div className="flex gap-8">
             <aside className="block w-72 shrink-0">
