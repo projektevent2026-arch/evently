@@ -19,9 +19,9 @@ export default function HomePage() {
               <LocationSidebar />
             </aside>
             <div className="flex-1 min-w-0">
-              <Suspense>
-                <EventsGrid />
-              </Suspense>
+            <Suspense fallback={<div>Ładowanie...</div>}>
+  <EventsGrid />
+</Suspense>
             </div>
           </div>
         </div>
