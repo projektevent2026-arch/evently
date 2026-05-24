@@ -15,9 +15,11 @@ export default function HomePage() {
 </Suspense>
         <div className="mx-auto max-w-7xl px-6 lg:px-8 py-8">
           <div className="flex gap-8">
-            <aside className="block w-72 shrink-0">
-              <LocationSidebar />
-            </aside>
+          <aside className="block w-72 shrink-0">
+  <Suspense fallback={null}>
+    <LocationSidebar />
+  </Suspense>
+</aside>
             <div className="flex-1 min-w-0">
             <Suspense fallback={<div>Ładowanie...</div>}>
   <EventsGrid />
