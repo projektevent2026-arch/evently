@@ -38,7 +38,9 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
   if (!schedule || schedule.length === 0) return null
 
   const day = schedule[activeDay]
-  const sorted = [...day.items].sort((a, b) => a.time.localeCompare(b.time))
+  const sorted = [...day.items]
+  .filter(item => item.time && item.title)
+  .sort((a, b) => a.time.localeCompare(b.time))
 
   const getStatus = (item: ScheduleItem, index: number) => {
     if (!currentTime) return 'upcoming'
