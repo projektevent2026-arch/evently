@@ -150,7 +150,7 @@ export default function EventPage() {
                 🔗 Udostępnij
               </button>
               {(event.image_url || event.cover_image_url) && (
-  <button onClick={() => setShowPoster(true)}} style={{background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",padding:"8px 14px",borderRadius:24,fontSize:13,fontWeight:600,border:"1px solid rgba(255,255,255,0.15)",cursor:"pointer"}}>
+  <button onClick={() => setShowPoster(true)} style={{background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",padding:"8px 14px",borderRadius:24,fontSize:13,fontWeight:600,border:"1px solid rgba(255,255,255,0.15)",cursor:"pointer"}}>
     🖼️ Plakat
   </button>
 )}
