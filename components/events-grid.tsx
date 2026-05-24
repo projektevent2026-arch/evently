@@ -1,5 +1,6 @@
 "use client"
 
+import { useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { EventCard, type EventData } from "@/components/event-card"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 export function EventsGrid() {
   const [events, setEvents] = useState<EventData[]>([])
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+const searchQuery = searchParams.get("q")?.toLowerCase() || ""
+const timeFilter = searchParams.get("time") || ""
 
   useEffect(() => {
     async function fetchEvents() {
@@ -47,9 +51,40 @@ export function EventsGrid() {
     fetchEvents()
   }, [])
 
-  const filtered = activeCategory
-    ? events.filter((e) => e.category === activeCategory)
-    : events
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+  const dayAfterTomorrow = new Date(today)
+  dayAfterTomorrow.setDate(today.getDate() + 2)
+  const weekendStart = new Date(today)
+  weekendStart.setDate(today.getDate() + ((6 - today.getDay() + 7) % 7))
+  const weekendEnd = new Date(weekendStart)
+  weekendEnd.setDate(weekendStart.getDate() + 1)
+  
+  const filtered = events.filter((e) => {
+    if (activeCategory && e.category !== activeCategory) return false
+    if (searchQuery) {
+      const haystack = `${e.title} ${e.city} ${e.category}`.toLowerCase()
+      if (!haystack.includes(searchQuery)) return false
+    }
+    if (timeFilter === "dzis") {
+      const d = new Date(e.start_date)
+      if (d < today || d >= tomorrow) return false
+    }
+    if (timeFilter === "jutro") {
+      const d = new Date(e.start_date)
+      if (d < tomorrow || d >= dayAfterTomorrow) return false
+    }
+    if (timeFilter === "weekend") {
+      const d = new Date(e.start_date)
+      if (d < weekendStart || d > weekendEnd) return false
+    }
+    if (timeFilter === "bezplatne") {
+      if (e.price !== "Wstęp wolny") return false
+    }
+    return true
+  })
 
   return (
 <section className="pb-8" id="discover">
