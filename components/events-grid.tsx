@@ -16,9 +16,15 @@ const CATEGORY_LABELS: Record<string, string> = {
 export function EventsGrid() {
   const [events, setEvents] = useState<EventData[]>([])
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [centerLat, setCenterLat] = useState<number | null>(null)
+  const [centerLng, setCenterLng] = useState<number | null>(null)
   const searchParams = useSearchParams()
-const searchQuery = searchParams.get("q")?.toLowerCase() || ""
-const timeFilter = searchParams.get("time") || ""
+  const searchQuery = searchParams.get("q")?.toLowerCase() || ""
+  const timeFilter = searchParams.get("time") || ""
+  const cityParam = searchParams.get("city") || ""
+  const radiusParam = parseFloat(searchParams.get("radius") || "25")
+  const latParam = searchParams.get("lat")
+  const lngParam = searchParams.get("lng")
 
   useEffect(() => {
     async function fetchEvents() {
@@ -26,12 +32,7 @@ const timeFilter = searchParams.get("time") || ""
         .from('events')
         .select('*')
         .order('start_date', { ascending: true })
-
-      if (error) {
-        console.error('Błąd message:', error.message)
-        return
-      }
-
+      if (error) { console.error('Błąd:', error.message); return }
       const mapped = (data || []).map((e) => ({
         id: e.id,
         slug: e.slug,
@@ -43,13 +44,35 @@ const timeFilter = searchParams.get("time") || ""
         interested: e.interested_count || 0,
         category: e.category || 'Inne',
         price: e.price ? `od ${e.price} zł` : 'Wstęp wolny',
+        latitude: e.latitude ? parseFloat(e.latitude) : null,
+        longitude: e.longitude ? parseFloat(e.longitude) : null,
       }))
-
       setEvents(mapped)
     }
-
     fetchEvents()
   }, [])
+
+  useEffect(() => {
+    if (latParam && lngParam) {
+      setCenterLat(parseFloat(latParam))
+      setCenterLng(parseFloat(lngParam))
+      return
+    }
+    if (cityParam) {
+      fetch("/api/geocode?q=" + encodeURIComponent(cityParam))
+        .then(r => r.json())
+        .then(d => {
+          if (d[0]) {
+            setCenterLat(parseFloat(d[0].lat))
+            setCenterLng(parseFloat(d[0].lon))
+          }
+        })
+        .catch(() => {})
+    } else {
+      setCenterLat(null)
+      setCenterLng(null)
+    }
+  }, [cityParam, latParam, lngParam])
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -61,33 +84,43 @@ const timeFilter = searchParams.get("time") || ""
   weekendStart.setDate(today.getDate() + ((6 - today.getDay() + 7) % 7))
   const weekendEnd = new Date(weekendStart)
   weekendEnd.setDate(weekendStart.getDate() + 1)
-  
-  const filtered = events.filter((e) => {
+
+  const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371
+    const dLat = (lat2 - lat1) * Math.PI / 180
+    const dLon = (lon2 - lon1) * Math.PI / 180
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  }
+
+  const filtered = events.filter((e: any) => {
     if (activeCategory && e.category !== activeCategory) return false
     if (searchQuery) {
       const haystack = `${e.title} ${e.city} ${e.category}`.toLowerCase()
       if (!haystack.includes(searchQuery)) return false
     }
     if (timeFilter === "dzis") {
-      const d = new Date(e.start_date)
-      if (d < today || d >= tomorrow) return false
+      const d = new Date(e.start_date); if (d < today || d >= tomorrow) return false
     }
     if (timeFilter === "jutro") {
-      const d = new Date(e.start_date)
-      if (d < tomorrow || d >= dayAfterTomorrow) return false
+      const d = new Date(e.start_date); if (d < tomorrow || d >= dayAfterTomorrow) return false
     }
     if (timeFilter === "weekend") {
-      const d = new Date(e.start_date)
-      if (d < weekendStart || d > weekendEnd) return false
+      const d = new Date(e.start_date); if (d < weekendStart || d > weekendEnd) return false
     }
     if (timeFilter === "bezplatne") {
       if (e.price !== "Wstęp wolny") return false
+    }
+    if (centerLat && centerLng && cityParam) {
+      if (!e.latitude || !e.longitude) return false
+      const dist = haversine(centerLat, centerLng, e.latitude, e.longitude)
+      if (dist > radiusParam) return false
     }
     return true
   })
 
   return (
-<section className="pb-8" id="discover">
+    <section className="pb-8" id="discover">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Popularne wydarzenia</h2>
@@ -100,7 +133,6 @@ const timeFilter = searchParams.get("time") || ""
         </Button>
       </div>
 
-      {/* Filtrowanie kategorii */}
       <div className="mt-6 flex flex-wrap gap-2">
         <button
           onClick={() => setActiveCategory(null)}

@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { MapPin, Navigation } from "lucide-react"
 
@@ -25,13 +26,28 @@ export function LocationSidebar() {
   const [locating, setLocating] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const router = useRouter()
+const searchParams = useSearchParams()
 
   const handleGeolocate = () => {
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
-      () => setLocating(false),
-      () => setLocating(false)
-    )
+        async (pos) => {
+          const { latitude, longitude } = pos.coords
+          const res = await fetch(`/api/geocode?q=${latitude},${longitude}&reverse=true`)
+          const data = await res.json()
+          const cityName = data[0]?.display_name?.split(",")[0] || ""
+          setCity(cityName)
+          setLocating(false)
+          const params = new URLSearchParams(searchParams.toString())
+          params.set("city", cityName)
+          params.set("radius", radius.toString())
+          params.set("lat", latitude.toString())
+          params.set("lng", longitude.toString())
+          router.push(`/?${params.toString()}`)
+        },
+        () => setLocating(false)
+      )
   }
 
 const handleCityChange = async (val: string) => {
@@ -93,7 +109,14 @@ const handleCityChange = async (val: string) => {
               {suggestions.map((s, i) => (
                 <li
                   key={i}
-                  onMouseDown={() => { setCity(s); setShowSuggestions(false) }}
+                  onMouseDown={() => {
+                    setCity(s)
+                    setShowSuggestions(false)
+                    const params = new URLSearchParams(searchParams.toString())
+                    params.set("city", s)
+                    params.set("radius", radius.toString())
+                    router.push(`/?${params.toString()}`)
+                  }}
                   className="cursor-pointer px-3 py-2.5 text-sm text-foreground hover:bg-accent"
                 >
                   {s}
@@ -109,7 +132,14 @@ const handleCityChange = async (val: string) => {
             {RADII.map((r) => (
               <button
                 key={r}
-                onClick={() => setRadius(r)}
+                onClick={() => {
+                    setRadius(r)
+                    if (city) {
+                      const params = new URLSearchParams(searchParams.toString())
+                      params.set("radius", r.toString())
+                      router.push(`/?${params.toString()}`)
+                    }
+                  }}
                 className={`rounded-lg py-1.5 text-xs font-medium transition-colors ${
                   radius === r
                     ? "bg-primary text-primary-foreground"
