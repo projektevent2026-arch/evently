@@ -1,5 +1,6 @@
 "use client"
 
+import { Calendar, Clock, MapPin, Tag, Ticket, Building2 } from "lucide-react"
 import EventSchedule from '@/components/EventSchedule'
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
@@ -81,7 +82,7 @@ export default function EventPage() {
       `}</style>
 
       {/* ═══ HERO ═══ */}
-      <div style={{position:"relative", aspectRatio:"16/7", minHeight:320, maxHeight:520, overflow:"hidden"}}>
+      <div style={{position:"relative", aspectRatio:"21/9", minHeight:320, maxHeight:520, overflow:"hidden"}}>
         <img
           src={event.cover_image_url||"/images/event-concert.jpg"}
           alt={event.title}
@@ -159,11 +160,11 @@ export default function EventPage() {
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
 
             {/* Karta szczegółów */}
-            <div style={{background:"white",borderRadius:18,padding:"24px 22px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
+            <div style={{background:"white",borderRadius:18,padding:"32px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
               <h3 style={{fontSize:16,fontWeight:700,color:"#111827",margin:"0 0 16px"}}>Szczegóły wydarzenia</h3>
 
               <div className="detail-item">
-                <div className="detail-icon-wrap" style={{background:"#eff6ff"}}>📅</div>
+                <div className="detail-icon-wrap" style={{background:"#eff6ff"}}><Calendar size={17} color="#3b82f6" /></div>
                 <div>
                   <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,marginBottom:2,textTransform:"uppercase",letterSpacing:0.5}}>Data</div>
                   <div style={{fontSize:14,fontWeight:600,color:"#111827"}}>{fmt(event.start_date)}</div>
@@ -172,7 +173,7 @@ export default function EventPage() {
               </div>
 
               <div className="detail-item">
-                <div className="detail-icon-wrap" style={{background:"#f0fdf4"}}>🕐</div>
+                <div className="detail-icon-wrap" style={{background:"#f0fdf4"}}><Clock size={17} color="#16a34a" /></div>
                 <div>
                   <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,marginBottom:2,textTransform:"uppercase",letterSpacing:0.5}}>Godzina</div>
                   <div style={{fontSize:14,fontWeight:600,color:"#111827"}}>{fmtTime(event.start_date)}{event.end_date?` – ${fmtTime(event.end_date)}`:""}</div>
@@ -180,7 +181,7 @@ export default function EventPage() {
               </div>
 
               <div className="detail-item">
-                <div className="detail-icon-wrap" style={{background:"#fff7ed"}}>📍</div>
+                <div className="detail-icon-wrap" style={{background:"#fff7ed"}}><MapPin size={17} color="#f97316" /></div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,marginBottom:2,textTransform:"uppercase",letterSpacing:0.5}}>Lokalizacja</div>
                   <div style={{fontSize:14,fontWeight:600,color:"#111827"}}>{event.address||event.city}</div>
@@ -192,7 +193,7 @@ export default function EventPage() {
               </div>
 
               <div className="detail-item">
-                <div className="detail-icon-wrap" style={{background:"#f0fdf4"}}>🏷️</div>
+                <div className="detail-icon-wrap" style={{background:"#f0fdf4"}}><Tag size={17} color="#16a34a" /></div>
                 <div>
                   <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,marginBottom:6,textTransform:"uppercase",letterSpacing:0.5}}>Kategoria</div>
                   <span style={{background:"#f0fdf4",color:"#16a34a",fontSize:12,fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1px solid #bbf7d0"}}>
@@ -202,7 +203,7 @@ export default function EventPage() {
               </div>
 
               <div className="detail-item">
-                <div className="detail-icon-wrap" style={{background:"#fef9f0"}}>🎟️</div>
+                <div className="detail-icon-wrap" style={{background:"#fef9f0"}}><Ticket size={17} color="#f59e0b" /></div>
                 <div>
                   <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,marginBottom:2,textTransform:"uppercase",letterSpacing:0.5}}>Wstęp</div>
                   <div style={{fontSize:14,fontWeight:700,color:event.is_free?"#16a34a":"#111827"}}>
@@ -213,7 +214,7 @@ export default function EventPage() {
 
               {event.organizer_name && (
                 <div className="detail-item">
-                  <div className="detail-icon-wrap" style={{background:"#f5f3ff"}}>🏛️</div>
+                  <div className="detail-icon-wrap" style={{background:"#f5f3ff"}}><Building2 size={17} color="#8b5cf6" /></div>
                   <div>
                     <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,marginBottom:2,textTransform:"uppercase",letterSpacing:0.5}}>Organizator</div>
                     <div style={{fontSize:14,fontWeight:600,color:"#111827"}}>{event.organizer_name}</div>
