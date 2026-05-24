@@ -141,9 +141,9 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
 
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) 
-        const localPreview = URL.createObjectURL(file)
-setPosterPreviewUrl(localPreview)
+    if (!file) return
+    const localPreview = URL.createObjectURL(file)
+    setPosterPreviewUrl(localPreview)
     setScanning(true)
     setScanStatus("Analizuję plakat...")
     try {
