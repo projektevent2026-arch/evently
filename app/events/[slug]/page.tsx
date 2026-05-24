@@ -137,7 +137,7 @@ export default function EventPage() {
       `}</style>
 
       {/* HERO */}
-      <div style={{ position:"relative", height:340, overflow:"hidden" }}>
+      <div style={{ position:"relative", height:420, overflow:"hidden" }}>
         <img
           src={event.cover_image_url || "/images/event-concert.jpg"}
           alt={event.title}
@@ -180,12 +180,19 @@ export default function EventPage() {
           )}
 
           {/* Tytuł */}
-          <h1 style={{ color:"white", fontSize:26, fontWeight:800, margin:"0 0 6px", lineHeight:1.2, textShadow:"0 2px 8px rgba(0,0,0,0.5)" }}>
+          <h1 style={{ color:"white", fontSize:34, fontWeight:800, margin:"0 0 6px", lineHeight:1.2, textShadow:"0 2px 8px rgba(0,0,0,0.5)" }}>
             {event.title}
           </h1>
 
+          {/* Krótki opis */}
+          {event.short_description && (
+            <p style={{ color:"rgba(255,255,255,0.85)", fontSize:14, margin:"0 0 10px", lineHeight:1.5, maxWidth:600 }}>
+              {event.short_description}
+            </p>
+          )}
+
           {/* Lokalizacja */}
-          <div style={{ display:"flex", alignItems:"center", gap:6, color:"rgba(255,255,255,0.9)", fontSize:13, marginBottom:14 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6, color:"rgba(255,255,255,0.85)", fontSize:13, marginBottom:14 }}>
             📍 {[event.venue_name, event.address, event.city].filter(Boolean).join(", ")}
           </div>
 
@@ -205,9 +212,12 @@ export default function EventPage() {
             <div style={{ display:"flex", gap:8 }}>
               <button
                 onClick={handleGoing}
-                style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 20px", background: going ? "white" : "#16a34a", color: going ? "#16a34a" : "white", border: going ? "none" : "none", borderRadius:24, fontSize:14, fontWeight:700, cursor:"pointer" }}
+                style={{ display:"flex", alignItems:"center", gap:6, padding:"12px 28px", background: going ? "white" : "#16a34a", color: going ? "#16a34a" : "white", border: going ? "none" : "none", borderRadius:24, fontSize:15, fontWeight:700, cursor:"pointer", boxShadow:"0 4px 12px rgba(0,0,0,0.3)" }}
               >
                 👥 {going ? "Idę ✓" : "Idę"}
+              </button>
+              <button onClick={handleShare} style={{ padding:"12px 20px", background:"rgba(255,255,255,0.15)", backdropFilter:"blur(8px)", color:"white", border:"1px solid rgba(255,255,255,0.3)", borderRadius:24, fontSize:15, fontWeight:600, cursor:"pointer" }}>
+                🔗 Udostępnij
               </button>
             </div>
           </div>
@@ -215,10 +225,10 @@ export default function EventPage() {
       </div>
 
       {/* CONTENT */}
-      <div style={{ maxWidth:860, margin:"0 auto", padding:"0 16px" }}>
+      <div style={{ maxWidth:1100, margin:"0 auto", padding:"0 16px" }}>
         
         {/* Dwie kolumny na desktopie */}
-        <div style={{ display:"grid", gridTemplateColumns:"280px 1fr", gap:24, paddingTop:24, alignItems:"start" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", gap:24, paddingTop:24, alignItems:"start" }}>
           
           {/* LEWA: Szczegóły */}
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
