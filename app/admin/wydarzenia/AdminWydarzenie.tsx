@@ -22,6 +22,7 @@ const emptyForm = {
   start_date:"", start_time:"", end_date:"", end_time:"",
   city:"Suwałki", address:"", venue_name:"",
   category:"culture", cover_image_url:"", ticket_url:"", website_url:"",
+  website_url:"", image_url:"",
   organizer_name:"", price_from:"0", is_free:true,
   latitude:"", longitude:"", status:"published",
   schedule:[] as {day:number;label:string;items:{time:string;title:string;description?:string}[]}[],
@@ -419,6 +420,9 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
               {form.cover_image_url && (
                 <img src={form.cover_image_url} alt="podgląd" style={{ width:"100%", height:220, objectFit:"cover", borderRadius:10 }} />
               )}
+              <Field label="Plakat wydarzenia (pionowy)">
+  <input name="image_url" value={form.image_url||""} onChange={handleChange} placeholder="https://... wklej URL plakatu" style={inp} />
+</Field>
             </div>
           )}
 
