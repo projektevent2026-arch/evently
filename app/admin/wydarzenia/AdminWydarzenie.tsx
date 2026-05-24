@@ -322,6 +322,19 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
             <div style={{ fontWeight:600, fontSize:14, color:"#16a34a", marginBottom:2 }}>🤖 Skanuj plakat AI</div>
             <div style={{ fontSize:12, color:"#6b7280" }}>Prześlij plakat, a AI automatycznie wypełni pola</div>
             {scanStatus && <div style={{ fontSize:12, color: scanStatus.startsWith("✅") ? "#16a34a" : "#ef4444", marginTop:4 }}>{scanStatus}</div>}
+            {scanStatus?.startsWith("✅") && form.cover_image_url && (
+  <div style={{marginTop:8, position:"relative", display:"inline-block"}}>
+    <img 
+      src={form.cover_image_url} 
+      alt="Plakat"
+      style={{height:80, borderRadius:8, cursor:"pointer", border:"2px solid #16a34a"}}
+      onClick={() => window.open(form.cover_image_url, "_blank")}
+    />
+    <div style={{fontSize:11, color:"#16a34a", marginTop:4, textAlign:"center"}}>
+      👆 Kliknij aby zobaczyć pełny plakat
+    </div>
+  </div>
+)}
           </div>
           <button onClick={() => inputRef.current?.click()} disabled={scanning} style={{ padding:"9px 20px", background:"#16a34a", border:"none", borderRadius:8, fontSize:13, color:"white", cursor:"pointer", fontWeight:600 }}>
             {scanning ? "Analizuje..." : "Skanuj plakat AI"}
