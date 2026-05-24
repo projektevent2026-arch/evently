@@ -37,6 +37,7 @@ const SECTIONS = [
 ]
 
 export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
+    const [posterPreviewUrl, setPosterPreviewUrl] = useState("")
   const [form, setForm] = useState(emptyForm)
   const [section, setSection] = useState("basic")
   const [saving, setSaving] = useState(false)
@@ -140,7 +141,9 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
 
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file) 
+        const localPreview = URL.createObjectURL(file)
+setPosterPreviewUrl(localPreview)
     setScanning(true)
     setScanStatus("Analizuję plakat...")
     try {
@@ -322,13 +325,13 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
             <div style={{ fontWeight:600, fontSize:14, color:"#16a34a", marginBottom:2 }}>🤖 Skanuj plakat AI</div>
             <div style={{ fontSize:12, color:"#6b7280" }}>Prześlij plakat, a AI automatycznie wypełni pola</div>
             {scanStatus && <div style={{ fontSize:12, color: scanStatus.startsWith("✅") ? "#16a34a" : "#ef4444", marginTop:4 }}>{scanStatus}</div>}
-            {scanStatus?.startsWith("✅") && form.cover_image_url && (
+            {scanStatus?.startsWith("✅") && posterPreviewUrl && (
   <div style={{marginTop:8, position:"relative", display:"inline-block"}}>
     <img 
-      src={form.cover_image_url} 
+      src={posterPreviewUrl} 
       alt="Plakat"
       style={{height:80, borderRadius:8, cursor:"pointer", border:"2px solid #16a34a"}}
-      onClick={() => window.open(form.cover_image_url, "_blank")}
+      onClick={() => window.open(posterPreviewUrl, "_blank")}
     />
     <div style={{fontSize:11, color:"#16a34a", marginTop:4, textAlign:"center"}}>
       👆 Kliknij aby zobaczyć pełny plakat
