@@ -23,6 +23,8 @@ export default function EventPage() {
   const [interestedCount, setInterestedCount] = useState(0)
   const [activeTab, setActiveTab] = useState("details")
   const [similarEvents, setSimilarEvents] = useState<any[]>([])
+  const [showPoster, setShowPoster] = useState(false)
+  
 
   useEffect(() => {
     async function fetchEvent() {
@@ -147,6 +149,11 @@ export default function EventPage() {
               <button onClick={handleShare} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"11px 18px",background:"transparent",backdropFilter:"blur(12px)",color:"white",border:"2px solid rgba(255,255,255,0.45)",borderRadius:26,fontSize:15,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
                 🔗 Udostępnij
               </button>
+              {event.cover_image_url && (
+  <button onClick={() => setShowPoster(true)} style={{background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",padding:"8px 14px",borderRadius:24,fontSize:13,fontWeight:600,border:"1px solid rgba(255,255,255,0.15)",cursor:"pointer"}}>
+    🖼️ Plakat
+  </button>
+)}
             </div>
           </div>
         </div>
@@ -335,5 +342,11 @@ export default function EventPage() {
         )}
       </div>
     </main>
+    {showPoster && event.cover_image_url && (
+      <div onClick={() => setShowPoster(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,cursor:"pointer"}}>
+        <img src={event.cover_image_url} alt="Plakat" style={{maxHeight:"90vh",maxWidth:"90vw",objectFit:"contain",borderRadius:12}} onClick={e => e.stopPropagation()} />
+        <button onClick={() => setShowPoster(false)} style={{position:"absolute",top:20,right:20,background:"rgba(255,255,255,0.15)",border:"none",color:"white",width:40,height:40,borderRadius:"50%",fontSize:20,cursor:"pointer"}}>×</button>
+      </div>
+    )}
   )
 }
