@@ -322,13 +322,12 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
             <div style={{ fontSize:12, color:"#6b7280" }}>Prześlij plakat, a AI automatycznie wypełni pola</div>
             {scanStatus && <div style={{ fontSize:12, color: scanStatus.startsWith("✅") ? "#16a34a" : "#ef4444", marginTop:4 }}>{scanStatus}</div>}
           </div>
-          <div style={{ display:"flex", gap:8 }}>
-  <button onClick={() => inputRef.current?.click()} disabled={scanning} style={{ padding:"9px 20px", background:"#16a34a", border:"none", borderRadius:8, fontSize:13, color:"white", cursor:"pointer", fontWeight:600 }}>
-    {scanning ? "Analizuje..." : "Skanuj plakat AI"}
-  </button>
-</div>
+          <button onClick={() => inputRef.current?.click()} disabled={scanning} style={{ padding:"9px 20px", background:"#16a34a", border:"none", borderRadius:8, fontSize:13, color:"white", cursor:"pointer", fontWeight:600 }}>
+            {scanning ? "Analizuje..." : "Skanuj plakat AI"}
+          </button>
+        </div>
         <input ref={inputRef} type="file" onChange={handleScan} style={{ display:"none" }} />
-<input ref={cameraRef} type="file" capture="environment" onChange={handleScan} style={{ display:"none" }} />
+        <input ref={cameraRef} type="file" capture="environment" onChange={handleScan} style={{ display:"none" }} />
 
         {/* Zawartość sekcji */}
         <div style={{ padding:"0 32px 40px" }}>
