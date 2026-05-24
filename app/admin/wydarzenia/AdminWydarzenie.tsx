@@ -324,14 +324,9 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
           </div>
           <div style={{ display:"flex", gap:8 }}>
             {scanning ? (
-              <div style={{ padding:"9px 16px", background:"#dcfce7", borderRadius:8, fontSize:13, color:"#16a34a" }}>🔍 Analizuję...</div>
-            ) : (
-              <>
-                <button onClick={() => cameraRef.current?.click()} style={{ padding:"9px 16px", background:"white", border:"1px solid #16a34a", borderRadius:8, fontSize:13, color:"#16a34a", cursor:"pointer", fontWeight:500 }}>📷 Aparat</button>
-                <button onClick={() => inputRef.current?.click()} style={{ padding:"9px 16px", background:"#16a34a", border:"none", borderRadius:8, fontSize:13, color:"white", cursor:"pointer", fontWeight:500 }}>🖼️ Z galerii</button>
-              </>
-            )}
-          </div>
+           <button onClick={() => inputRef.current?.click()} style={{ padding:"9px 20px", background:"#16a34a", border:"none", borderRadius:8, fontSize:13, color:"white", cursor:"pointer", fontWeight:600 }}>
+           🤖 Skanuj plakat AI
+         </button>
         </div>
         <input ref={inputRef} type="file" accept="image/*" onChange={handleScan} style={{ display:"none" }} />
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={handleScan} style={{ display:"none" }} />
