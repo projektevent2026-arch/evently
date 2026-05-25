@@ -66,7 +66,8 @@ export function EventCard({ event }: { event: EventData }) {
       <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
         <div className="relative aspect-[16/10] overflow-hidden">
           <img
-            src={event.image}
+src={event.image || "/images/event-concert.jpg"}
+onError={(e) => { (e.target as HTMLImageElement).src = "/images/event-concert.jpg" }}
             alt={event.title}
             className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
           />
