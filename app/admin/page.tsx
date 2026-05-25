@@ -121,31 +121,8 @@ export default function AdminPage() {
     else { setStatusMsg(editingId ? "Zapisano!" : "Dodano!"); setForm(emptyForm); setShowForm(false); setEditingId(null); fetchEvents() }
   }
   const handleEdit = (event: any) => {
-    const startDate = event.start_date ? new Date(event.start_date) : null
-    const endDate = event.end_date ? new Date(event.end_date) : null
-    setForm({
-      title: event.title || "",
-      slug: event.slug || "",
-      description: event.description || "",
-      short_description: event.short_description || "",
-      start_date: startDate ? startDate.toISOString().split("T")[0] : "",
-      start_time: startDate ? startDate.toTimeString().slice(0,5) : "",
-      end_date: endDate ? endDate.toISOString().split("T")[0] : "",
-      end_time: endDate ? endDate.toTimeString().slice(0,5) : "",
-      city: event.city || "",
-      address: event.address || "",
-      venue_name: event.venue_name || "",
-      category: event.category || "culture",
-      cover_image_url: event.cover_image_url || "",
-      ticket_url: event.ticket_url || "",
-      website_url: event.website_url || "",
-      organizer_name: event.organizer_name || "",
-      price_from: event.price_from?.toString() || "0",
-      is_free: event.is_free ?? true,
-      latitude: event.latitude?.toString() || "",
-      longitude: event.longitude?.toString() || "",
-      status: event.status || "published",schedule: event.schedule || [],
-    })
+    window.location.href = `/admin/wydarzenia?id=${event.id}`
+  }
     setEditingId(event.id)
     setActiveTab("basic")
     setStatusMsg("")
