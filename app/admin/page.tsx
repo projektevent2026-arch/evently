@@ -123,11 +123,6 @@ export default function AdminPage() {
   const handleEdit = (event: any) => {
     window.location.href = `/admin/wydarzenia?id=${event.id}`
   }
-    setEditingId(event.id)
-    setActiveTab("basic")
-    setStatusMsg("")
-    setShowForm(true)
-  }
   const handleDelete = async (id: string) => {
     if (!confirm("Usunac wydarzenie?")) return
     await supabase.from("events").delete().eq("id", id)
