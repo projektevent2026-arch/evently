@@ -30,7 +30,25 @@ export default function EventPage() {
       const { data, error } = await supabase.from("events").select("*").eq("slug", slug).single()
       if (!error) {
         setEvent(data)
-        setInterestedCount(data.view_count || 0)
+// NOWE (wklej zamiast tamtego):
+// Rzeczywista liczba uczestników z event_attendees
+const { count } = await supabase
+  .from("event_attendees")
+  .select("*", { count: "exact", head: true })
+  .eq("event_id", data.id)
+setInterestedCount(count || 0)
+
+// Sprawdź czy zalogowany user już kliknął "Idę"
+const { data: { session } } = await supabase.auth.getSession()
+if (session) {
+  const { data: existing } = await supabase
+    .from("event_attendees")
+    .select("user_id")
+    .eq("user_id", session.user.id)
+    .eq("event_id", data.id)
+    .maybeSingle()
+  setGoing(!!existing)
+}
         const { data: similar } = await supabase.from("events").select("*").eq("status","published").neq("slug",slug).limit(4)
         setSimilarEvents(similar || [])
       }
@@ -42,12 +60,27 @@ export default function EventPage() {
   const handleGoing = async () => {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { window.location.href = "/login"; return }
+  
     if (going) {
-      await supabase.from("event_attendees").delete().eq("user_id", session.user.id).eq("event_id", event.id)
-      setGoing(false); setInterestedCount((p:number) => p-1)
+      const { error } = await supabase
+        .from("event_attendees")
+        .delete()
+        .eq("user_id", session.user.id)
+        .eq("event_id", event.id)
+      if (!error) {
+        setGoing(false)
+        setInterestedCount((p: number) => p - 1)
+      }
     } else {
-      await supabase.from("event_attendees").insert({ user_id: session.user.id, event_id: event.id })
-      setGoing(true); setInterestedCount((p:number) => p+1)
+      const { error } = await supabase
+        .from("event_attendees")
+        .insert({ user_id: session.user.id, event_id: event.id })
+      if (error) {
+        console.error("RSVP insert error:", error)
+      } else {
+        setGoing(true)
+        setInterestedCount((p: number) => p + 1)
+      }
     }
   }
 

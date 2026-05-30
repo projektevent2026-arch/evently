@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -39,6 +39,21 @@ export function EventCard({ event }: { event: EventData }) {
   const [going, setGoing] = useState(false)
   const [liked, setLiked] = useState(false)
   const [interestedCount, setInterestedCount] = useState(event.interested)
+  // Sprawdź przy załadowaniu czy user już kliknął "Idę"
+useEffect(() => {
+  async function checkAttendance() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+    const { data } = await supabase
+      .from("event_attendees")
+      .select("user_id")
+      .eq("user_id", session.user.id)
+      .eq("event_id", event.id)
+      .maybeSingle()
+    setGoing(!!data)
+  }
+  checkAttendance()
+}, [event.id])
 
   const dayBadge = getDayBadge(event.start_date)
   const time = getTime(event.start_date)
@@ -50,14 +65,25 @@ export function EventCard({ event }: { event: EventData }) {
     if (!session) { window.location.href = "/login"; return }
     const userId = session.user.id
     const eventId = event.id
+  
     if (going) {
-      await supabase.from("event_attendees").delete().eq("user_id", userId).eq("event_id", eventId)
-      setGoing(false)
-      setInterestedCount((prev) => prev - 1)
+      const { error } = await supabase
+        .from("event_attendees")
+        .delete()
+        .eq("user_id", userId)
+        .eq("event_id", eventId)
+      if (!error) {
+        setGoing(false)
+        setInterestedCount((prev) => prev - 1)
+      }
     } else {
-      await supabase.from("event_attendees").insert({ user_id: userId, event_id: eventId })
-      setGoing(true)
-      setInterestedCount((prev) => prev + 1)
+      const { error } = await supabase
+        .from("event_attendees")
+        .insert({ user_id: userId, event_id: eventId })
+      if (!error) {
+        setGoing(true)
+        setInterestedCount((prev) => prev + 1)
+      }
     }
   }
 
