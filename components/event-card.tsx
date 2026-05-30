@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +18,7 @@ export interface EventData {
   interested: number
   category: string
   price?: string
+  initialGoing?: boolean
 }
 
 function getDayBadge(start_date?: string): { label: string; color: string } | null {
@@ -35,25 +36,10 @@ function getTime(start_date?: string): string | null {
   return new Date(start_date).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
 }
 
-export function EventCard({ event }: { event: EventData }) {
-  const [going, setGoing] = useState(false)
+export function EventCard({ event, initialGoing = false }: { event: EventData; initialGoing?: boolean }) {
+  const [going, setGoing] = useState(initialGoing)
   const [liked, setLiked] = useState(false)
   const [interestedCount, setInterestedCount] = useState(event.interested)
-  // Sprawdź przy załadowaniu czy user już kliknął "Idę"
-useEffect(() => {
-  async function checkAttendance() {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return
-    const { data } = await supabase
-      .from("event_attendees")
-      .select("user_id")
-      .eq("user_id", session.user.id)
-      .eq("event_id", event.id)
-      .maybeSingle()
-    setGoing(!!data)
-  }
-  checkAttendance()
-}, [event.id])
 
   const dayBadge = getDayBadge(event.start_date)
   const time = getTime(event.start_date)
@@ -65,7 +51,7 @@ useEffect(() => {
     if (!session) { window.location.href = "/login"; return }
     const userId = session.user.id
     const eventId = event.id
-  
+
     if (going) {
       const { error } = await supabase
         .from("event_attendees")
@@ -92,21 +78,19 @@ useEffect(() => {
       <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
         <div className="relative aspect-[16/10] overflow-hidden">
           <img
-src={event.image || "/images/event-concert.jpg"}
-onError={(e) => { (e.target as HTMLImageElement).src = "/images/event-concert.jpg" }}
+            src={event.image || "/images/event-concert.jpg"}
+            onError={(e) => { (e.target as HTMLImageElement).src = "/images/event-concert.jpg" }}
             alt={event.title}
             className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
-          {/* Badge kategorii */}
           <div className="absolute left-3 top-3">
             <Badge className="bg-primary/90 text-primary-foreground backdrop-blur-sm">
               {event.category}
             </Badge>
           </div>
 
-          {/* Serce */}
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiked(!liked) }}
             className={`absolute right-3 top-3 flex size-8 items-center justify-center rounded-full backdrop-blur-sm transition-all ${
@@ -116,7 +100,6 @@ onError={(e) => { (e.target as HTMLImageElement).src = "/images/event-concert.jp
             <Heart className={`size-4 ${liked ? "fill-current" : ""}`} />
           </button>
 
-          {/* DZIŚ / JUTRO + godzina na zdjęciu */}
           <div className="absolute bottom-3 left-3 flex items-center gap-2">
             {dayBadge && (
               <span className={`${dayBadge.color} rounded-md px-2 py-0.5 text-xs font-bold text-white`}>
@@ -130,7 +113,6 @@ onError={(e) => { (e.target as HTMLImageElement).src = "/images/event-concert.jp
             )}
           </div>
 
-          {/* Cena */}
           {event.price && (
             <div className="absolute bottom-3 right-3 rounded-lg bg-black/50 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
               {event.price}
