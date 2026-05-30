@@ -3,8 +3,10 @@ import type { NextRequest } from "next/server"
 
 export async function middleware(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith("/admin")) {
-    const token = req.cookies.get("sb-nurenpropecusrvmciit-auth-token")
-    if (!token) {
+    const allCookies = req.cookies.getAll()
+    const hasSbCookie = allCookies.some(c => c.name.startsWith("sb-"))
+    
+    if (!hasSbCookie) {
       return NextResponse.redirect(new URL("/login", req.url))
     }
   }
