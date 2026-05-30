@@ -19,7 +19,7 @@ export async function middleware(req: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
 
   if (req.nextUrl.pathname.startsWith("/admin")) {
-    if (!session) {
+    if (!session || session.user.email !== "projectevent2026@gmail.com") {
       return NextResponse.redirect(new URL("/login", req.url))
     }
   }
