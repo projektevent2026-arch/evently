@@ -3,7 +3,8 @@ import AdminWydarzenie from "./AdminWydarzenie"
 export default async function DodajWydarzeniePage({
   searchParams,
 }: {
-  searchParams: { id?: string }
+  searchParams: Promise<{ id?: string }>
 }) {
-  return <AdminWydarzenie eventId={searchParams.id} />
+  const params = await searchParams
+  return <AdminWydarzenie eventId={params.id} />
 }
