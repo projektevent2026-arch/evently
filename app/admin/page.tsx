@@ -123,6 +123,16 @@ export default function AdminPage() {
   const handleEdit = (event: any) => {
     window.location.href = `/admin/wydarzenia?id=${event.id}`
   }
+  const handleApprove = async (id: string) => {
+    await supabase.from("events").update({ status: "published" }).eq("id", id)
+    fetchEvents()
+  }
+  
+  const handleReject = async (id: string) => {
+    if (!confirm("Odrzucić i usunąć to zgłoszenie?")) return
+    await supabase.from("events").delete().eq("id", id)
+    fetchEvents()
+  }
   const handleDelete = async (id: string) => {
     if (!confirm("Usunac wydarzenie?")) return
     await supabase.from("events").delete().eq("id", id)
@@ -130,12 +140,13 @@ export default function AdminPage() {
   }
 
   const filtered = filterStatus === "all" ? events : events.filter(e => e.status === filterStatus)
-  const counts = {
-    all: events.length,
-    published: events.filter(e => e.status === "published").length,
-    draft: events.filter(e => e.status === "draft").length,
-    archived: events.filter(e => e.status === "archived").length,
-  }
+const counts = {
+  all: events.length,
+  pending: events.filter(e => e.status === "pending").length,
+  published: events.filter(e => e.status === "published").length,
+  draft: events.filter(e => e.status === "draft").length,
+  archived: events.filter(e => e.status === "archived").length,
+}
 
   const openForm = () => { setForm(emptyForm); setActiveTab("basic"); setStatusMsg(""); setShowForm(true); setMobileShowList(false) }
   const closeForm = () => { setShowForm(false); setEditingId(null) }
@@ -172,17 +183,18 @@ export default function AdminPage() {
 
         {/* Status tabs */}
         <div style={{display:"flex", gap:"1rem", marginBottom:"1rem", borderBottom:"1px solid #e5e7eb", paddingBottom:"0.75rem", overflowX:"auto"}}>
-          {(["all","published","draft","archived"] as const).map(val => (
-            <button key={val} onClick={() => setFilterStatus(val)} style={{
-              background:"none", border:"none", cursor:"pointer", fontSize:"0.875rem", whiteSpace:"nowrap",
-              fontWeight: filterStatus === val ? 600 : 400,
-              color: filterStatus === val ? "#16a34a" : "#6b7280",
-              borderBottom: filterStatus === val ? "2px solid #16a34a" : "2px solid transparent",
-              paddingBottom:"0.5rem",
-            }}>
-              {val === "all" ? "Wszystkie" : val === "published" ? "Opublikowane" : val === "draft" ? "Szkice" : "Archiwum"} <span style={{fontSize:"0.75rem", color:"#9ca3af"}}>{counts[val]}</span>
-            </button>
-          ))}
+        {(["all","pending","published","draft","archived"] as const).map(val => (
+  <button key={val} onClick={() => setFilterStatus(val)} style={{
+    background:"none", border:"none", cursor:"pointer", fontSize:"0.875rem", whiteSpace:"nowrap",
+    fontWeight: filterStatus === val ? 600 : 400,
+    color: filterStatus === val ? "#16a34a" : "#6b7280",
+    borderBottom: filterStatus === val ? "2px solid #16a34a" : "2px solid transparent",
+    paddingBottom:"0.5rem",
+  }}>
+    {val === "all" ? "Wszystkie" : val === "pending" ? "⏳ Oczekujące" : val === "published" ? "Opublikowane" : val === "draft" ? "Szkice" : "Archiwum"}
+    {" "}<span style={{fontSize:"0.75rem", color:"#9ca3af"}}>{counts[val]}</span>
+  </button>
+))}
         </div>
 
         {/* Events table */}
@@ -225,14 +237,28 @@ export default function AdminPage() {
                       </span>
                     </td>
                     <td style={td}>
-  <div style={{display:"flex", gap:8}}>
-    <button onClick={() => handleEdit(event)} style={{background:"none", border:"none", color:"#6b7280", cursor:"pointer"}}>
-      <Edit size={16} />
+                    <div style={{display:"flex", gap:8, alignItems:"center"}}>
+  {event.status === "pending" && <>
+    <button
+      onClick={() => handleApprove(event.id)}
+      style={{background:"#16a34a",color:"white",border:"none",borderRadius:6,padding:"4px 10px",fontSize:"0.75rem",fontWeight:600,cursor:"pointer"}}
+    >
+      ✓ Zatwierdź
     </button>
-    <button onClick={() => handleDelete(event.id)} style={{background:"none", border:"none", color:"#ef4444", cursor:"pointer"}}>
-      <Trash2 size={16} />
+    <button
+      onClick={() => handleReject(event.id)}
+      style={{background:"#fef2f2",color:"#ef4444",border:"1px solid #fecaca",borderRadius:6,padding:"4px 10px",fontSize:"0.75rem",fontWeight:600,cursor:"pointer"}}
+    >
+      ✕ Odrzuć
     </button>
-  </div>
+  </>}
+  <button onClick={() => handleEdit(event)} style={{background:"none",border:"none",color:"#6b7280",cursor:"pointer"}}>
+    <Edit size={16} />
+  </button>
+  <button onClick={() => handleDelete(event.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer"}}>
+    <Trash2 size={16} />
+  </button>
+</div>
 </td>
                   </tr>
                 ))}
