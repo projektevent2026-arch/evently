@@ -24,9 +24,13 @@ interface Event {
   longitude: number
 }
 
-export default function MiniMap() {
+interface MiniMapProps {
+  center?: [number, number]
+}
+
+export default function MiniMap({ center: externalCenter }: MiniMapProps) {
   const [events, setEvents] = useState<Event[]>([])
-  const [center, setCenter] = useState<[number, number]>([54.1116, 22.9302])
+  const [center, setCenter] = useState<[number, number]>(externalCenter ?? [54.1116, 22.9302])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -49,7 +53,11 @@ export default function MiniMap() {
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => setCenter([pos.coords.latitude, pos.coords.longitude]),
+        (pos) => {
+          if (!externalCenter) {
+            setCenter([pos.coords.latitude, pos.coords.longitude])
+          }
+        },
         () => {}
       )
     }
@@ -57,48 +65,62 @@ export default function MiniMap() {
     fetchEvents()
   }, [])
 
+  useEffect(() => {
+    if (externalCenter) {
+      setCenter(externalCenter)
+    }
+  }, [externalCenter])
+
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })
 
   if (loading) {
     return (
       <div style={{ height: 200, borderRadius: 10, background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontSize: 12, color: "#9ca3af" }}>Ładowanie mapy...</span>
+        <span style={{ fontSize: 12, color: "#9ca3af" }}>Ladowanie mapy...</span>
       </div>
     )
   }
 
   return (
     <div>
-      <MapContainer
-        center={center}
-        zoom={11}
-        style={{ height: 200, borderRadius: 10, zIndex: 0 }}
-        scrollWheelZoom={false}
-        zoomControl={false}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution=""
-        />
-        {events.map((ev) => (
-          <Marker key={ev.id} position={[ev.latitude, ev.longitude]} icon={icon}>
-            <Popup>
-              <div style={{ fontSize: 12, minWidth: 140 }}>
-                <div style={{ fontWeight: 700, marginBottom: 4 }}>{ev.title}</div>
-                <div style={{ color: "#6b7280", marginBottom: 6 }}>
-                  📅 {fmtDate(ev.start_date)} · {ev.city}
+      <a href="/mapa" style={{ display: "block", cursor: "pointer" }}>
+        <MapContainer
+          key={`${center[0]}-${center[1]}`}
+          center={center}
+          zoom={11}
+          style={{ height: 200, borderRadius: 10, zIndex: 0, pointerEvents: "none" }}
+          scrollWheelZoom={false}
+          zoomControl={false}
+          dragging={false}
+          doubleClickZoom={false}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution=""
+          />
+          {events.map((ev) => (
+            <Marker key={ev.id} position={[ev.latitude, ev.longitude]} icon={icon}>
+              <Popup>
+                <div style={{ fontSize: 12, minWidth: 140 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 4 }}>{ev.title}</div>
+                  <div style={{ color: "#6b7280", marginBottom: 6 }}>
+                    {fmtDate(ev.start_date)} · {ev.city}
+                  </div>
+                  <a href={`/events/${ev.slug}`} style={{ color: "#16a34a", fontWeight: 600, textDecoration: "none" }}>
+                    Zobacz
+                  </a>
                 </div>
-                <a href={`/events/${ev.slug}`} style={{ color: "#16a34a", fontWeight: 600, textDecoration: "none" }}>
-                  Zobacz →
-                </a>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+      </a>
       <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 6, textAlign: "center" }}>
-        {events.length} wydarzeń na mapie · kliknij pinezkę
+        {events.length} wydarzen na mapie ·{" "}
+        <a href="/mapa" style={{ color: "#16a34a", fontWeight: 600 }}>
+          otworz mape
+        </a>
       </p>
     </div>
   )

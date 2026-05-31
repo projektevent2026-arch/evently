@@ -29,6 +29,7 @@ export function LocationSidebar() {
   const [locating, setLocating] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -41,6 +42,7 @@ export function LocationSidebar() {
         const data = await res.json()
         const cityName = data[0]?.display_name?.split(",")[0] || ""
         setCity(cityName)
+        setMapCenter([latitude, longitude])
         setLocating(false)
         const params = new URLSearchParams(searchParams.toString())
         params.set("city", cityName)
@@ -78,6 +80,24 @@ export function LocationSidebar() {
     }
   }
 
+  const handleSelectCity = async (s: string) => {
+    setCity(s)
+    setShowSuggestions(false)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("city", s)
+    params.set("radius", radius.toString())
+    router.push(`/?${params.toString()}`)
+    try {
+      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(s)}&limit=1`)
+      const data = await res.json()
+      const f = data.features?.[0]
+      if (f) {
+        const [lng, lat] = f.geometry.coordinates
+        setMapCenter([lat, lng])
+      }
+    } catch {}
+  }
+
   return (
     <div className="flex flex-col gap-6 sticky top-24">
 
@@ -113,14 +133,7 @@ export function LocationSidebar() {
               {suggestions.map((s, i) => (
                 <li
                   key={i}
-                  onMouseDown={() => {
-                    setCity(s)
-                    setShowSuggestions(false)
-                    const params = new URLSearchParams(searchParams.toString())
-                    params.set("city", s)
-                    params.set("radius", radius.toString())
-                    router.push(`/?${params.toString()}`)
-                  }}
+                  onMouseDown={() => handleSelectCity(s)}
                   className="cursor-pointer px-3 py-2.5 text-sm text-foreground hover:bg-accent"
                 >
                   {s}
@@ -166,9 +179,9 @@ export function LocationSidebar() {
       {/* Blisko Ciebie */}
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-          🗺️ Blisko Ciebie
+          Blisko Ciebie
         </h3>
-        <MiniMap />
+        <MiniMap center={mapCenter} />
       </div>
 
       {/* Kategorie */}

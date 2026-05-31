@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { MapPin, Menu, X, Heart } from "lucide-react"
@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 
 const TIME_FILTERS = [
-  { label: "Dziś", value: "today" },
+  { label: "Dzis", value: "today" },
   { label: "Jutro", value: "tomorrow" },
   { label: "Weekend", value: "weekend" },
   { label: "W tym tygodniu", value: "week" },
@@ -40,7 +40,7 @@ export function Navbar() {
           <span className="text-xl font-bold tracking-tight text-primary">evently</span>
         </a>
 
-        {/* Filtry czasowe — desktop */}
+        {/* Filtry czasowe - desktop */}
         <div className="hidden items-center gap-1 md:flex">
           {TIME_FILTERS.map((f) => (
             <button
@@ -57,8 +57,17 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* Prawa strona — desktop */}
+        {/* Prawa strona - desktop */}
         <div className="hidden items-center gap-3 md:flex">
+
+          {/* Link do mapy */}
+          <a
+            href="/mapa"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Mapa
+          </a>
+
           {!loading && (
             user ? (
               <>
@@ -71,7 +80,7 @@ export function Navbar() {
                     onClick={() => router.push("/admin")}
                     className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    ⚙️ Panel
+                    Panel
                   </button>
                 )}
                 <Button
@@ -80,7 +89,7 @@ export function Navbar() {
                   className="rounded-full border-primary/30 text-primary hover:bg-primary/5"
                   onClick={handleLogout}
                 >
-                  Wyloguj się
+                  Wyloguj sie
                 </Button>
               </>
             ) : (
@@ -90,7 +99,7 @@ export function Navbar() {
                 className="rounded-full border-primary/30 text-primary hover:bg-primary/5"
                 onClick={() => router.push("/login")}
               >
-                Zaloguj się
+                Zaloguj sie
               </Button>
             )
           )}
@@ -129,6 +138,13 @@ export function Navbar() {
                 {f.label}
               </button>
             ))}
+            <a
+              href="/mapa"
+              onClick={() => setMobileMenuOpen(false)}
+              className="rounded-lg px-4 py-2.5 text-left text-sm font-medium text-foreground/70 hover:bg-accent hover:text-foreground transition-colors"
+            >
+              Mapa wydarzen
+            </a>
           </div>
           <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3">
             {!loading && (
@@ -141,7 +157,7 @@ export function Navbar() {
                       className="w-full rounded-full"
                       onClick={() => { router.push("/admin"); setMobileMenuOpen(false) }}
                     >
-                      ⚙️ Panel admina
+                      Panel admina
                     </Button>
                   )}
                   <Button
@@ -150,7 +166,7 @@ export function Navbar() {
                     className="w-full rounded-full border-primary/30 text-primary"
                     onClick={handleLogout}
                   >
-                    Wyloguj się
+                    Wyloguj sie
                   </Button>
                 </>
               ) : (
@@ -160,7 +176,7 @@ export function Navbar() {
                   className="w-full rounded-full border-primary/30 text-primary"
                   onClick={() => router.push("/login")}
                 >
-                  Zaloguj się
+                  Zaloguj sie
                 </Button>
               )
             )}
