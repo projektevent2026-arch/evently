@@ -87,7 +87,7 @@ export function Navbar() {
           <Button
             size="sm"
             className="rounded-full gap-1.5"
-            onClick={() => router.push("/admin")}
+            onClick={() => router.push("/dodaj-wydarzenie")}
           >
             + Dodaj wydarzenie
           </Button>
@@ -132,7 +132,7 @@ export function Navbar() {
                 </Button>
               )
             )}
-            <Button size="sm" className="w-full rounded-full" onClick={() => router.push("/admin")}>
+            <Button size="sm" className="w-full rounded-full" onClick={() => router.push("/dodaj-wydarzenie")}>
               + Dodaj wydarzenie
             </Button>
           </div>
