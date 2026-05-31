@@ -1,8 +1,11 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { MapPin, Navigation } from "lucide-react"
+
+const MiniMap = dynamic(() => import("@/components/MiniMap"), { ssr: false })
 
 const RADII = [5, 10, 25, 50]
 
@@ -27,57 +30,58 @@ export function LocationSidebar() {
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const router = useRouter()
-const searchParams = useSearchParams()
+  const searchParams = useSearchParams()
 
   const handleGeolocate = () => {
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const { latitude, longitude } = pos.coords
-          const res = await fetch(`/api/geocode?q=${latitude},${longitude}&reverse=true`)
-          const data = await res.json()
-          const cityName = data[0]?.display_name?.split(",")[0] || ""
-          setCity(cityName)
-          setLocating(false)
-          const params = new URLSearchParams(searchParams.toString())
-          params.set("city", cityName)
-          params.set("radius", radius.toString())
-          params.set("lat", latitude.toString())
-          params.set("lng", longitude.toString())
-          router.push(`/?${params.toString()}`)
-        },
-        () => setLocating(false)
-      )
+      async (pos) => {
+        const { latitude, longitude } = pos.coords
+        const res = await fetch(`/api/geocode?q=${latitude},${longitude}&reverse=true`)
+        const data = await res.json()
+        const cityName = data[0]?.display_name?.split(",")[0] || ""
+        setCity(cityName)
+        setLocating(false)
+        const params = new URLSearchParams(searchParams.toString())
+        params.set("city", cityName)
+        params.set("radius", radius.toString())
+        params.set("lat", latitude.toString())
+        params.set("lng", longitude.toString())
+        router.push(`/?${params.toString()}`)
+      },
+      () => setLocating(false)
+    )
   }
 
-const handleCityChange = async (val: string) => {
-  setCity(val)
-  if (val.length < 2) {
-    setSuggestions([])
-    setShowSuggestions(false)
-    return
+  const handleCityChange = async (val: string) => {
+    setCity(val)
+    if (val.length < 2) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+    try {
+      const params = new URLSearchParams({ q: val, limit: "8", layer: "city" })
+      const res = await fetch("https://photon.komoot.io/api/?" + params.toString())
+      const data = await res.json()
+      const cities: string[] = data.features
+        .filter((f: any) =>
+          ["city", "town", "village"].includes(f.properties.type) &&
+          f.properties.countrycode === "PL"
+        )
+        .map((f: any) => String(f.properties.city || f.properties.name))
+        .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
+      setSuggestions(cities)
+      setShowSuggestions(cities.length > 0)
+    } catch {
+      setSuggestions([])
+    }
   }
-  try {
-    const params = new URLSearchParams({ q: val, limit: "8", layer: "city" })
-    const res = await fetch("https://photon.komoot.io/api/?" + params.toString())
-    const data = await res.json()
-    console.log("Photon response:", data.features?.[0])
-    const cities: string[] = data.features
-    .filter((f: any) => 
-      ["city", "town", "village"].includes(f.properties.type) &&
-      f.properties.countrycode === "PL"
-    )
-    .map((f: any) => String(f.properties.city || f.properties.name))
-    .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
-    setSuggestions(cities)
-    setShowSuggestions(cities.length > 0)
-  } catch {
-    setSuggestions([])
-  }
-}
 
   return (
     <div className="flex flex-col gap-6 sticky top-24">
+
+      {/* Lokalizacja */}
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
           <MapPin className="size-4 text-primary" />
@@ -133,13 +137,13 @@ const handleCityChange = async (val: string) => {
               <button
                 key={r}
                 onClick={() => {
-                    setRadius(r)
-                    if (city) {
-                      const params = new URLSearchParams(searchParams.toString())
-                      params.set("radius", r.toString())
-                      router.push(`/?${params.toString()}`)
-                    }
-                  }}
+                  setRadius(r)
+                  if (city) {
+                    const params = new URLSearchParams(searchParams.toString())
+                    params.set("radius", r.toString())
+                    router.push(`/?${params.toString()}`)
+                  }
+                }}
                 className={`rounded-lg py-1.5 text-xs font-medium transition-colors ${
                   radius === r
                     ? "bg-primary text-primary-foreground"
@@ -159,6 +163,15 @@ const handleCityChange = async (val: string) => {
         </div>
       </div>
 
+      {/* Blisko Ciebie */}
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          🗺️ Blisko Ciebie
+        </h3>
+        <MiniMap />
+      </div>
+
+      {/* Kategorie */}
       <div className="rounded-2xl border border-border bg-card p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">Kategorie</h3>
@@ -178,6 +191,7 @@ const handleCityChange = async (val: string) => {
           ))}
         </div>
       </div>
+
     </div>
   )
 }
