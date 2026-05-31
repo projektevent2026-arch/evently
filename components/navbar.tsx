@@ -18,13 +18,15 @@ const TIME_FILTERS = [
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState("all")
-  const { user, loading } = useAuth()
+  const { user, role, loading } = useAuth()
   const router = useRouter()
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push("/")
   }
+
+  const isStaff = role === "admin" || role === "moderator"
 
   return (
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border/60">
@@ -55,7 +57,7 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* Prawa strona */}
+        {/* Prawa strona — desktop */}
         <div className="hidden items-center gap-3 md:flex">
           {!loading && (
             user ? (
@@ -64,6 +66,14 @@ export function Navbar() {
                   <Heart className="size-4" />
                   Ulubione
                 </button>
+                {isStaff && (
+                  <button
+                    onClick={() => router.push("/admin")}
+                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    ⚙️ Panel
+                  </button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -123,16 +133,42 @@ export function Navbar() {
           <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3">
             {!loading && (
               user ? (
-                <Button variant="outline" size="sm" className="w-full rounded-full border-primary/30 text-primary" onClick={handleLogout}>
-                  Wyloguj się
-                </Button>
+                <>
+                  {isStaff && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full rounded-full"
+                      onClick={() => { router.push("/admin"); setMobileMenuOpen(false) }}
+                    >
+                      ⚙️ Panel admina
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full rounded-full border-primary/30 text-primary"
+                    onClick={handleLogout}
+                  >
+                    Wyloguj się
+                  </Button>
+                </>
               ) : (
-                <Button variant="outline" size="sm" className="w-full rounded-full border-primary/30 text-primary" onClick={() => router.push("/login")}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full rounded-full border-primary/30 text-primary"
+                  onClick={() => router.push("/login")}
+                >
                   Zaloguj się
                 </Button>
               )
             )}
-            <Button size="sm" className="w-full rounded-full" onClick={() => router.push("/dodaj-wydarzenie")}>
+            <Button
+              size="sm"
+              className="w-full rounded-full"
+              onClick={() => router.push("/dodaj-wydarzenie")}
+            >
               + Dodaj wydarzenie
             </Button>
           </div>
