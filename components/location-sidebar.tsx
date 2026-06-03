@@ -94,6 +94,10 @@ export function LocationSidebar() {
       if (f) {
         const [lng, lat] = f.geometry.coordinates
         setMapCenter([lat, lng])
+        const updatedParams = new URLSearchParams(params.toString())
+        updatedParams.set("lat", lat.toString())
+        updatedParams.set("lng", lng.toString())
+        router.push(`/?${updatedParams.toString()}`)
       }
     } catch {}
   }
@@ -169,11 +173,13 @@ export function LocationSidebar() {
           </div>
         </div>
 
-        <div className="mt-3 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2">
-          <p className="text-xs text-primary font-medium">
-            Pokazujemy wydarzenia w promieniu {radius} km
-          </p>
-        </div>
+        {city && (
+  <div className="mt-3 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2">
+    <p className="text-xs text-primary font-medium">
+      Pokazujemy wydarzenia w promieniu {radius} km od {city}
+    </p>
+  </div>
+)}
       </div>
 
       {/* Blisko Ciebie */}
