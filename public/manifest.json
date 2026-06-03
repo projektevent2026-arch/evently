@@ -1,0 +1,28 @@
+{
+    "name": "Evently - Wydarzenia w Polsce",
+    "short_name": "Evently",
+    "description": "Odkrywaj lokalne wydarzenia w swojej okolicy",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#16a34a",
+    "orientation": "portrait",
+    "icons": [
+      {
+        "src": "/icon-light-32x32.png",
+        "sizes": "32x32",
+        "type": "image/png"
+      },
+      {
+        "src": "/apple-icon.png",
+        "sizes": "180x180",
+        "type": "image/png"
+      },
+      {
+        "src": "/og-default.jpg",
+        "sizes": "512x512",
+        "type": "image/jpeg",
+        "purpose": "any maskable"
+      }
+    ]
+  }

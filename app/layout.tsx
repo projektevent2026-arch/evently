@@ -9,9 +9,16 @@ const _spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-spac
 
 export const metadata: Metadata = {
   title: 'Evently - Odkryj najlepsze wydarzenia w Twojej okolicy',
-  description: 'Platforma do odkrywania lokalnych wydarzeń w Polsce. Koncerty, festiwale, kultura, sport i wiele więcej.',
+  description: 'Platforma do odkrywania lokalnych wydarzen w Polsce. Koncerty, festiwale, kultura, sport i wiele wiecej.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Evently',
+  },
   icons: {
     icon: { url: '/icon.svg', type: 'image/svg+xml' },
+    apple: '/apple-icon.png',
   },
 }
 
