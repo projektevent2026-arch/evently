@@ -7,6 +7,16 @@ import { Badge } from "@/components/ui/badge"
 import { MapPin, Users, Heart } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
+const CATEGORY_LABELS: Record<string, string> = {
+  culture: "Kultura", music: "Muzyka", food: "Jedzenie",
+  sport: "Sport", family: "Rodzinne", technology: "Technologia",
+}
+
+function capitalizeCity(city: string): string {
+  if (!city) return ""
+  return city.charAt(0).toUpperCase() + city.slice(1).toLowerCase()
+}
+
 export interface EventData {
   id: number
   slug?: string
@@ -26,7 +36,7 @@ function getDayBadge(start_date?: string): { label: string; color: string } | nu
   const now = new Date()
   const event = new Date(start_date)
   const diffDays = Math.floor((event.setHours(0,0,0,0) - now.setHours(0,0,0,0)) / 86400000)
-  if (diffDays === 0) return { label: "DZIŚ", color: "bg-red-500" }
+  if (diffDays === 0) return { label: "DZIS", color: "bg-red-500" }
   if (diffDays === 1) return { label: "JUTRO", color: "bg-orange-500" }
   return null
 }
@@ -87,7 +97,7 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
 
           <div className="absolute left-3 top-3">
             <Badge className="bg-primary/90 text-primary-foreground backdrop-blur-sm">
-              {event.category}
+              {CATEGORY_LABELS[event.category] || event.category}
             </Badge>
           </div>
 
@@ -127,22 +137,26 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
 
           <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
             <MapPin className="size-3.5 text-primary/70" />
-            <span>{event.city}</span>
+            <span>{capitalizeCity(event.city)}</span>
           </div>
 
           <div className="mt-auto flex items-center justify-between border-t border-border/50 pt-4 mt-4">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Users className="size-3.5" />
-              <span className="font-medium">{interestedCount}</span>
-              <span>zainteresowanych</span>
-            </div>
+            {interestedCount > 0 ? (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Users className="size-3.5" />
+                <span className="font-medium">{interestedCount}</span>
+                <span>zainteresowanych</span>
+              </div>
+            ) : (
+              <div />
+            )}
             <Button
               size="sm"
               variant={going ? "default" : "outline"}
               onClick={handleGoing}
               className={`rounded-lg text-xs font-semibold ${going ? "" : "border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"}`}
             >
-              {going ? "Idę!" : "Idę"}
+              {going ? "Ide!" : "Ide"}
             </Button>
           </div>
         </div>
