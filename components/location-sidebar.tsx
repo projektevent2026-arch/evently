@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
-import { MapPin, Navigation } from "lucide-react"
+import { MapPin, Navigation, ChevronDown } from "lucide-react"
 
 const MiniMap = dynamic(() => import("@/components/MiniMap"), { ssr: false })
 
@@ -30,6 +30,7 @@ export function LocationSidebar() {
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -102,9 +103,8 @@ export function LocationSidebar() {
     } catch {}
   }
 
-  return (
-    <div className="flex flex-col gap-6 sticky top-24">
-
+  const sidebarContent = (
+    <>
       {/* Lokalizacja */}
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -174,12 +174,12 @@ export function LocationSidebar() {
         </div>
 
         {city && (
-  <div className="mt-3 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2">
-    <p className="text-xs text-primary font-medium">
-      Pokazujemy wydarzenia w promieniu {radius} km od {city}
-    </p>
-  </div>
-)}
+          <div className="mt-3 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2">
+            <p className="text-xs text-primary font-medium">
+              Pokazujemy wydarzenia w promieniu {radius} km od {city}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Blisko Ciebie */}
@@ -210,7 +210,42 @@ export function LocationSidebar() {
           ))}
         </div>
       </div>
+    </>
+  )
 
+  return (
+    <div>
+      {/* Mobile — zwijany panel */}
+      <div className="lg:hidden flex flex-col gap-4">
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="w-full flex items-center justify-between rounded-2xl border border-border bg-card p-4"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <MapPin className="size-4 text-primary" />
+            Filtry i lokalizacja
+            {city && (
+              <span className="text-xs font-normal text-muted-foreground">
+                · {city} · {radius} km
+              </span>
+            )}
+          </span>
+          <ChevronDown
+            className={`size-4 text-primary transition-transform duration-200 ${sidebarOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {sidebarOpen && (
+          <div className="flex flex-col gap-4">
+            {sidebarContent}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop — zawsze widoczny */}
+      <div className="hidden lg:flex lg:flex-col lg:gap-6 sticky top-24">
+        {sidebarContent}
+      </div>
     </div>
   )
 }
