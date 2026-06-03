@@ -80,6 +80,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
   const dateBadge = isToday(event.start_date) ? "DZIS" : isTomorrow(event.start_date) ? "JUTRO" : null
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.address,event.city].filter(Boolean).join(", "))}`
+  const hasTabs = event.schedule && event.schedule.length > 0
 
   return (
     <main style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"system-ui,sans-serif"}}>
@@ -117,7 +118,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
         <div style={{position:"absolute",top:0,left:0,right:0,padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <Link href="/" style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",padding:"8px 16px",borderRadius:24,fontSize:13,fontWeight:600,textDecoration:"none",border:"1px solid rgba(255,255,255,0.15)"}}>
-            Wróć
+            Wróc
           </Link>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {dateBadge && <span style={{background:"#16a34a",color:"white",fontSize:12,fontWeight:700,padding:"5px 14px",borderRadius:20,letterSpacing:0.3}}>{dateBadge}</span>}
@@ -141,9 +142,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
               {event.short_description}
             </p>
           )}
-
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
-            {/* Uczestnicy — widoczni tylko gdy > 0 */}
             {interestedCount > 0 && (
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <div style={{display:"flex"}}>
@@ -156,8 +155,6 @@ export default function EventPageClient({ slug }: { slug: string }) {
                 <span style={{color:"rgba(255,255,255,0.85)",fontSize:13,fontWeight:500}}>{interestedCount} zainteresowanych</span>
               </div>
             )}
-
-            {/* Przyciski CTA */}
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
               <button onClick={handleGoing} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"11px 26px",background:going?"white":"#16a34a",color:going?"#16a34a":"white",border:"2px solid "+(going?"white":"#16a34a"),borderRadius:26,fontSize:15,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.25)",transition:"all 0.15s"}}>
                 {going ? "Ide ✓" : "Ide"}
@@ -226,18 +223,22 @@ export default function EventPageClient({ slug }: { slug: string }) {
       {/* CONTENT */}
       <div style={{maxWidth:1200,margin:"0 auto",padding:"28px 20px 64px"}}>
         <div className="event-layout">
-
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
             <div style={{background:"white",borderRadius:18,boxShadow:"0 2px 12px rgba(0,0,0,0.07)",overflow:"hidden"}}>
-              <div style={{display:"flex",borderBottom:"1px solid #f3f4f6"}}>
-                {[{id:"details",label:"Opis wydarzenia"},{id:"schedule",label:"Program"}].map(tab => (
-                  <button key={tab.id} className={`tab-btn ${activeTab===tab.id?"active":""}`} onClick={()=>setActiveTab(tab.id)}>
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
+              {hasTabs && (
+                <div style={{display:"flex",borderBottom:"1px solid #f3f4f6"}}>
+                  {[
+                    {id:"details",label:"Opis wydarzenia"},
+                    {id:"schedule",label:"Program"}
+                  ].map(tab => (
+                    <button key={tab.id} className={`tab-btn ${activeTab===tab.id?"active":""}`} onClick={()=>setActiveTab(tab.id)}>
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div style={{padding:"28px"}}>
-                {activeTab==="details" && (
+                {(activeTab==="details" || !hasTabs) && (
                   <div>
                     <p style={{fontSize:15,color:"#374151",lineHeight:1.85,margin:0}}>
                       {event.description||event.short_description||<span style={{color:"#9ca3af"}}>Brak opisu.</span>}
@@ -261,10 +262,8 @@ export default function EventPageClient({ slug }: { slug: string }) {
                     )}
                   </div>
                 )}
-                {activeTab==="schedule" && (
-                  event.schedule && event.schedule.length > 0
-                    ? <EventSchedule schedule={event.schedule} eventDate={event.start_date} />
-                    : <div style={{textAlign:"center",padding:"48px 0",color:"#9ca3af",fontSize:14}}>Brak programu dla tego wydarzenia</div>
+                {activeTab==="schedule" && hasTabs && (
+                  <EventSchedule schedule={event.schedule} eventDate={event.start_date} />
                 )}
               </div>
             </div>

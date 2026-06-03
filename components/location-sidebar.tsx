@@ -118,7 +118,7 @@ export function LocationSidebar() {
           className="w-full flex items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors mb-3"
         >
           <Navigation className="size-4 text-primary" />
-          {locating ? "Pobieranie..." : "Uzyj mojej lokalizacji"}
+          {locating ? "Pobieranie..." : "Użyj mojej lokalizacji"}
         </button>
 
         <p className="text-xs text-center text-muted-foreground mb-3">lub</p>
