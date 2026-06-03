@@ -13,6 +13,17 @@ const CATEGORY_LABELS: Record<string, string> = {
   sport: "Sport", family: "Rodzinne", technology: "Technologia",
 }
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2)
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
 function getDateRange(time: string | null): { from?: string; to?: string } {
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -45,6 +56,10 @@ export function EventsGrid() {
   const q = searchParams.get("q") || ""
   const time = searchParams.get("time")
   const isFree = time === "bezplatne"
+  const filterLat = parseFloat(searchParams.get("lat") || "")
+  const filterLng = parseFloat(searchParams.get("lng") || "")
+  const filterRadius = parseFloat(searchParams.get("radius") || "25")
+  const hasLocationFilter = !isNaN(filterLat) && !isNaN(filterLng)
 
   useEffect(() => {
     async function fetchEvents() {
@@ -63,18 +78,27 @@ export function EventsGrid() {
       const { data, error } = await query
       if (error) { console.error(error); setLoading(false); return }
 
-      const mapped = (data || []).map((e) => ({
-        id: e.id,
-        slug: e.slug,
-        title: e.title,
-        date: e.start_date ? new Date(e.start_date).toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "",
-        start_date: e.start_date,
-        city: e.city,
-        image: e.cover_image_url || "/images/event-concert.jpg",
-        interested: e.interested_count || 0,
-        category: e.category || "Inne",
-        price: e.is_free ? "Wstęp wolny" : e.price_from ? `od ${e.price_from} zł` : "Wstęp wolny",
-      }))
+      const mapped = (data || [])
+        .filter((e) => {
+          if (!hasLocationFilter) return true
+          if (!e.latitude || !e.longitude) return true
+          const dist = haversineKm(filterLat, filterLng, e.latitude, e.longitude)
+          return dist <= filterRadius
+        })
+        .map((e) => ({
+          id: e.id,
+          slug: e.slug,
+          title: e.title,
+          date: e.start_date ? new Date(e.start_date).toLocaleDateString("pl-PL", {
+            day: "numeric", month: "long", year: "numeric",
+          }) : "",
+          start_date: e.start_date,
+          city: e.city,
+          image: e.cover_image_url || "/images/event-concert.jpg",
+          interested: e.interested_count || 0,
+          category: e.category || "Inne",
+          price: e.is_free ? "Wstep wolny" : e.price_from ? `od ${e.price_from} zl` : "Wstep wolny",
+        }))
 
       setEvents(mapped)
 
@@ -93,7 +117,7 @@ export function EventsGrid() {
     }
 
     fetchEvents()
-  }, [time, isFree])
+  }, [time, isFree, filterLat, filterLng, filterRadius])
 
   const filtered = events.filter((e) => {
     const matchQ = q
@@ -109,15 +133,13 @@ export function EventsGrid() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">
-            {q ? `Wyniki dla "${q}"` : "Popularne wydarzenia"}
+            {q ? `Wyniki dla "${q}"` : "Nadchodzace wydarzenia"}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {filtered.length} {filtered.length === 1 ? "wydarzenie" : filtered.length < 5 ? "wydarzenia" : "wydarzeń"}
+            {filtered.length} {filtered.length === 1 ? "wydarzenie" : filtered.length < 5 ? "wydarzenia" : "wydarzen"}
+            {hasLocationFilter && ` w promieniu ${filterRadius} km`}
           </p>
         </div>
-        <Button variant="ghost" className="hidden gap-2 text-sm font-medium text-primary hover:text-primary">
-          Zobacz wszystkie <ArrowRight className="size-4" />
-        </Button>
       </div>
 
       <div className="mt-6 flex flex-wrap gap-2">
@@ -148,7 +170,7 @@ export function EventsGrid() {
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {loading ? (
-          <p className="col-span-4 py-12 text-center text-muted-foreground">Ładowanie...</p>
+          <p className="col-span-4 py-12 text-center text-muted-foreground">Ladowanie...</p>
         ) : filtered.length > 0 ? (
           filtered.map((event) => (
             <EventCard
@@ -158,16 +180,16 @@ export function EventsGrid() {
             />
           ))
         ) : (
-          <p className="col-span-4 py-12 text-center text-muted-foreground">
-            Brak wydarzeń spełniających kryteria.
-          </p>
+          <div className="col-span-4 py-16 text-center">
+            <p className="text-4xl mb-4">📭</p>
+            <p className="text-lg font-semibold text-foreground mb-2">Brak wydarzen</p>
+            <p className="text-sm text-muted-foreground">
+              {hasLocationFilter
+                ? `Nie ma wydarzen w promieniu ${filterRadius} km. Sprobuj zwiekszyc promien.`
+                : "Nie ma wydarzen spelniajacych kryteria."}
+            </p>
+          </div>
         )}
-      </div>
-
-      <div className="mt-8 flex justify-center sm:hidden">
-        <Button variant="outline" className="gap-2 text-sm font-medium text-primary">
-          Zobacz wszystkie <ArrowRight className="size-4" />
-        </Button>
       </div>
     </section>
   )
