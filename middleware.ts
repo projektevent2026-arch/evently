@@ -1,17 +1,42 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { createServerClient } from "@supabase/ssr"
 
 export async function middleware(req: NextRequest) {
-  if (req.nextUrl.pathname.startsWith("/admin")) {
-    const allCookies = req.cookies.getAll()
-    const hasSbCookie = allCookies.some(c => c.name.startsWith("sb-"))
-    
-    if (!hasSbCookie) {
-      return NextResponse.redirect(new URL("/login", req.url))
-    }
+  if (!req.nextUrl.pathname.startsWith("/admin")) {
+    return NextResponse.next()
   }
 
-  return NextResponse.next()
+  const res = NextResponse.next()
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => req.cookies.getAll(),
+        setAll: (cookies) => cookies.forEach(({ name, value, options }) => res.cookies.set(name, value, options)),
+      },
+    }
+  )
+
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    return NextResponse.redirect(new URL("/login", req.url))
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", session.user.id)
+    .single()
+
+  if (!profile || (profile.role !== "admin" && profile.role !== "moderator")) {
+    return NextResponse.redirect(new URL("/", req.url))
+  }
+
+  return res
 }
 
 export const config = {
