@@ -152,7 +152,7 @@ export function MobileHome() {
       setLoading(true)
       let query = supabase
         .from('events')
-        .select('id,title,start_date,start_time,location_name,category,image_url,is_free,rsvp_count')
+        .select('*')
         .eq('status', 'published')
         .order('start_date', { ascending: true })
         .limit(20)
