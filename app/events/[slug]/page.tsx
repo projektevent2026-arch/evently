@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import type { Metadata } from "next"
-import EventPageClient from "@/components/EventPageClient"
-import MobileEventDetail from "@/components/MobileEventDetail"
+import EventDetailWrapper from "@/components/EventDetailWrapper"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -62,17 +61,5 @@ export default async function EventPage(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params
-  return (
-    <>
-      {/* MOBILE */}
-      <div className="block md:hidden">
-        <MobileEventDetail slug={slug} />
-      </div>
-
-      {/* DESKTOP */}
-      <div className="hidden md:block">
-        <EventPageClient slug={slug} />
-      </div>
-    </>
-  )
+  return <EventDetailWrapper slug={slug} />
 }
