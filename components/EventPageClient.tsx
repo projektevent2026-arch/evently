@@ -25,7 +25,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
   useEffect(() => {
     async function fetchEvent() {
-      const { data, error } = await supabase.from("events").select("*").eq("slug", slug).single()
+      const { data, error } = await supabase.from("events").select("*").eq("id", slug).single()
       if (!error) {
         setEvent(data)
         const { count } = await supabase
@@ -43,7 +43,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
             .maybeSingle()
           setGoing(!!existing)
         }
-        const { data: similar } = await supabase.from("events").select("*").eq("status","published").neq("slug",slug).limit(4)
+        const { data: similar } = await supabase.from("events").select("*").eq("status","published").neq("id",slug).limit(4)
         setSimilarEvents(similar || [])
       }
       setLoading(false)
@@ -348,7 +348,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
               {similarEvents.map(ev => {
                 const s = fmtShort(ev.start_date)
                 return (
-                  <Link key={ev.id} href={`/events/${ev.slug}`} className="similar-card">
+                  <Link key={ev.id} href={`/events/${ev.id}`} className="similar-card">
                     <div style={{background:"white",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
                       <div style={{position:"relative",height:130,overflow:"hidden"}}>
                         <img src={ev.cover_image_url||"/images/event-concert.jpg"} alt={ev.title} style={{width:"100%",height:"100%",objectFit:"cover"}} />
