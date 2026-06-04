@@ -16,7 +16,7 @@ export async function generateMetadata(
   const { data: event } = await supabase
     .from("events")
     .select("title, short_description, cover_image_url, city, start_date")
-    .eq("id", slug)
+    .eq(/^[0-9a-f-]{36}$/i.test(slug) ? "id" : "slug", slug)
     .single()
 
   if (!event) {
