@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Space_Grotesk } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import BottomNav from '@/components/BottomNav'
 import './globals.css'
 import "leaflet/dist/leaflet.css"
 
@@ -35,6 +36,7 @@ export default function RootLayout({
     <html lang="pl">
       <body className={`${_inter.variable} ${_spaceGrotesk.variable} font-sans antialiased`}>
         {children}
+        <BottomNav />
         <Analytics />
       </body>
     </html>
