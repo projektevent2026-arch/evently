@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import type { Metadata } from "next"
 import EventPageClient from "@/components/EventPageClient"
+import MobileEventDetail from "@/components/MobileEventDetail"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +16,7 @@ export async function generateMetadata(
   const { data: event } = await supabase
     .from("events")
     .select("title, short_description, cover_image_url, city, start_date")
-    .eq("slug", slug)
+    .eq("id", slug)
     .single()
 
   if (!event) {
@@ -61,5 +62,17 @@ export default async function EventPage(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params
-  return <EventPageClient slug={slug} />
+  return (
+    <>
+      {/* MOBILE */}
+      <div className="block md:hidden">
+        <MobileEventDetail slug={slug} />
+      </div>
+
+      {/* DESKTOP */}
+      <div className="hidden md:block">
+        <EventPageClient slug={slug} />
+      </div>
+    </>
+  )
 }
