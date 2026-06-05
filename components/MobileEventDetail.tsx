@@ -58,8 +58,9 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
 
   useEffect(() => {
     async function load() {
-      const { data, error } = await supabase
-        .from('events').select('*').eq('id', slug).single()
+        const isUUID = /^[0-9a-f-]{36}$/i.test(slug)
+        const { data, error } = await supabase.from("events").select("*")
+          .eq(isUUID ? "id" : "slug", slug).single()
       if (!error && data) {
         setEvent(data)
         const { count } = await supabase
