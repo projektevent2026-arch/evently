@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
@@ -35,10 +35,10 @@ const RADII = [5, 10, 25]
 
 const CAT_COLORS: Record<string, string> = {
   kultura: 'bg-purple-500 text-white', culture: 'bg-purple-500 text-white',
-  muzyka: 'bg-green-500 text-black',   music: 'bg-green-500 text-black',
+  muzyka: 'bg-green-500 text-black', music: 'bg-green-500 text-black',
   festiwal: 'bg-green-500 text-black', sport: 'bg-blue-500 text-white',
-  jedzenie: 'bg-orange-500 text-white',food: 'bg-orange-500 text-white',
-  family: 'bg-yellow-400 text-black',  targi: 'bg-amber-500 text-black',
+  jedzenie: 'bg-orange-500 text-white', food: 'bg-orange-500 text-white',
+  family: 'bg-yellow-400 text-black', targi: 'bg-amber-500 text-black',
 }
 
 const CAT_LABELS: Record<string, string> = {
@@ -48,16 +48,16 @@ const CAT_LABELS: Record<string, string> = {
 }
 
 const CAT_GRADIENT: Record<string, string> = {
-  muzyka:   'from-[#060e18] via-[#0e2040] to-[#1e3a6e]',
+  muzyka: 'from-[#060e18] via-[#0e2040] to-[#1e3a6e]',
   festiwal: 'from-[#060e18] via-[#0e2040] to-[#1e3a6e]',
-  music:    'from-[#060e18] via-[#0e2040] to-[#1e3a6e]',
-  sport:    'from-[#060f1a] via-[#0a1f35] to-[#1a3a5c]',
-  kultura:  'from-[#120820] via-[#1e1040] to-[#3d1a6e]',
-  culture:  'from-[#120820] via-[#1e1040] to-[#3d1a6e]',
-  family:   'from-[#1a0a00] via-[#2d1800] to-[#4a2800]',
+  music: 'from-[#060e18] via-[#0e2040] to-[#1e3a6e]',
+  sport: 'from-[#060f1a] via-[#0a1f35] to-[#1a3a5c]',
+  kultura: 'from-[#120820] via-[#1e1040] to-[#3d1a6e]',
+  culture: 'from-[#120820] via-[#1e1040] to-[#3d1a6e]',
+  family: 'from-[#1a0a00] via-[#2d1800] to-[#4a2800]',
   jedzenie: 'from-[#1a0800] via-[#2a1200] to-[#4a2200]',
-  food:     'from-[#1a0800] via-[#2a1200] to-[#4a2200]',
-  targi:    'from-[#1a1000] via-[#2a2000] to-[#3a3000]',
+  food: 'from-[#1a0800] via-[#2a1200] to-[#4a2200]',
+  targi: 'from-[#1a1000] via-[#2a2000] to-[#3a3000]',
 }
 
 const CAT_EMOJI: Record<string, string> = {
@@ -96,10 +96,108 @@ function isTomorrow(d: string) {
   return new Date(d).toDateString() === t.toDateString()
 }
 function isWeekend(d: string) { const day = new Date(d).getDay(); return day === 0 || day === 6 }
+function isOnDate(d: string, target: string) {
+  return new Date(d).toDateString() === new Date(target).toDateString()
+}
 
-// ─── Event Card (full width with image) ──────────────────────────────────────
-function EventCard({ event, distance }: { event: Event; distance: number | null }) {
+// ─── Poster Modal ─────────────────────────────────────────────────────────────
+function PosterModal({ src, onClose }: { src: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/92 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <img
+        src={src}
+        alt="Plakat"
+        className="max-h-[88vh] max-w-full object-contain rounded-xl"
+        onClick={e => e.stopPropagation()}
+      />
+      <button
+        onClick={onClose}
+        className="absolute top-5 right-5 w-9 h-9 bg-zinc-800 rounded-full flex items-center justify-center text-white text-lg"
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
+
+// ─── City Selector Modal ──────────────────────────────────────────────────────
+function CityModal({
+  city, onClose, onSelectGPS, onSelectCity
+}: {
+  city: string
+  onClose: () => void
+  onSelectGPS: () => void
+  onSelectCity: (city: string) => void
+}) {
+  const [input, setInput] = useState('')
+  const POPULAR = ['Suwałki', 'Białystok', 'Olsztyn', 'Łomża', 'Augustów', 'Elk']
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-end" onClick={onClose}>
+      <div
+        className="w-full bg-zinc-900 border-t border-zinc-700 rounded-t-3xl p-5 pb-8"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-4" />
+        <h2 className="text-[15px] font-black text-white mb-4">Wybierz lokalizację</h2>
+
+        {/* GPS */}
+        <button
+          onClick={() => { onSelectGPS(); onClose() }}
+          className="w-full flex items-center gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 mb-4"
+        >
+          <span className="text-xl">📍</span>
+          <div className="text-left">
+            <div className="text-[13px] font-bold text-green-400">Użyj mojej lokalizacji</div>
+            <div className="text-[10px] text-zinc-500">GPS — pokaże wydarzenia blisko Ciebie</div>
+          </div>
+        </button>
+
+        {/* Search */}
+        <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 flex items-center gap-2 mb-3">
+          <span className="text-zinc-500">🔍</span>
+          <input
+            className="flex-1 bg-transparent text-[12px] text-zinc-300 placeholder-zinc-600 outline-none"
+            placeholder="Wpisz miasto..."
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && input.trim()) {
+                onSelectCity(input.trim())
+                onClose()
+              }
+            }}
+          />
+        </div>
+
+        {/* Popular cities */}
+        <div className="flex flex-wrap gap-2">
+          {POPULAR.map(c => (
+            <button
+              key={c}
+              onClick={() => { onSelectCity(c); onClose() }}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${
+                c === city
+                  ? 'bg-green-500 text-black border-green-500'
+                  : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Event Card ───────────────────────────────────────────────────────────────
+function EventCard({ event, distance }: { event: Event & { distance: number | null }; distance: number | null }) {
   const [going, setGoing] = useState(false)
+  const [posterSrc, setPosterSrc] = useState<string | null>(null)
   const cat = (event.category ?? 'inne').toLowerCase()
   const gradient = CAT_GRADIENT[cat] ?? 'from-zinc-900 via-zinc-800 to-zinc-700'
   const tagColor = CAT_COLORS[cat] ?? 'bg-zinc-600 text-white'
@@ -110,85 +208,102 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
   const img = event.cover_image_url || event.image_url
 
   return (
-    <Link href={`/events/${event.id}`} className="block mb-3">
-      <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900">
-        {/* Image */}
-        <div className={`h-40 relative overflow-hidden bg-gradient-to-br ${gradient}`}>
-          {img ? (
-            <img src={img} alt={event.title} className="absolute inset-0 w-full h-full object-cover opacity-75" />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-5xl opacity-20">{emoji}</div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+    <>
+      {posterSrc && <PosterModal src={posterSrc} onClose={() => setPosterSrc(null)} />}
+      <Link href={`/events/${event.id}`} className="block mb-3">
+        <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900">
+          {/* Image */}
+          <div className={`h-40 relative overflow-hidden bg-gradient-to-br ${gradient}`}>
+            {img ? (
+              <img src={img} alt={event.title} className="absolute inset-0 w-full h-full object-cover opacity-75" />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-5xl opacity-20">{emoji}</div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
 
-          {/* Top row */}
-          <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
-            <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${tagColor}`}>
-              {tagLabel.toUpperCase()}
-            </span>
-            <div className="flex items-center gap-1.5">
-              {distance !== null && (
-                <span className="text-[10px] font-bold text-white bg-black/60 px-2 py-1 rounded-lg border border-white/10">
-                  📍 {formatDist(distance)}
+            {/* Top */}
+            <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
+              <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${tagColor}`}>
+                {tagLabel.toUpperCase()}
+              </span>
+              <div className="flex items-center gap-1.5">
+                {distance !== null && (
+                  <span className="text-[10px] font-bold text-white bg-black/60 px-2 py-1 rounded-lg border border-white/10">
+                    📍 {formatDist(distance)}
+                  </span>
+                )}
+                <span className={`text-[9px] font-bold px-2 py-1 rounded-lg ${
+                  dl === 'DZIŚ' ? 'bg-green-500 text-black'
+                  : dl === 'JUTRO' ? 'bg-yellow-400 text-black'
+                  : 'bg-black/60 text-white border border-white/10'
+                }`}>
+                  {dl}
+                </span>
+              </div>
+            </div>
+
+            {/* Bottom */}
+            <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-end justify-between">
+              {time && (
+                <span className="text-[11px] font-semibold text-white bg-black/60 px-2 py-1 rounded-lg">
+                  {time}
                 </span>
               )}
-              <span className={`text-[9px] font-bold px-2 py-1 rounded-lg ${
-                dl === 'DZIŚ' ? 'bg-green-500 text-black'
-                : dl === 'JUTRO' ? 'bg-yellow-400 text-black'
-                : 'bg-black/60 text-white border border-white/10'
-              }`}>
-                {dl}
-              </span>
-            </div>
-          </div>
-
-          {/* Bottom row */}
-          <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-end justify-between">
-            {time && (
-              <span className="text-[11px] font-semibold text-white bg-black/60 px-2 py-1 rounded-lg">
-                {time}
-              </span>
-            )}
-            {event.is_free && (
-              <span className="text-[9px] font-bold text-green-400 bg-green-500/15 border border-green-500/30 px-2 py-1 rounded-lg ml-auto">
-                Wstęp wolny
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="px-3 py-2.5 flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-bold text-white leading-tight mb-0.5 truncate">{event.title}</p>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-zinc-500">
-                👥 {event.rsvp_count ?? 0} zainteresowanych
-              </span>
-              {(event.city || event.location_name) && !distance && (
-                <span className="text-[10px] text-zinc-600 truncate">
-                  • {event.city || event.location_name}
+              {event.is_free && (
+                <span className="text-[9px] font-bold text-green-400 bg-green-500/15 border border-green-500/30 px-2 py-1 rounded-lg ml-auto">
+                  Wstęp wolny
                 </span>
               )}
             </div>
           </div>
-          <button
-            onClick={(e) => { e.preventDefault(); setGoing(!going) }}
-            className={`flex-shrink-0 text-[12px] font-black px-4 py-2 rounded-xl transition-colors ${
-              going ? 'bg-green-600 text-white' : 'bg-green-500 text-black'
-            }`}
-          >
-            {going ? '✓ Idę' : 'Idę'}
-          </button>
+
+          {/* Body */}
+          <div className="px-3 py-2.5 flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-bold text-white leading-tight mb-0.5 truncate">{event.title}</p>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-500">
+                  👥 {event.rsvp_count ?? 0} zainteresowanych
+                </span>
+                {(event.city || event.location_name) && distance === null && (
+                  <span className="text-[10px] text-zinc-600 truncate">
+                    • {event.city || event.location_name}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Poster button */}
+            {img && (
+              <button
+                onClick={e => { e.preventDefault(); setPosterSrc(img) }}
+                className="flex-shrink-0 w-9 h-9 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-base"
+                title="Podgląd plakatu"
+              >
+                🖼️
+              </button>
+            )}
+
+            {/* Idę */}
+            <button
+              onClick={e => { e.preventDefault(); setGoing(!going) }}
+              className={`flex-shrink-0 text-[12px] font-black px-4 py-2 rounded-xl transition-colors ${
+                going ? 'bg-green-600 text-white' : 'bg-green-500 text-black'
+              }`}
+            >
+              {going ? '✓ Idę' : 'Idę'}
+            </button>
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </>
   )
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function MobileHome() {
   const router = useRouter()
+  const dateInputRef = useRef<HTMLInputElement>(null)
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -198,20 +313,25 @@ export function MobileHome() {
   const [loading, setLoading] = useState(true)
   const [userLat, setUserLat] = useState<number | null>(null)
   const [userLon, setUserLon] = useState<number | null>(null)
+  const [city, setCity] = useState('Suwałki')
+  const [showCityModal, setShowCityModal] = useState(false)
   const [radius, setRadius] = useState(25)
-  const [activeDate, setActiveDate] = useState<'all' | 'today' | 'tomorrow' | 'weekend'>('all')
+  const [activeDate, setActiveDate] = useState<'all' | 'today' | 'tomorrow' | 'weekend' | 'custom'>('all')
+  const [customDate, setCustomDate] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
   const [search, setSearch] = useState('')
 
-  useEffect(() => {
+  const requestGPS = () => {
     navigator.geolocation?.getCurrentPosition(
       p => { setUserLat(p.coords.latitude); setUserLon(p.coords.longitude) },
       () => {}
     )
-  }, [])
+  }
+
+  useEffect(() => { requestGPS() }, [])
 
   useEffect(() => {
-    async function fetch() {
+    async function fetchEvents() {
       setLoading(true)
       const { data } = await supabase
         .from('events').select('*').eq('status', 'published')
@@ -219,20 +339,22 @@ export function MobileHome() {
       setEvents(data ?? [])
       setLoading(false)
     }
-    fetch()
+    fetchEvents()
   }, [])
 
   const filtered = events
     .map(e => ({
       ...e,
-      distance: userLat && userLon && e.latitude && e.longitude
-        ? haversine(userLat, userLon, e.latitude, e.longitude) : null
+      distance: (userLat !== null && userLon !== null && e.latitude !== null && e.longitude !== null)
+        ? haversine(userLat, userLon, e.latitude, e.longitude)
+        : null
     }))
     .filter(e => {
       if (e.distance !== null && e.distance > radius) return false
       if (activeDate === 'today' && !isToday(e.start_date)) return false
       if (activeDate === 'tomorrow' && !isTomorrow(e.start_date)) return false
       if (activeDate === 'weekend' && !isWeekend(e.start_date)) return false
+      if (activeDate === 'custom' && customDate && !isOnDate(e.start_date, customDate)) return false
       if (activeCategory !== 'all') {
         const cat = (e.category ?? '').toLowerCase()
         if (!cat.includes(activeCategory.toLowerCase())) return false
@@ -250,6 +372,14 @@ export function MobileHome() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pb-24">
+      {showCityModal && (
+        <CityModal
+          city={city}
+          onClose={() => setShowCityModal(false)}
+          onSelectGPS={() => { requestGPS(); setCity('Moja lokalizacja') }}
+          onSelectCity={c => setCity(c)}
+        />
+      )}
 
       {/* Header */}
       <div className="px-4 pt-5 pb-3">
@@ -263,12 +393,15 @@ export function MobileHome() {
           </div>
         </div>
 
-        {/* Location + count */}
-        <div className="flex items-center gap-1.5 mb-2">
+        {/* Location */}
+        <button
+          onClick={() => setShowCityModal(true)}
+          className="flex items-center gap-1.5 mb-2"
+        >
           <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-[13px] text-green-500 font-semibold">Suwałki ▾</span>
+          <span className="text-[13px] text-green-500 font-semibold">{city} ▾</span>
           <span className="text-[11px] text-zinc-600 ml-1">• {filtered.length} wydarzeń</span>
-        </div>
+        </button>
 
         <h1 className="text-[22px] font-black leading-tight tracking-tight mb-3">
           Co dzieje się <span className="text-green-500">w pobliżu?</span>
@@ -287,37 +420,8 @@ export function MobileHome() {
           {search && <button onClick={() => setSearch('')} className="text-zinc-600 text-sm">✕</button>}
         </div>
 
-        {/* Radius */}
-        <div className="flex gap-2 mb-2">
-          {RADII.map(r => (
-            <button key={r} onClick={() => setRadius(r)}
-              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${
-                radius === r ? 'bg-green-500 text-black border-green-500' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
-              }`}>
-              {r} km
-            </button>
-          ))}
-        </div>
-
-        {/* Date filters */}
-        <div className="flex gap-2 mb-2">
-          {[
-            { id: 'all', label: 'Wszystkie' },
-            { id: 'today', label: 'Dziś' },
-            { id: 'tomorrow', label: 'Jutro' },
-            { id: 'weekend', label: 'Weekend' },
-          ].map(d => (
-            <button key={d.id} onClick={() => setActiveDate(d.id as any)}
-              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${
-                activeDate === d.id ? 'bg-green-500 text-black border-green-500' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
-              }`}>
-              {d.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Categories */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+        {/* 1. Categories */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-2">
           {CATEGORIES.map(cat => (
             <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors flex-shrink-0 ${
@@ -327,13 +431,65 @@ export function MobileHome() {
             </button>
           ))}
         </div>
+
+        {/* 2. Date filters */}
+        <div className="flex gap-2 mb-2 overflow-x-auto scrollbar-hide">
+          {[
+            { id: 'all', label: 'Wszystkie' },
+            { id: 'today', label: 'Dziś' },
+            { id: 'tomorrow', label: 'Jutro' },
+            { id: 'weekend', label: 'Weekend' },
+          ].map(d => (
+            <button key={d.id} onClick={() => { setActiveDate(d.id as any); setCustomDate('') }}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors flex-shrink-0 ${
+                activeDate === d.id ? 'bg-green-500 text-black border-green-500' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+              }`}>
+              {d.label}
+            </button>
+          ))}
+          {/* Calendar picker */}
+          <div className="relative flex-shrink-0">
+            <button
+              onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${
+                activeDate === 'custom' ? 'bg-green-500 text-black border-green-500' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+              }`}
+            >
+              {activeDate === 'custom' && customDate
+                ? new Date(customDate).toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit' })
+                : '📅'}
+            </button>
+            <input
+              ref={dateInputRef}
+              type="date"
+              className="absolute inset-0 opacity-0 w-full cursor-pointer"
+              value={customDate}
+              onChange={e => {
+                setCustomDate(e.target.value)
+                setActiveDate('custom')
+              }}
+            />
+          </div>
+        </div>
+
+        {/* 3. Radius */}
+        <div className="flex gap-2 mb-1">
+          {RADII.map(r => (
+            <button key={r} onClick={() => setRadius(r)}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${
+                radius === r ? 'bg-green-500 text-black border-green-500' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+              }`}>
+              {r} km
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Event list */}
       <div className="px-4">
         {loading ? (
           <div className="space-y-3">
-            {[1,2,3].map(i => (
+            {[1, 2, 3].map(i => (
               <div key={i} className="rounded-2xl overflow-hidden border border-zinc-800">
                 <div className="h-40 bg-zinc-800 animate-pulse" />
                 <div className="p-3 flex gap-3">
@@ -357,7 +513,7 @@ export function MobileHome() {
         )}
       </div>
 
-      {/* AI Scanner fixed banner */}
+      {/* AI Scanner */}
       <div className="fixed bottom-[72px] left-4 right-4 z-40">
         <Link href="/skanuj" className="bg-zinc-900/95 backdrop-blur border border-zinc-700 rounded-xl px-3 py-2.5 flex items-center gap-3 block shadow-xl">
           <div className="w-9 h-9 bg-green-500/10 rounded-xl flex items-center justify-center text-lg flex-shrink-0">📷</div>
@@ -371,7 +527,6 @@ export function MobileHome() {
           <span className="text-zinc-500 text-sm font-bold">›</span>
         </Link>
       </div>
-
     </div>
   )
 }
