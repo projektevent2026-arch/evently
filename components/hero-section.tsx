@@ -26,7 +26,9 @@ export function HeroSection() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <MapPin className="size-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Suwałki</span>
+              <span className="text-sm font-medium text-primary">
+  {searchParams.get("city") || "Suwałki"}
+</span>
             </div>
 
             <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
