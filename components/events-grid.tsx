@@ -1,10 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { EventCard, type EventData } from "@/components/event-card"
-import { Button } from "@/components/ui/button"
-import { ArrowRight } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 const CATEGORIES = ["culture", "music", "food", "sport", "family", "technology"]
@@ -12,6 +10,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   culture: "Kultura", music: "Muzyka", food: "Jedzenie",
   sport: "Sport", family: "Rodzinne", technology: "Technologia",
 }
+
+const DATE_FILTERS = [
+  { id: "all",     label: "Wszystkie" },
+  { id: "today",   label: "Dziś" },
+  { id: "tomorrow",label: "Jutro" },
+  { id: "weekend", label: "Weekend" },
+]
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
@@ -24,38 +29,27 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-function getDateRange(time: string | null): { from?: string; to?: string } {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  if (time === "dzis") {
-    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1)
-    return { from: today.toISOString(), to: tomorrow.toISOString() }
-  }
-  if (time === "jutro") {
-    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1)
-    const dayAfter = new Date(today); dayAfter.setDate(dayAfter.getDate() + 2)
-    return { from: tomorrow.toISOString(), to: dayAfter.toISOString() }
-  }
-  if (time === "weekend") {
-    const day = today.getDay()
-    const daysToSat = day === 6 ? 0 : (6 - day)
-    const sat = new Date(today); sat.setDate(sat.getDate() + daysToSat)
-    const mon = new Date(sat); mon.setDate(mon.getDate() + 2)
-    return { from: sat.toISOString(), to: mon.toISOString() }
-  }
-  return {}
+function isToday(d: string) { return new Date(d).toDateString() === new Date().toDateString() }
+function isTomorrow(d: string) {
+  const t = new Date(); t.setDate(t.getDate() + 1)
+  return new Date(d).toDateString() === t.toDateString()
+}
+function isWeekend(d: string) { const day = new Date(d).getDay(); return day === 0 || day === 6 }
+function isOnDate(d: string, target: string) {
+  return new Date(d).toDateString() === new Date(target).toDateString()
 }
 
 export function EventsGrid() {
   const searchParams = useSearchParams()
+  const dateInputRef = useRef<HTMLInputElement>(null)
   const [events, setEvents] = useState<EventData[]>([])
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [activeDate, setActiveDate] = useState("all")
+  const [customDate, setCustomDate] = useState("")
   const [loading, setLoading] = useState(true)
   const [attendingIds, setAttendingIds] = useState<Set<string>>(new Set())
 
   const q = searchParams.get("q") || ""
-  const time = searchParams.get("time")
-  const isFree = time === "bezplatne"
   const filterLat = parseFloat(searchParams.get("lat") || "")
   const filterLng = parseFloat(searchParams.get("lng") || "")
   const filterRadius = parseFloat(searchParams.get("radius") || "25")
@@ -64,26 +58,19 @@ export function EventsGrid() {
   useEffect(() => {
     async function fetchEvents() {
       setLoading(true)
-      let query = supabase
+      const { data, error } = await supabase
         .from("events")
         .select("*")
         .eq("status", "published")
         .order("start_date", { ascending: true })
 
-      const { from, to } = getDateRange(isFree ? null : time)
-      if (from) query = query.gte("start_date", from)
-      if (to) query = query.lt("start_date", to)
-      if (isFree) query = query.eq("is_free", true)
-
-      const { data, error } = await query
       if (error) { console.error(error); setLoading(false); return }
 
       const mapped = (data || [])
         .filter((e) => {
           if (!hasLocationFilter) return true
           if (!e.latitude || !e.longitude) return true
-          const dist = haversineKm(filterLat, filterLng, e.latitude, e.longitude)
-          return dist <= filterRadius
+          return haversineKm(filterLat, filterLng, e.latitude, e.longitude) <= filterRadius
         })
         .map((e) => ({
           id: e.id,
@@ -117,7 +104,7 @@ export function EventsGrid() {
     }
 
     fetchEvents()
-  }, [time, isFree, filterLat, filterLng, filterRadius])
+  }, [filterLat, filterLng, filterRadius])
 
   const filtered = events.filter((e) => {
     const matchQ = q
@@ -125,7 +112,15 @@ export function EventsGrid() {
         e.city?.toLowerCase().includes(q.toLowerCase())
       : true
     const matchCat = activeCategory ? e.category === activeCategory : true
-    return matchQ && matchCat
+    const matchDate = (() => {
+      if (!e.start_date) return true
+      if (activeDate === "today") return isToday(e.start_date)
+      if (activeDate === "tomorrow") return isTomorrow(e.start_date)
+      if (activeDate === "weekend") return isWeekend(e.start_date)
+      if (activeDate === "custom" && customDate) return isOnDate(e.start_date, customDate)
+      return true
+    })()
+    return matchQ && matchCat && matchDate
   })
 
   return (
@@ -133,15 +128,16 @@ export function EventsGrid() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">
-            {q ? `Wyniki dla "${q}"` : "Nadchodzace wydarzenia"}
+            {q ? `Wyniki dla "${q}"` : "Nadchodzące wydarzenia"}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {filtered.length} {filtered.length === 1 ? "wydarzenie" : filtered.length < 5 ? "wydarzenia" : "wydarzen"}
+            {filtered.length} {filtered.length === 1 ? "wydarzenie" : filtered.length < 5 ? "wydarzenia" : "wydarzeń"}
             {hasLocationFilter && ` w promieniu ${filterRadius} km`}
           </p>
         </div>
       </div>
 
+      {/* Kategorie */}
       <div className="mt-6 flex flex-wrap gap-2">
         <button
           onClick={() => setActiveCategory(null)}
@@ -168,9 +164,49 @@ export function EventsGrid() {
         ))}
       </div>
 
+      {/* Filtry dat */}
+      <div className="mt-3 flex flex-wrap gap-2 items-center">
+        {DATE_FILTERS.map((d) => (
+          <button
+            key={d.id}
+            onClick={() => { setActiveDate(d.id); setCustomDate("") }}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              activeDate === d.id
+                ? "border border-primary bg-primary/10 text-primary"
+                : "border border-border text-muted-foreground hover:border-primary hover:text-primary"
+            }`}
+          >
+            {d.label}
+          </button>
+        ))}
+        {/* Kalendarz */}
+        <div className="relative">
+          <button
+            onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
+              activeDate === "custom"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+            }`}
+          >
+            📅 {activeDate === "custom" && customDate
+              ? new Date(customDate).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" })
+              : "Kalendarz"}
+          </button>
+          <input
+            ref={dateInputRef}
+            type="date"
+            className="absolute inset-0 opacity-0 w-full cursor-pointer"
+            value={customDate}
+            onChange={e => { setCustomDate(e.target.value); setActiveDate("custom") }}
+          />
+        </div>
+      </div>
+
+      {/* Grid */}
       <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {loading ? (
-          <p className="col-span-4 py-12 text-center text-muted-foreground">Ladowanie...</p>
+          <p className="col-span-4 py-12 text-center text-muted-foreground">Ładowanie...</p>
         ) : filtered.length > 0 ? (
           filtered.map((event) => (
             <EventCard
@@ -182,11 +218,11 @@ export function EventsGrid() {
         ) : (
           <div className="col-span-4 py-16 text-center">
             <p className="text-4xl mb-4">📭</p>
-            <p className="text-lg font-semibold text-foreground mb-2">Brak wydarzen</p>
+            <p className="text-lg font-semibold text-foreground mb-2">Brak wydarzeń</p>
             <p className="text-sm text-muted-foreground">
               {hasLocationFilter
-                ? `Nie ma wydarzen w promieniu ${filterRadius} km. Sprobuj zwiekszyc promien.`
-                : "Nie ma wydarzen spelniajacych kryteria."}
+                ? `Nie ma wydarzeń w promieniu ${filterRadius} km.`
+                : "Nie ma wydarzeń spełniających kryteria."}
             </p>
           </div>
         )}

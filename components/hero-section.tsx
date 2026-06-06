@@ -4,18 +4,10 @@ import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Search, MapPin } from "lucide-react"
 
-const TIME_FILTERS = [
-  { label: "Dziś", value: "dzis" },
-  { label: "Jutro", value: "jutro" },
-  { label: "Ten weekend", value: "weekend" },
-  { label: "Bezpłatne", value: "bezplatne" },
-]
-
 export function HeroSection() {
   const searchParams = useSearchParams()
   const [query, setQuery] = useState(searchParams.get("q") || "")
   const router = useRouter()
-  const activeTime = searchParams.get("time")
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,16 +15,6 @@ export function HeroSection() {
     if (query.trim()) params.set("q", query.trim())
     const time = searchParams.get("time")
     if (time) params.set("time", time)
-    router.push(`/?${params.toString()}`)
-  }
-
-  const handleTimeFilter = (value: string) => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (params.get("time") === value) {
-      params.delete("time")
-    } else {
-      params.set("time", value)
-    }
     router.push(`/?${params.toString()}`)
   }
 
@@ -48,8 +30,8 @@ export function HeroSection() {
             </div>
 
             <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Co robisz dziś<br />
-              <span className="text-primary">w Suwałkach?</span>
+              Co dzieje się<br />
+              <span className="text-primary">w pobliżu?</span>
             </h1>
 
             <p className="mt-4 text-lg text-muted-foreground max-w-md">
@@ -74,22 +56,6 @@ export function HeroSection() {
                 Szukaj
               </button>
             </form>
-
-            <div className="mt-6 flex flex-wrap gap-2">
-              {TIME_FILTERS.map(({ label, value }) => (
-                <button
-                  key={value}
-                  onClick={() => handleTimeFilter(value)}
-                  className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
-                    activeTime === value
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground hover:border-primary hover:text-primary"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="relative hidden lg:block">

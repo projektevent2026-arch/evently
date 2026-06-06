@@ -9,20 +9,6 @@ const MiniMap = dynamic(() => import("@/components/MiniMap"), { ssr: false })
 
 const RADII = [5, 10, 25, 50]
 
-const CATEGORIES = [
-  { value: "all", label: "Wszystkie" },
-  { value: "music", label: "Koncerty", icon: "music" },
-  { value: "family", label: "Dla dzieci", icon: "family" },
-  { value: "sport", label: "Sport", icon: "sport" },
-  { value: "culture", label: "Kultura", icon: "culture" },
-  { value: "food", label: "Jedzenie", icon: "food" },
-  { value: "technology", label: "Technologia", icon: "tech" },
-]
-
-const ICONS: Record<string, string> = {
-  music: "♪", family: "☺", sport: "●", culture: "★", food: "◆", tech: "▲"
-}
-
 export function LocationSidebar() {
   const [city, setCity] = useState("")
   const [radius, setRadius] = useState(25)
@@ -58,11 +44,7 @@ export function LocationSidebar() {
 
   const handleCityChange = async (val: string) => {
     setCity(val)
-    if (val.length < 2) {
-      setSuggestions([])
-      setShowSuggestions(false)
-      return
-    }
+    if (val.length < 2) { setSuggestions([]); setShowSuggestions(false); return }
     try {
       const params = new URLSearchParams({ q: val, limit: "8", layer: "city" })
       const res = await fetch("https://photon.komoot.io/api/?" + params.toString())
@@ -129,7 +111,7 @@ export function LocationSidebar() {
             value={city}
             onChange={(e) => handleCityChange(e.target.value)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-            placeholder="Wpisz miasto lub wies..."
+            placeholder="Wpisz miasto lub wieś..."
             className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
           {showSuggestions && suggestions.length > 0 && (
@@ -148,7 +130,7 @@ export function LocationSidebar() {
         </div>
 
         <div className="mt-4">
-          <p className="text-xs font-medium text-muted-foreground mb-2">Promien</p>
+          <p className="text-xs font-medium text-muted-foreground mb-2">Promień</p>
           <div className="grid grid-cols-4 gap-1.5">
             {RADII.map((r) => (
               <button
@@ -184,31 +166,8 @@ export function LocationSidebar() {
 
       {/* Blisko Ciebie */}
       <div className="rounded-2xl border border-border bg-card p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-          Blisko Ciebie
-        </h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Blisko Ciebie</h3>
         <MiniMap center={mapCenter} />
-      </div>
-
-      {/* Kategorie */}
-      <div className="rounded-2xl border border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-foreground">Kategorie</h3>
-          <button className="text-xs text-primary hover:underline">Zobacz wszystkie</button>
-        </div>
-        <div className="flex flex-col gap-1">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.value}
-              className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-accent text-left"
-            >
-              <span className="flex items-center gap-2.5 text-foreground">
-                {cat.icon && <span className="text-sm">{ICONS[cat.icon] || ""}</span>}
-                {cat.label}
-              </span>
-            </button>
-          ))}
-        </div>
       </div>
     </>
   )
@@ -234,12 +193,7 @@ export function LocationSidebar() {
             className={`size-4 text-primary transition-transform duration-200 ${sidebarOpen ? "rotate-180" : ""}`}
           />
         </button>
-
-        {sidebarOpen && (
-          <div className="flex flex-col gap-4">
-            {sidebarContent}
-          </div>
-        )}
+        {sidebarOpen && <div className="flex flex-col gap-4">{sidebarContent}</div>}
       </div>
 
       {/* Desktop — zawsze widoczny */}
