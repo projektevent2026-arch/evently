@@ -394,7 +394,7 @@ export function MobileHome() {
 
         {/* Location bar */}
         <button onClick={() => setShowCityModal(true)}
-          className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 mb-3 w-full">
+className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 mb-3 w-auto inline-flex">
           <span className="text-green-500 text-sm">📍</span>
           <span className="text-[13px] text-green-500 font-semibold">{city} ▾</span>
           <span className="text-[11px] text-zinc-600">• {radius} km</span>
