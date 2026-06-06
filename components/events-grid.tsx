@@ -178,18 +178,18 @@ export function EventsGrid() {
 
         {/* Kalendarz */}
         <div className="relative">
-          <div className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors cursor-pointer ${
+          <div className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors pointer-events-none ${
             activeDate === "custom"
               ? "border-primary bg-primary/10 text-primary"
-              : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+              : "border-border text-muted-foreground"
           }`}>
             📅 {activeDate === "custom" && customDate
               ? new Date(customDate).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" })
               : "Kalendarz"}
           </div>
           <input
-  type="date"
-  className="absolute inset-0 opacity-0 cursor-pointer w-full z-10"
+            type="date"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
             value={customDate}
             onChange={e => { setCustomDate(e.target.value); setActiveDate("custom") }}
           />
