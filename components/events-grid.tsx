@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { EventCard, type EventData } from "@/components/event-card"
 import { supabase } from "@/lib/supabase"
@@ -41,6 +41,7 @@ function isOnDate(d: string, target: string) {
 
 export function EventsGrid() {
   const searchParams = useSearchParams()
+  const dateInputRef = useRef<HTMLInputElement>(null)
   const [events, setEvents] = useState<EventData[]>([])
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [activeDate, setActiveDate] = useState("all")
@@ -53,6 +54,14 @@ export function EventsGrid() {
   const filterLng = parseFloat(searchParams.get("lng") || "")
   const filterRadius = parseFloat(searchParams.get("radius") || "25")
   const hasLocationFilter = !isNaN(filterLat) && !isNaN(filterLng)
+
+  function openCalendar() {
+    try {
+      dateInputRef.current?.showPicker()
+    } catch {
+      dateInputRef.current?.click()
+    }
+  }
 
   useEffect(() => {
     async function fetchEvents() {
@@ -175,15 +184,28 @@ export function EventsGrid() {
             {d.label}
           </button>
         ))}
-        <input
-          type="date"
-          value={customDate}
-          onChange={e => { setCustomDate(e.target.value); setActiveDate("custom") }}
-          className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors cursor-pointer ${
+
+        {/* Kalendarz */}
+        <button
+          type="button"
+          onClick={openCalendar}
+          className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
             activeDate === "custom"
               ? "border-primary bg-primary/10 text-primary"
               : "border-border text-muted-foreground hover:border-primary hover:text-primary"
           }`}
+        >
+          📅 {activeDate === "custom" && customDate
+            ? new Date(customDate).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" })
+            : "Kalendarz"}
+        </button>
+        <input
+          ref={dateInputRef}
+          type="date"
+          className="sr-only"
+          tabIndex={-1}
+          value={customDate}
+          onChange={e => { setCustomDate(e.target.value); setActiveDate("custom") }}
         />
       </div>
 
