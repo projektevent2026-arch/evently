@@ -117,57 +117,74 @@ function CityDropdown({ city, onClose, onSelectGPS, onSelectCity, radius, onSetR
   onSelectGPS: () => void; onSelectCity: (c: string) => void
   radius: number; onSetRadius: (r: number) => void
 }) {
+  const [showSearch, setShowSearch] = useState(false)
   const [input, setInput] = useState('')
   const POPULAR = Object.keys(CITY_COORDS)
 
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
       <div
-        className="absolute top-[108px] left-4 right-4 bg-zinc-900 border border-zinc-700 rounded-2xl p-4 shadow-2xl"
+        className="absolute top-[108px] left-4 w-72 bg-zinc-900 border border-zinc-700 rounded-2xl p-4 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
-        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-3">Lokalizacja</p>
+        <p className="text-[11px] text-zinc-400 font-semibold mb-3">Lokalizacja</p>
 
         <button onClick={() => { onSelectGPS(); onClose() }}
-          className="w-full flex items-center gap-3 bg-zinc-800 rounded-xl px-3 py-2.5 mb-2 text-left">
-          <span className="text-xl">📡</span>
+          className="w-full flex items-center gap-3 bg-zinc-800 rounded-xl px-3 py-3 mb-2 text-left">
+          <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-green-400 text-base">↗</span>
+          </div>
           <div>
             <div className="text-[13px] font-bold text-white">Moja lokalizacja</div>
-            <div className="text-[10px] text-zinc-500">Wykryj moją pozycję</div>
+            <div className="text-[11px] text-zinc-500">Wykryj moją pozycję</div>
           </div>
         </button>
 
-        <div className="w-full flex items-center gap-2 bg-zinc-800 rounded-xl px-3 py-2.5 mb-3">
-          <span className="text-base">🔍</span>
-          <input
-            className="flex-1 bg-transparent text-[13px] text-zinc-300 placeholder-zinc-600 outline-none"
-            placeholder="Szukaj miasta"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && input.trim()) { onSelectCity(input.trim()); onClose() }
-            }}
-            onClick={e => e.stopPropagation()}
-            autoFocus
-          />
-        </div>
+        <button onClick={() => setShowSearch(!showSearch)}
+          className="w-full flex items-center gap-3 bg-zinc-800 rounded-xl px-3 py-3 mb-4 text-left">
+          <div className="w-8 h-8 bg-zinc-700 rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-zinc-400 text-base">📍</span>
+          </div>
+          <div>
+            <div className="text-[13px] font-bold text-white">Wybierz miasto</div>
+            <div className="text-[11px] text-zinc-500">Szukaj miasta</div>
+          </div>
+        </button>
 
-        <div className="flex flex-wrap gap-2 mb-4">
-          {POPULAR.map(c => (
-            <button key={c} onClick={() => { onSelectCity(c); onClose() }}
-              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${
-                c === city ? 'bg-green-500 text-black border-green-500' : 'bg-zinc-800 text-zinc-400 border-zinc-700'
-              }`}>
-              {c}
-            </button>
-          ))}
-        </div>
+        {showSearch && (
+          <div className="mb-4">
+            <div className="bg-zinc-800 rounded-xl px-3 py-2.5 flex items-center gap-2 mb-2">
+              <span className="text-zinc-500">🔍</span>
+              <input
+                className="flex-1 bg-transparent text-[12px] text-zinc-300 placeholder-zinc-600 outline-none"
+                placeholder="Wpisz miasto..."
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && input.trim()) { onSelectCity(input.trim()); onClose() }
+                }}
+                autoFocus
+                onClick={e => e.stopPropagation()}
+              />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {POPULAR.map(c => (
+                <button key={c} onClick={() => { onSelectCity(c); onClose() }}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${
+                    c === city ? 'bg-green-500 text-black border-green-500' : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                  }`}>
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
-        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-2">Promień</p>
+        <p className="text-[11px] text-zinc-400 font-semibold mb-2">Promień</p>
         <div className="flex gap-2">
           {RADII.map(r => (
             <button key={r} onClick={() => onSetRadius(r)}
-              className={`flex-1 py-2 rounded-lg text-[11px] font-bold border transition-colors ${
+              className={`flex-1 py-2 rounded-xl text-[11px] font-bold border transition-colors ${
                 r === radius ? 'bg-green-500 text-black border-green-500' : 'bg-zinc-800 text-zinc-400 border-zinc-700'
               }`}>
               {r} km
