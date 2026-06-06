@@ -188,8 +188,8 @@ export function EventsGrid() {
               : "Kalendarz"}
           </div>
           <input
-            type="date"
-            className="absolute inset-0 opacity-0 cursor-pointer w-full"
+  type="date"
+  className="absolute inset-0 opacity-0 cursor-pointer w-full z-10"
             value={customDate}
             onChange={e => { setCustomDate(e.target.value); setActiveDate("custom") }}
           />
