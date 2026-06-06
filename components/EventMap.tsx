@@ -96,6 +96,7 @@ export default function EventMap() {
   const [loading, setLoading] = useState(true)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('wszystkie')
   const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set())
+  const [userPos, setUserPos] = useState<[number, number] | null>(null)
  
   useEffect(() => {
     const supabase = createBrowserClient(
@@ -110,6 +111,12 @@ export default function EventMap() {
         .not('longitude', 'is', null)
         .order('start_date', { ascending: true })
       if (!error && data) setEvents(data as Event[])
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
+            () => {}
+          )
+        }
       setLoading(false)
     }
     load()
@@ -212,6 +219,17 @@ export default function EventMap() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapBoundsUpdater events={filtered} />
+        {userPos && (
+  <Marker
+    position={userPos}
+    icon={L.divIcon({
+      html: '<div style="width:14px;height:14px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 0 4px rgba(59,130,246,0.3)"></div>',
+      className: '',
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+    })}
+  />
+)}
         {filtered.map((event) => (
           <Marker
             key={event.id}
