@@ -71,13 +71,20 @@ export default function MiniMap({ center: externalCenter }: MiniMapProps) {
     }
   }, [externalCenter])
 
+  const userIcon = L.divIcon({
+    html: '<div style="width:12px;height:12px;border-radius:50%;background:#3b82f6;border:2px solid white;box-shadow:0 0 0 4px rgba(59,130,246,0.3)"></div>',
+    className: '',
+    iconSize: [12, 12],
+    iconAnchor: [6, 6],
+  })
+
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })
 
   if (loading) {
     return (
       <div style={{ height: 200, borderRadius: 10, background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontSize: 12, color: "#9ca3af" }}>Ladowanie mapy...</span>
+        <span style={{ fontSize: 12, color: "#9ca3af" }}>Ładowanie mapy...</span>
       </div>
     )
   }
@@ -114,12 +121,13 @@ export default function MiniMap({ center: externalCenter }: MiniMapProps) {
               </Popup>
             </Marker>
           ))}
+          <Marker position={center} icon={userIcon} />
         </MapContainer>
       </a>
       <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 6, textAlign: "center" }}>
-        {events.length} wydarzen na mapie ·{" "}
+        {events.length} wydarzeń na mapie ·{" "}
         <a href="/mapa" style={{ color: "#16a34a", fontWeight: 600 }}>
-          otworz mape
+          otwórz mapę
         </a>
       </p>
     </div>
