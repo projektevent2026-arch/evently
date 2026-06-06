@@ -24,14 +24,13 @@ interface Event {
   longitude: number | null
 }
 
-// Współrzędne miast dla liczenia odległości bez GPS
 const CITY_COORDS: Record<string, [number, number]> = {
-  'Suwałki':    [54.1113, 22.9302],
-  'Białystok':  [53.1325, 23.1688],
-  'Olsztyn':    [53.7784, 20.4801],
-  'Łomża':      [53.1781, 22.0588],
-  'Augustów':   [53.8435, 22.9796],
-  'Elk':        [53.8278, 22.3576],
+  'Suwałki':   [54.1113, 22.9302],
+  'Białystok': [53.1325, 23.1688],
+  'Olsztyn':   [53.7784, 20.4801],
+  'Łomża':     [53.1781, 22.0588],
+  'Augustów':  [53.8435, 22.9796],
+  'Elk':       [53.8278, 22.3576],
 }
 
 const CATEGORIES = [
@@ -47,11 +46,11 @@ const CATEGORIES = [
 const RADII = [5, 10, 25, 50]
 
 const CAT_COLORS: Record<string, string> = {
-  kultura: 'bg-purple-500 text-white',   culture: 'bg-purple-500 text-white',
-  muzyka:  'bg-green-500 text-black',    music:   'bg-green-500 text-black',
-  festiwal:'bg-green-500 text-black',    sport:   'bg-blue-500 text-white',
-  jedzenie:'bg-orange-500 text-white',   food:    'bg-orange-500 text-white',
-  family:  'bg-yellow-400 text-black',   targi:   'bg-amber-500 text-black',
+  kultura: 'bg-purple-500 text-white',  culture: 'bg-purple-500 text-white',
+  muzyka:  'bg-green-500 text-black',   music:   'bg-green-500 text-black',
+  festiwal:'bg-green-500 text-black',   sport:   'bg-blue-500 text-white',
+  jedzenie:'bg-orange-500 text-white',  food:    'bg-orange-500 text-white',
+  family:  'bg-yellow-400 text-black',  targi:   'bg-amber-500 text-black',
   inne:    'bg-zinc-600 text-white',
 }
 
@@ -75,7 +74,7 @@ function formatDist(km: number): string {
   return km < 1 ? `${Math.round(km * 1000)} m od Ciebie` : `${km.toFixed(1)} km od Ciebie`
 }
 
-function getDateParts(dateStr: string): { day: number; month: string; isToday: boolean; isTomorrow: boolean } {
+function getDateParts(dateStr: string) {
   const d = new Date(dateStr)
   const today = new Date()
   const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1)
@@ -101,11 +100,9 @@ function isOnDate(d: string, target: string) {
 function PosterModal({ src, onClose }: { src: string; onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center p-4" onClick={onClose}>
-      <img
-        src={src} alt="Plakat"
+      <img src={src} alt="Plakat"
         className="max-h-[88vh] max-w-full object-contain rounded-xl"
-        onClick={e => e.stopPropagation()}
-      />
+        onClick={e => e.stopPropagation()} />
       <button onClick={onClose}
         className="absolute top-5 right-5 w-9 h-9 bg-zinc-800 rounded-full flex items-center justify-center text-white">
         ✕
@@ -114,8 +111,8 @@ function PosterModal({ src, onClose }: { src: string; onClose: () => void }) {
   )
 }
 
-// ─── City Modal ───────────────────────────────────────────────────────────────
-function CityModal({ city, onClose, onSelectGPS, onSelectCity, radius, onSetRadius }: {
+// ─── City Dropdown ────────────────────────────────────────────────────────────
+function CityDropdown({ city, onClose, onSelectGPS, onSelectCity, radius, onSetRadius }: {
   city: string; onClose: () => void
   onSelectGPS: () => void; onSelectCity: (c: string) => void
   radius: number; onSetRadius: (r: number) => void
@@ -124,23 +121,24 @@ function CityModal({ city, onClose, onSelectGPS, onSelectCity, radius, onSetRadi
   const POPULAR = Object.keys(CITY_COORDS)
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-end" onClick={onClose}>
-      <div className="w-full bg-zinc-900 border-t border-zinc-700 rounded-t-3xl p-5 pb-8"
-        onClick={e => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-4" />
-        <p className="text-[11px] text-zinc-500 font-semibold uppercase tracking-wide mb-3">Lokalizacja</p>
+    <div className="fixed inset-0 z-50" onClick={onClose}>
+      <div
+        className="absolute top-[108px] left-4 right-4 bg-zinc-900 border border-zinc-700 rounded-2xl p-4 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-3">Lokalizacja</p>
 
         <button onClick={() => { onSelectGPS(); onClose() }}
-          className="w-full flex items-center gap-3 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 mb-2">
+          className="w-full flex items-center gap-3 bg-zinc-800 rounded-xl px-3 py-2.5 mb-2 text-left">
           <span className="text-xl">📡</span>
-          <div className="text-left">
+          <div>
             <div className="text-[13px] font-bold text-white">Moja lokalizacja</div>
             <div className="text-[10px] text-zinc-500">Wykryj moją pozycję</div>
           </div>
         </button>
 
-        <button onClick={() => {}} className="w-full flex items-center gap-3 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 mb-4">
-          <span className="text-xl">🔍</span>
+        <div className="w-full flex items-center gap-2 bg-zinc-800 rounded-xl px-3 py-2.5 mb-3">
+          <span className="text-base">🔍</span>
           <input
             className="flex-1 bg-transparent text-[13px] text-zinc-300 placeholder-zinc-600 outline-none"
             placeholder="Szukaj miasta"
@@ -150,10 +148,11 @@ function CityModal({ city, onClose, onSelectGPS, onSelectCity, radius, onSetRadi
               if (e.key === 'Enter' && input.trim()) { onSelectCity(input.trim()); onClose() }
             }}
             onClick={e => e.stopPropagation()}
+            autoFocus
           />
-        </button>
+        </div>
 
-        <div className="flex flex-wrap gap-2 mb-5">
+        <div className="flex flex-wrap gap-2 mb-4">
           {POPULAR.map(c => (
             <button key={c} onClick={() => { onSelectCity(c); onClose() }}
               className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${
@@ -164,11 +163,11 @@ function CityModal({ city, onClose, onSelectGPS, onSelectCity, radius, onSetRadi
           ))}
         </div>
 
-        <p className="text-[11px] text-zinc-500 font-semibold uppercase tracking-wide mb-3">Promień</p>
+        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-2">Promień</p>
         <div className="flex gap-2">
           {RADII.map(r => (
             <button key={r} onClick={() => onSetRadius(r)}
-              className={`px-4 py-2 rounded-lg text-[12px] font-bold border transition-colors ${
+              className={`flex-1 py-2 rounded-lg text-[11px] font-bold border transition-colors ${
                 r === radius ? 'bg-green-500 text-black border-green-500' : 'bg-zinc-800 text-zinc-400 border-zinc-700'
               }`}>
               {r} km
@@ -197,12 +196,11 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
       <Link href={`/events/${event.id}`} className="block mb-3">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
           <div className="p-3">
-            {/* Top row: category + date */}
+            {/* Top: category + date */}
             <div className="flex items-start justify-between mb-2">
               <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${tagColor}`}>
                 {tagLabel.toUpperCase()}
               </span>
-              {/* Date block */}
               <div className={`flex flex-col items-center px-2.5 py-1 rounded-xl min-w-[42px] ${
                 today ? 'bg-green-500' : tomorrow ? 'bg-yellow-400' : 'bg-zinc-800'
               }`}>
@@ -215,9 +213,8 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
               </div>
             </div>
 
-            {/* Main content row */}
+            {/* Content row */}
             <div className="flex gap-3">
-              {/* Left: text info */}
               <div className="flex-1 min-w-0">
                 <p className="text-[15px] font-black text-white leading-tight mb-1 line-clamp-2">
                   {event.title}
@@ -241,7 +238,9 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
                   </p>
                 )}
                 {time && (
-                  <p className="text-[10px] text-zinc-500 mt-0.5">🕐 {time}{event.end_time ? ` – ${event.end_time.slice(0,5)}` : ''}</p>
+                  <p className="text-[10px] text-zinc-500 mt-0.5">
+                    🕐 {time}{event.end_time ? ` – ${event.end_time.slice(0,5)}` : ''}
+                  </p>
                 )}
                 {event.is_free && (
                   <span className="inline-block mt-1 text-[9px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-lg">
@@ -250,7 +249,6 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
                 )}
               </div>
 
-              {/* Right: thumbnail */}
               {img && (
                 <div className="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-zinc-700">
                   <img src={img} alt={event.title} className="w-full h-full object-cover" />
@@ -258,25 +256,23 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
               )}
             </div>
 
-            {/* Bottom: buttons */}
+            {/* Buttons */}
             <div className="flex items-center gap-2 mt-3">
               <button
                 onClick={e => { e.preventDefault(); setGoing(!going) }}
-                className={`flex-shrink-0 text-[12px] font-black px-5 py-2 rounded-xl transition-colors ${
+                className={`text-[12px] font-black px-5 py-2 rounded-xl transition-colors ${
                   going ? 'bg-green-600 text-white' : 'bg-green-500 text-black'
-                }`}
-              >
+                }`}>
                 {going ? '✓ Idę' : 'Idę'}
               </button>
               {img && (
                 <button
                   onClick={e => { e.preventDefault(); setPosterSrc(img) }}
-                  className="flex items-center gap-1.5 text-[11px] font-bold text-green-400 border border-green-500/30 bg-green-500/10 px-4 py-2 rounded-xl"
-                >
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-green-400 border border-green-500/30 bg-green-500/10 px-4 py-2 rounded-xl">
                   👁 Plakat
                 </button>
               )}
-              <div className="ml-auto text-zinc-600">›</div>
+              <div className="ml-auto text-zinc-600 text-lg">›</div>
             </div>
           </div>
         </div>
@@ -300,32 +296,24 @@ export function MobileHome() {
   const [userLon, setUserLon] = useState<number | null>(null)
   const [gpsActive, setGpsActive] = useState(false)
   const [city, setCity] = useState('Suwałki')
-  const [showCityModal, setShowCityModal] = useState(false)
+  const [showCityDropdown, setShowCityDropdown] = useState(false)
   const [radius, setRadius] = useState(25)
   const [activeDate, setActiveDate] = useState<'all'|'today'|'tomorrow'|'weekend'|'custom'>('all')
   const [customDate, setCustomDate] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
   const [search, setSearch] = useState('')
 
-  // Ref lat/lon — GPS lub miasto
   const effLat = gpsActive ? userLat : (CITY_COORDS[city]?.[0] ?? null)
   const effLon = gpsActive ? userLon : (CITY_COORDS[city]?.[1] ?? null)
 
   const requestGPS = () => {
     navigator.geolocation?.getCurrentPosition(
-      p => {
-        setUserLat(p.coords.latitude)
-        setUserLon(p.coords.longitude)
-        setGpsActive(true)
-      },
+      p => { setUserLat(p.coords.latitude); setUserLon(p.coords.longitude); setGpsActive(true) },
       () => {}
     )
   }
 
-  // Domyślnie użyj koordynat Suwałk (bez pytania o GPS)
-  useEffect(() => {
-    requestGPS() // próba GPS — jak nie da, zostają koordynaty miasta
-  }, [])
+  useEffect(() => { requestGPS() }, [])
 
   useEffect(() => {
     async function fetchEvents() {
@@ -343,8 +331,7 @@ export function MobileHome() {
     .map(e => ({
       ...e,
       distance: (effLat !== null && effLon !== null && e.latitude !== null && e.longitude !== null)
-        ? haversine(effLat, effLon, e.latitude, e.longitude)
-        : null
+        ? haversine(effLat, effLon, e.latitude, e.longitude) : null
     }))
     .filter(e => {
       if (e.distance !== null && e.distance > radius) return false
@@ -369,11 +356,11 @@ export function MobileHome() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pb-24">
-      {showCityModal && (
-        <CityModal
+      {showCityDropdown && (
+        <CityDropdown
           city={city}
-          onClose={() => setShowCityModal(false)}
-          onSelectGPS={() => { requestGPS(); setCity('Moja lokalizacja') }}
+          onClose={() => setShowCityDropdown(false)}
+          onSelectGPS={() => { requestGPS(); setCity('Moja lokalizacja'); setGpsActive(true) }}
           onSelectCity={c => { setCity(c); setGpsActive(false) }}
           radius={radius}
           onSetRadius={setRadius}
@@ -382,7 +369,7 @@ export function MobileHome() {
 
       {/* Header */}
       <div className="px-4 pt-5 pb-3">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <span className="text-[18px] font-black text-green-500 tracking-tight">● evently</span>
           <div className="flex gap-2">
             <button className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm">🔔</button>
@@ -393,12 +380,14 @@ export function MobileHome() {
         </div>
 
         {/* Location bar */}
-        <button onClick={() => setShowCityModal(true)}
-className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 mb-3 w-auto inline-flex">
+        <button
+          onClick={() => setShowCityDropdown(true)}
+          className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 mb-3"
+        >
           <span className="text-green-500 text-sm">📍</span>
           <span className="text-[13px] text-green-500 font-semibold">{city} ▾</span>
           <span className="text-[11px] text-zinc-600">• {radius} km</span>
-          <span className="ml-auto text-[11px] text-zinc-500">{filtered.length} wydarzeń</span>
+          <span className="text-[11px] text-zinc-500 ml-1">{filtered.length} wydarzeń</span>
         </button>
 
         <h1 className="text-[22px] font-black leading-tight tracking-tight mb-3">
@@ -450,8 +439,7 @@ className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl
               onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${
                 activeDate === 'custom' ? 'bg-green-500 text-black border-green-500' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
-              }`}
-            >
+              }`}>
               📅 {activeDate === 'custom' && customDate
                 ? new Date(customDate).toLocaleDateString('pl-PL', { day:'2-digit', month:'2-digit' })
                 : 'Kalendarz'}
