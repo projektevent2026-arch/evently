@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { EventCard, type EventData } from "@/components/event-card"
 import { supabase } from "@/lib/supabase"
@@ -12,10 +12,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 const DATE_FILTERS = [
-  { id: "all",     label: "Wszystkie" },
-  { id: "today",   label: "Dziś" },
-  { id: "tomorrow",label: "Jutro" },
-  { id: "weekend", label: "Weekend" },
+  { id: "all",      label: "Wszystkie" },
+  { id: "today",    label: "Dziś" },
+  { id: "tomorrow", label: "Jutro" },
+  { id: "weekend",  label: "Weekend" },
 ]
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -41,7 +41,6 @@ function isOnDate(d: string, target: string) {
 
 export function EventsGrid() {
   const searchParams = useSearchParams()
-  const dateInputRef = useRef<HTMLInputElement>(null)
   const [events, setEvents] = useState<EventData[]>([])
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [activeDate, setActiveDate] = useState("all")
@@ -84,7 +83,7 @@ export function EventsGrid() {
           image: e.cover_image_url || "/images/event-concert.jpg",
           interested: e.interested_count || 0,
           category: e.category || "Inne",
-          price: e.is_free ? "Wstep wolny" : e.price_from ? `od ${e.price_from} zl` : "Wstep wolny",
+          price: e.is_free ? "Wstęp wolny" : e.price_from ? `od ${e.price_from} zł` : "Wstęp wolny",
         }))
 
       setEvents(mapped)
@@ -102,7 +101,6 @@ export function EventsGrid() {
 
       setLoading(false)
     }
-
     fetchEvents()
   }, [filterLat, filterLng, filterRadius])
 
@@ -114,7 +112,7 @@ export function EventsGrid() {
     const matchCat = activeCategory ? e.category === activeCategory : true
     const matchDate = (() => {
       if (!e.start_date) return true
-      if (activeDate === "today") return isToday(e.start_date)
+      if (activeDate === "today")   return isToday(e.start_date)
       if (activeDate === "tomorrow") return isTomorrow(e.start_date)
       if (activeDate === "weekend") return isWeekend(e.start_date)
       if (activeDate === "custom" && customDate) return isOnDate(e.start_date, customDate)
@@ -125,16 +123,14 @@ export function EventsGrid() {
 
   return (
     <section className="pb-8" id="discover">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">
-            {q ? `Wyniki dla "${q}"` : "Nadchodzące wydarzenia"}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {filtered.length} {filtered.length === 1 ? "wydarzenie" : filtered.length < 5 ? "wydarzenia" : "wydarzeń"}
-            {hasLocationFilter && ` w promieniu ${filterRadius} km`}
-          </p>
-        </div>
+      <div>
+        <h2 className="text-2xl font-bold text-foreground">
+          {q ? `Wyniki dla "${q}"` : "Nadchodzące wydarzenia"}
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {filtered.length} {filtered.length === 1 ? "wydarzenie" : filtered.length < 5 ? "wydarzenia" : "wydarzeń"}
+          {hasLocationFilter && ` w promieniu ${filterRadius} km`}
+        </p>
       </div>
 
       {/* Kategorie */}
@@ -170,37 +166,34 @@ export function EventsGrid() {
           <button
             key={d.id}
             onClick={() => { setActiveDate(d.id); setCustomDate("") }}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
               activeDate === d.id
-                ? "border border-primary bg-primary/10 text-primary"
-                : "border border-border text-muted-foreground hover:border-primary hover:text-primary"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:border-primary hover:text-primary"
             }`}
           >
             {d.label}
           </button>
         ))}
-        {/* Kalendarz */}
-        <div className="relative">
-          <button
-            onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
-              activeDate === "custom"
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border text-muted-foreground hover:border-primary hover:text-primary"
-            }`}
-          >
-            📅 {activeDate === "custom" && customDate
-              ? new Date(customDate).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" })
-              : "Kalendarz"}
-          </button>
+
+        {/* Kalendarz — label trick */}
+        <label
+          className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
+            activeDate === "custom"
+              ? "border-primary bg-primary/10 text-primary"
+              : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+          }`}
+        >
+          📅 {activeDate === "custom" && customDate
+            ? new Date(customDate).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" })
+            : "Kalendarz"}
           <input
-            ref={dateInputRef}
             type="date"
-            className="absolute inset-0 opacity-0 w-full cursor-pointer"
+            className="sr-only"
             value={customDate}
             onChange={e => { setCustomDate(e.target.value); setActiveDate("custom") }}
           />
-        </div>
+        </label>
       </div>
 
       {/* Grid */}

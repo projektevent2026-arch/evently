@@ -7,17 +7,8 @@ import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 
-const TIME_FILTERS = [
-  { label: "Dzis", value: "today" },
-  { label: "Jutro", value: "tomorrow" },
-  { label: "Weekend", value: "weekend" },
-  { label: "W tym tygodniu", value: "week" },
-  { label: "Wszystkie", value: "all" },
-]
-
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [activeFilter, setActiveFilter] = useState("all")
   const { user, role, loading } = useAuth()
   const router = useRouter()
 
@@ -40,31 +31,9 @@ export function Navbar() {
           <span className="text-xl font-bold tracking-tight text-primary">evently</span>
         </a>
 
-        {/* Filtry czasowe - desktop */}
-        <div className="hidden items-center gap-1 md:flex">
-          {TIME_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setActiveFilter(f.value)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                activeFilter === f.value
-                  ? "text-primary border-b-2 border-primary"
-                  : "text-foreground/60 hover:text-foreground hover:bg-accent"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
         {/* Prawa strona - desktop */}
         <div className="hidden items-center gap-3 md:flex">
-
-          {/* Link do mapy */}
-          <a
-            href="/mapa"
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <a href="/mapa" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
             Mapa
           </a>
 
@@ -89,7 +58,7 @@ export function Navbar() {
                   className="rounded-full border-primary/30 text-primary hover:bg-primary/5"
                   onClick={handleLogout}
                 >
-                  Wyloguj sie
+                  Wyloguj się
                 </Button>
               </>
             ) : (
@@ -99,7 +68,7 @@ export function Navbar() {
                 className="rounded-full border-primary/30 text-primary hover:bg-primary/5"
                 onClick={() => router.push("/login")}
               >
-                Zaloguj sie
+                Zaloguj się
               </Button>
             )
           )}
@@ -125,25 +94,12 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div className="border-t border-border/60 bg-background px-6 py-4 md:hidden">
           <div className="flex flex-col gap-1">
-            {TIME_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => { setActiveFilter(f.value); setMobileMenuOpen(false) }}
-                className={`rounded-lg px-4 py-2.5 text-left text-sm font-medium transition-colors ${
-                  activeFilter === f.value
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground/70 hover:bg-accent hover:text-foreground"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
             <a
               href="/mapa"
               onClick={() => setMobileMenuOpen(false)}
               className="rounded-lg px-4 py-2.5 text-left text-sm font-medium text-foreground/70 hover:bg-accent hover:text-foreground transition-colors"
             >
-              Mapa wydarzen
+              Mapa wydarzeń
             </a>
           </div>
           <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3">
@@ -166,7 +122,7 @@ export function Navbar() {
                     className="w-full rounded-full border-primary/30 text-primary"
                     onClick={handleLogout}
                   >
-                    Wyloguj sie
+                    Wyloguj się
                   </Button>
                 </>
               ) : (
@@ -176,7 +132,7 @@ export function Navbar() {
                   className="w-full rounded-full border-primary/30 text-primary"
                   onClick={() => router.push("/login")}
                 >
-                  Zaloguj sie
+                  Zaloguj się
                 </Button>
               )
             )}
