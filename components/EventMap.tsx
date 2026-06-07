@@ -63,26 +63,17 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-async function searchPhoton(query: string): Promise<GeoResult[]> {
-  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8&lang=pl`
-  const res = await fetch(url)
+async function searchNominatim(query: string): Promise<GeoResult[]> {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=pl&accept-language=pl`
+  const res = await fetch(url, {
+    headers: { 'Accept-Language': 'pl', 'User-Agent': 'Evently/1.0 (evently-silk-omega.vercel.app)' },
+  })
   const data = await res.json()
-  return (data.features ?? [])
-    .filter((f: any) => f.properties?.countrycode === 'PL')
-    .slice(0, 5)
-    .map((f: any) => {
-      const p = f.properties
-      const label = [p.name, p.city, p.county, p.state]
-        .filter(Boolean)
-        .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
-        .slice(0, 3)
-        .join(', ')
-      return {
-        lat: f.geometry.coordinates[1],
-        lng: f.geometry.coordinates[0],
-        label: label || p.name || query,
-      }
-    })
+  return (data as any[]).map(item => ({
+    lat: parseFloat(item.lat),
+    lng: parseFloat(item.lon),
+    label: item.display_name.split(',').slice(0, 2).join(',').trim(),
+  }))
 }
 
 type TimeFilter = 'wszystkie' | 'dzis' | 'jutro' | 'weekend'
@@ -266,22 +257,21 @@ export default function EventMap() {
     })
   }, [filtered])
 
-  // Marker pozycji — odpala się na urlLat/urlLng (nie na useMemo urlCenter)
+  // Marker pozycji
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!map) return
     import('leaflet').then(({ default: L }) => {
       if (userMarkerRef.current) userMarkerRef.current.remove()
-      const lat = !isNaN(urlLat) ? urlLat : userPosition?.[0]
-      const lng = !isNaN(urlLng) ? urlLng : userPosition?.[1]
-      if (lat == null || lng == null) return
+      const pos = urlCenter ?? userPosition
+      if (!pos) return
       const icon = L.divIcon({
         html: '<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 0 4px rgba(59,130,246,0.3)"></div>',
         className: '', iconSize: [16, 16], iconAnchor: [8, 8],
       })
-      userMarkerRef.current = L.marker([lat, lng], { icon }).addTo(map)
+      userMarkerRef.current = L.marker(pos, { icon }).addTo(map)
     })
-  }, [urlLat, urlLng, userPosition])
+  }, [userPosition, urlCenter])
 
   const categories = useMemo(() => {
     return Array.from(new Set(events.map(e => e.category ?? 'Inne'))).sort()
@@ -300,7 +290,6 @@ export default function EventMap() {
     mapInstanceRef.current?.flyTo([lat, lng], zoom, { duration: 1.2 })
   }
 
-  // Przesuń niebieski marker bezpośrednio (nie czekaj na URL → re-render)
   function moveUserMarker(lat: number, lng: number) {
     const map = mapInstanceRef.current
     if (!map) return
@@ -329,7 +318,7 @@ export default function EventMap() {
     if (!q || q === 'Moja lokalizacja') return
     setLocLoading(true)
     try {
-      const results = await searchPhoton(q)
+      const results = await searchNominatim(q)
       setLocResults(results)
       if (results.length === 1) applyLocation(results[0])
     } catch {
