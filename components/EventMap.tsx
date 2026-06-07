@@ -1,5 +1,6 @@
 'use client'
 
+import { useSearchParams } from 'next/navigation'
 import { useEffect, useState, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
@@ -89,6 +90,10 @@ function formatDate(dateStr: string) {
 }
 
 export default function EventMap() {
+  const searchParams = useSearchParams()
+const urlLat = parseFloat(searchParams.get('lat') || '')
+const urlLng = parseFloat(searchParams.get('lng') || '')
+const urlCenter: [number, number] | null = (!isNaN(urlLat) && !isNaN(urlLng)) ? [urlLat, urlLng] : null
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('wszystkie')
@@ -202,7 +207,7 @@ export default function EventMap() {
       </div>
 
       <MapContainer
-        center={[54.1, 22.93]}
+center={urlCenter ?? [54.1, 22.93]}
         zoom={11}
         className="flex-1 w-full"
         style={{ height: '100vh', zIndex: 1 }}
@@ -245,6 +250,9 @@ export default function EventMap() {
         {userPosition && (
           <Marker position={userPosition} icon={userIcon} />
         )}
+        {urlCenter && !userPosition && (
+  <Marker position={urlCenter} icon={userIcon} />
+)}
       </MapContainer>
     </div>
   )
