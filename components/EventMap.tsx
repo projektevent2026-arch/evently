@@ -25,8 +25,22 @@ interface GeoResult {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Kultura: '#DC2626', Muzyka: '#F59E0B', Sport: '#16A34A',
-  Jedzenie: '#F97316', Rodzinne: '#EC4899', Technologia: '#0EA5E9', Inne: '#6B7280',
+  // angielskie — faktyczne wartości z bazy
+  culture:    '#DC2626',
+  music:      '#F59E0B',
+  sport:      '#16A34A',
+  food:       '#F97316',
+  family:     '#EC4899',
+  technology: '#0EA5E9',
+  other:      '#6B7280',
+  // polskie — fallback gdyby były po polsku
+  Kultura:     '#DC2626',
+  Muzyka:      '#F59E0B',
+  Sport:       '#16A34A',
+  Jedzenie:    '#F97316',
+  Rodzinne:    '#EC4899',
+  Technologia: '#0EA5E9',
+  Inne:        '#6B7280',
 }
 const DEFAULT_COLOR = '#22C55E'
 
