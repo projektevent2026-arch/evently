@@ -18,7 +18,7 @@ interface Event {
   longitude: number
 }
 
-interface PhotonResult {
+interface GeoResult {
   lat: number
   lng: number
   label: string
@@ -63,6 +63,19 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
+async function searchNominatim(query: string): Promise<GeoResult[]> {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=pl&accept-language=pl`
+  const res = await fetch(url, {
+    headers: { 'Accept-Language': 'pl', 'User-Agent': 'Evently/1.0 (evently-silk-omega.vercel.app)' },
+  })
+  const data = await res.json()
+  return (data as any[]).map(item => ({
+    lat: parseFloat(item.lat),
+    lng: parseFloat(item.lon),
+    label: item.display_name.split(',').slice(0, 2).join(',').trim(),
+  }))
+}
+
 type TimeFilter = 'wszystkie' | 'dzis' | 'jutro' | 'weekend'
 
 const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
@@ -76,7 +89,6 @@ export default function EventMap() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  // ─── URL jako single source of truth ─────────────────────────────────────
   const urlLat    = parseFloat(searchParams.get('lat')    ?? '')
   const urlLng    = parseFloat(searchParams.get('lng')    ?? '')
   const urlRadius = parseFloat(searchParams.get('radius') ?? '')
@@ -94,37 +106,49 @@ export default function EventMap() {
     return new Set(raw.split(',').map(c => c.trim()).filter(Boolean))
   }, [searchParams])
 
-  // ─── Leaflet refs ─────────────────────────────────────────────────────────
+  // Leaflet refs
   const mapRef         = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markerGroupRef = useRef<any>(null)
   const userMarkerRef  = useRef<any>(null)
+  const locationBoxRef = useRef<HTMLDivElement>(null)
 
-  // ─── Timers ───────────────────────────────────────────────────────────────
-  const searchTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const locationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const radiusTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const blurTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Timers
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const radiusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // ─── State ────────────────────────────────────────────────────────────────
-  const [events,          setEvents]          = useState<Event[]>([])
-  const [loading,         setLoading]         = useState(true)
-  const [userPosition,    setUserPosition]    = useState<[number, number] | null>(null)
-
-  // locationInput: jeśli jest GPS w URL, pokaż "Moja lokalizacja"
-  const [locationInput,   setLocationInput]   = useState(
-    () => (parseFloat(new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('lat') ?? '') ? 'Moja lokalizacja' : '')
-  )
-  const [locationResults, setLocationResults] = useState<PhotonResult[]>([])
-  const [showLocDropdown, setShowLocDropdown] = useState(false)
-  const [searchInput,     setSearchInput]     = useState(() => searchParams.get('q') ?? '')
-  const [radiusValue,     setRadiusValue]     = useState(() => {
+  // State
+  const [events,       setEvents]       = useState<Event[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [userPosition, setUserPosition] = useState<[number, number] | null>(null)
+  const [locInput,     setLocInput]     = useState('')
+  const [locResults,   setLocResults]   = useState<GeoResult[]>([])
+  const [locLoading,   setLocLoading]   = useState(false)
+  const [searchInput,  setSearchInput]  = useState(() => searchParams.get('q') ?? '')
+  const [radiusValue,  setRadiusValue]  = useState(() => {
     const r = parseFloat(searchParams.get('radius') ?? '25')
     return isNaN(r) ? 25 : r
   })
   const [gpsLoading, setGpsLoading] = useState(false)
 
-  // ─── Fetch eventów + GPS ──────────────────────────────────────────────────
+  // Gdy URL ma lokalizację, pokaż "Moja lokalizacja" w inpucie
+  useEffect(() => {
+    if (hasLocation) setLocInput('Moja lokalizacja')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Click-outside zamyka dropdown wyników
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (locationBoxRef.current && !locationBoxRef.current.contains(e.target as Node)) {
+        setLocResults([])
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  // Fetch eventów + GPS
   useEffect(() => {
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -149,7 +173,7 @@ export default function EventMap() {
     }
   }, [])
 
-  // ─── Inicjalizacja mapy (raz) ─────────────────────────────────────────────
+  // Init mapy (raz)
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
 
@@ -158,21 +182,12 @@ export default function EventMap() {
       await import('leaflet.markercluster')
 
       const center = urlCenter ?? userPosition ?? ([54.1, 22.93] as [number, number])
+      const map = L.map(mapRef.current!, { center, zoom: urlCenter ? 13 : 11, zoomControl: false })
 
-      const map = L.map(mapRef.current!, {
-        center,
-        zoom: urlCenter ? 13 : 11,
-        zoomControl: false,
-      })
-
-      L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-        {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-          subdomains: 'abcd',
-          maxZoom: 20,
-        },
-      ).addTo(map)
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd', maxZoom: 20,
+      }).addTo(map)
 
       L.control.zoom({ position: 'bottomright' }).addTo(map)
       mapInstanceRef.current = map
@@ -183,14 +198,10 @@ export default function EventMap() {
           const count = cluster.getChildCount()
           return L.divIcon({
             html: `<div style="width:40px;height:40px;border-radius:50%;background:#22C55E;color:black;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;border:3px solid rgba(255,255,255,0.8);box-shadow:0 2px 12px rgba(34,197,94,0.5);">${count}</div>`,
-            className: '',
-            iconSize: [40, 40],
-            iconAnchor: [20, 20],
+            className: '', iconSize: [40, 40], iconAnchor: [20, 20],
           })
         },
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-        zoomToBoundsOnClick: true,
+        spiderfyOnMaxZoom: true, showCoverageOnHover: false, zoomToBoundsOnClick: true,
       })
 
       markerGroupRef.current = mcg
@@ -200,7 +211,7 @@ export default function EventMap() {
     initMap()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Filtrowanie ──────────────────────────────────────────────────────────
+  // Filtrowanie
   const filtered = useMemo(() => {
     return events.filter(ev => {
       if (urlTime === 'dzis'    && !isToday(ev.start_date))       return false
@@ -218,7 +229,7 @@ export default function EventMap() {
     })
   }, [events, urlTime, activeCategories, urlQ, urlRadius, urlLat, urlLng, hasLocation])
 
-  // ─── Update markerów ──────────────────────────────────────────────────────
+  // Update markerów
   useEffect(() => {
     const mcg = markerGroupRef.current
     if (!mcg) return
@@ -229,9 +240,7 @@ export default function EventMap() {
         const icon = L.divIcon({
           className: '',
           html: `<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:${color};border:2px solid white;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>`,
-          iconSize: [22, 22],
-          iconAnchor: [11, 22],
-          popupAnchor: [0, -25],
+          iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -25],
         })
         const marker = L.marker([ev.latitude, ev.longitude], { icon })
         marker.bindPopup(`
@@ -248,7 +257,7 @@ export default function EventMap() {
     })
   }, [filtered])
 
-  // ─── Marker użytkownika / urlCenter ──────────────────────────────────────
+  // Marker pozycji
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!map) return
@@ -258,20 +267,16 @@ export default function EventMap() {
       if (!pos) return
       const icon = L.divIcon({
         html: '<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 0 4px rgba(59,130,246,0.3)"></div>',
-        className: '',
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
+        className: '', iconSize: [16, 16], iconAnchor: [8, 8],
       })
       userMarkerRef.current = L.marker(pos, { icon }).addTo(map)
     })
   }, [userPosition, urlCenter])
 
-  // ─── Kategorie ────────────────────────────────────────────────────────────
   const categories = useMemo(() => {
     return Array.from(new Set(events.map(e => e.category ?? 'Inne'))).sort()
   }, [events])
 
-  // ─── Helper: aktualizacja URL ─────────────────────────────────────────────
   function updateParams(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString())
     Object.entries(updates).forEach(([key, value]) => {
@@ -282,61 +287,45 @@ export default function EventMap() {
   }
 
   function flyTo(lat: number, lng: number, zoom = 13) {
-    mapInstanceRef.current?.flyTo([lat, lng], zoom, { duration: 1.5 })
+    mapInstanceRef.current?.flyTo([lat, lng], zoom, { duration: 1.2 })
   }
 
-  // ─── Handler: Lokalizacja (Photon) ────────────────────────────────────────
-  function handleLocationInput(value: string) {
-    setLocationInput(value)
-    setShowLocDropdown(true)
-    if (locationTimerRef.current) clearTimeout(locationTimerRef.current)
-    if (!value.trim()) { setLocationResults([]); return }
-    locationTimerRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `https://photon.komoot.io/api/?q=${encodeURIComponent(value)}&limit=5&lang=pl&bbox=14.1,49.0,24.1,54.9`
-        )
-        const data = await res.json()
-        const results: PhotonResult[] = (data.features ?? []).map((f: any) => ({
-          lat: f.geometry.coordinates[1],
-          lng: f.geometry.coordinates[0],
-          label: [f.properties.name, f.properties.city, f.properties.state]
-            .filter(Boolean)
-            .filter((v, i, arr) => arr.indexOf(v) === i)
-            .join(', '),
-        }))
-        setLocationResults(results)
-        setShowLocDropdown(true)
-      } catch {}
-    }, 400)
+  // Wybierz lokalizację z listy
+  function applyLocation(r: GeoResult) {
+    setLocInput(r.label)
+    setLocResults([])
+    updateParams({ lat: r.lat.toFixed(6), lng: r.lng.toFixed(6) })
+    flyTo(r.lat, r.lng)
   }
 
-  function handleLocationSelect(result: PhotonResult) {
-    setLocationInput(result.label)
-    setLocationResults([])
-    setShowLocDropdown(false)
-    updateParams({
-      lat: result.lat.toFixed(6),
-      lng: result.lng.toFixed(6),
-    })
-    flyTo(result.lat, result.lng)
+  // Szukaj lokalizacji (Nominatim)
+  async function runGeoSearch() {
+    const q = locInput.trim()
+    if (!q || q === 'Moja lokalizacja') return
+    setLocLoading(true)
+    try {
+      const results = await searchNominatim(q)
+      setLocResults(results)
+      if (results.length === 1) applyLocation(results[0])
+    } catch {
+      setLocResults([])
+    } finally {
+      setLocLoading(false)
+    }
   }
 
-  // FIX: onBlur z dłuższym timeoutem (300ms) żeby dropdown zdążył obsłużyć klik
-  function handleLocationBlur() {
-    if (blurTimerRef.current) clearTimeout(blurTimerRef.current)
-    blurTimerRef.current = setTimeout(() => setShowLocDropdown(false), 300)
+  function handleLocKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') { e.preventDefault(); runGeoSearch() }
+    if (e.key === 'Escape') { setLocResults([]) }
   }
 
-  // Wyczyszczenie lokalizacji — usuwa lat, lng, radius z URL + resetuje input
   function clearLocation() {
-    setLocationInput('')
-    setLocationResults([])
-    setShowLocDropdown(false)
+    setLocInput('')
+    setLocResults([])
     updateParams({ lat: null, lng: null, radius: null })
   }
 
-  // ─── Handler: GPS ─────────────────────────────────────────────────────────
+  // GPS
   function handleGPS() {
     if (!navigator.geolocation) return
     setGpsLoading(true)
@@ -344,12 +333,9 @@ export default function EventMap() {
       pos => {
         const { latitude: lat, longitude: lng } = pos.coords
         setUserPosition([lat, lng])
-        setLocationInput('Moja lokalizacja')
-        setShowLocDropdown(false)
-        updateParams({
-          lat: lat.toFixed(6),
-          lng: lng.toFixed(6),
-        })
+        setLocInput('Moja lokalizacja')
+        setLocResults([])
+        updateParams({ lat: lat.toFixed(6), lng: lng.toFixed(6) })
         flyTo(lat, lng)
         setGpsLoading(false)
       },
@@ -358,34 +344,22 @@ export default function EventMap() {
     )
   }
 
-  // ─── Handler: Promień ─────────────────────────────────────────────────────
   function handleRadiusChange(value: number) {
     setRadiusValue(value)
     if (radiusTimerRef.current) clearTimeout(radiusTimerRef.current)
     radiusTimerRef.current = setTimeout(() => updateParams({ radius: String(value) }), 300)
   }
 
-  // ─── Handler: Wyszukiwanie tekstu ─────────────────────────────────────────
   function handleSearch(value: string) {
     setSearchInput(value)
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
-    searchTimerRef.current = setTimeout(() => {
-      updateParams({ q: value.trim() || null })
-    }, 400)
+    searchTimerRef.current = setTimeout(() => updateParams({ q: value.trim() || null }), 400)
   }
 
-  function clearSearch() {
-    setSearchInput('')
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
-    updateParams({ q: null })
-  }
-
-  // ─── Handler: Czas ────────────────────────────────────────────────────────
   function handleTimeFilter(value: TimeFilter) {
     updateParams({ time: value === 'wszystkie' ? null : value })
   }
 
-  // ─── Handler: Kategoria ───────────────────────────────────────────────────
   function handleToggleCategory(cat: string) {
     const params = new URLSearchParams(searchParams.toString())
     const raw = params.get('category')
@@ -397,84 +371,87 @@ export default function EventMap() {
     router.replace(`/mapa?${params.toString()}`, { scroll: false })
   }
 
-  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="relative flex flex-col h-screen overflow-hidden">
 
       <div className="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-gray-200 px-3 py-2 space-y-2">
 
-        {/* Wiersz 1: Lokalizacja + GPS */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            {/* Pin icon */}
-            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-              fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-            <input
-              type="text"
-              value={locationInput}
-              onChange={e => handleLocationInput(e.target.value)}
-              onFocus={() => locationResults.length > 0 && setShowLocDropdown(true)}
-              onBlur={handleLocationBlur}
-              placeholder="Wpisz miasto lub miejscowość..."
-              className="w-full pl-8 pr-8 py-1.5 rounded-full text-sm border border-gray-200 bg-white
-                focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400
-                transition-colors text-black placeholder:text-gray-400"
-            />
-            {/* Przycisk wyczyść lokalizację — widoczny gdy jest aktywna */}
-            {(locationInput || hasLocation) && (
-              <button
-                onMouseDown={e => { e.preventDefault(); clearLocation() }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-lg leading-none font-medium"
-                title="Wyczyść lokalizację"
-              >
-                ×
-              </button>
-            )}
-            {/* Dropdown Photon */}
-            {showLocDropdown && locationResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
-                {locationResults.map((r, i) => (
-                  <button
-                    key={i}
-                    onMouseDown={e => { e.preventDefault(); handleLocationSelect(r) }}
-                    className="w-full text-left px-3 py-2 text-sm text-black hover:bg-gray-50 border-b border-gray-100 last:border-0"
-                  >
-                    {r.label}
-                  </button>
-                ))}
+        {/* Lokalizacja */}
+        <div ref={locationBoxRef} className="relative">
+          <div className="flex items-center gap-2">
+            {/* Input + ikona */}
+            <div className="relative flex-1">
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              <input
+                type="text"
+                value={locInput}
+                onChange={e => { setLocInput(e.target.value); setLocResults([]) }}
+                onKeyDown={handleLocKeyDown}
+                placeholder="Wpisz miasto i naciśnij Enter..."
+                className="w-full pl-8 pr-8 py-1.5 rounded-full text-sm border border-gray-200 bg-white
+                  focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400
+                  transition-colors text-black placeholder:text-gray-400"
+              />
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                {locLoading
+                  ? <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+                  : (locInput
+                    ? <button onClick={clearLocation} className="text-gray-400 hover:text-gray-700 text-xl leading-none">×</button>
+                    : null)
+                }
               </div>
-            )}
+            </div>
+
+            {/* Przycisk Szukaj */}
+            <button
+              onClick={runGeoSearch}
+              disabled={locLoading}
+              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-500 text-white hover:bg-green-600 transition-colors disabled:opacity-50"
+            >
+              Szukaj
+            </button>
+
+            {/* GPS */}
+            <button
+              onClick={handleGPS}
+              disabled={gpsLoading}
+              title="Użyj mojej lokalizacji"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              {gpsLoading
+                ? <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                : <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+                  </svg>
+              }
+            </button>
           </div>
 
-          {/* Przycisk GPS */}
-          <button
-            onClick={handleGPS}
-            disabled={gpsLoading}
-            title="Użyj mojej lokalizacji"
-            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full
-              border border-gray-200 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            {gpsLoading
-              ? <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-              : <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-                </svg>
-            }
-          </button>
+          {/* Wyniki geokodowania */}
+          {locResults.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+              {locResults.map((r, i) => (
+                <button
+                  key={i}
+                  onClick={() => applyLocation(r)}
+                  className="w-full text-left px-3 py-2.5 text-sm text-black hover:bg-green-50 border-b border-gray-100 last:border-0 transition-colors"
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Wiersz 2: Slider promienia (tylko gdy aktywna lokalizacja) */}
+        {/* Promień */}
         {hasLocation && (
           <div className="flex items-center gap-2 px-1">
             <span className="text-xs text-gray-500 flex-shrink-0">Promień:</span>
-            <input
-              type="range"
-              min="5" max="100" step="5"
+            <input type="range" min="5" max="100" step="5"
               value={radiusValue}
               onChange={e => handleRadiusChange(Number(e.target.value))}
               className="flex-1 h-1.5 accent-green-500 cursor-pointer"
@@ -485,7 +462,7 @@ export default function EventMap() {
           </div>
         )}
 
-        {/* Wiersz 3: Wyszukiwanie po nazwie */}
+        {/* Wyszukiwanie po nazwie */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
@@ -502,10 +479,8 @@ export default function EventMap() {
                 transition-colors text-black placeholder:text-gray-400"
             />
             {searchInput && (
-              <button
-                onClick={clearSearch}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
-              >
+              <button onClick={() => { setSearchInput(''); updateParams({ q: null }) }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl leading-none">
                 ×
               </button>
             )}
@@ -515,39 +490,29 @@ export default function EventMap() {
           </span>
         </div>
 
-        {/* Wiersz 4: Filtry czasu */}
+        {/* Czas */}
         <div className="flex gap-2 flex-wrap">
           {TIME_FILTERS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => handleTimeFilter(key)}
+            <button key={key} onClick={() => handleTimeFilter(key)}
               className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                urlTime === key
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-100 text-black hover:bg-gray-200'
-              }`}
-            >
+                urlTime === key ? 'bg-green-500 text-white' : 'bg-gray-100 text-black hover:bg-gray-200'
+              }`}>
               {label}
             </button>
           ))}
         </div>
 
-        {/* Wiersz 5: Kategorie */}
+        {/* Kategorie */}
         <div className="flex gap-2 flex-wrap">
           {categories.map(cat => {
-            const color  = getCategoryColor(cat)
+            const color = getCategoryColor(cat)
             const active = activeCategories.has(cat)
             return (
-              <button
-                key={cat}
-                onClick={() => handleToggleCategory(cat)}
+              <button key={cat} onClick={() => handleToggleCategory(cat)}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                  active
-                    ? 'text-white border-transparent shadow-sm'
-                    : 'bg-white text-black border-gray-200 hover:border-gray-300'
+                  active ? 'text-white border-transparent shadow-sm' : 'bg-white text-black border-gray-200 hover:border-gray-300'
                 }`}
-                style={active ? { backgroundColor: color, borderColor: color } : {}}
-              >
+                style={active ? { backgroundColor: color, borderColor: color } : {}}>
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
                 {cat}
               </button>
@@ -556,14 +521,12 @@ export default function EventMap() {
         </div>
       </div>
 
-      {/* Spinner */}
       {loading && (
         <div className="absolute inset-0 z-[999] flex items-center justify-center bg-white">
           <div className="animate-spin w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full" />
         </div>
       )}
 
-      {/* Mapa */}
       <div ref={mapRef} className="flex-1 w-full" style={{ height: '100vh' }} />
     </div>
   )
