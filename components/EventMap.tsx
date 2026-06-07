@@ -43,6 +43,20 @@ const CATEGORY_COLORS: Record<string, string> = {
   Inne:        '#6B7280',
 }
 const DEFAULT_COLOR = '#22C55E'
+const CATEGORY_LABELS: Record<string, string> = {
+  culture:    'Kultura',
+  music:      'Muzyka',
+  food:       'Jedzenie',
+  sport:      'Sport',
+  family:     'Rodzinne',
+  technology: 'Technologia',
+  other:      'Inne',
+}
+
+function getCategoryLabel(cat: string | null): string {
+  if (!cat) return 'Inne'
+  return CATEGORY_LABELS[cat.toLowerCase()] ?? cat
+}
 
 function getCategoryColor(cat: string | null) {
   return cat ? (CATEGORY_COLORS[cat] ?? DEFAULT_COLOR) : DEFAULT_COLOR
@@ -259,7 +273,7 @@ export default function EventMap() {
         const marker = L.marker([ev.latitude, ev.longitude], { icon })
         marker.bindPopup(`
           <div style="min-width:180px;font-family:system-ui,sans-serif">
-            ${ev.category ? `<span style="background:${color};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:8px">${ev.category}</span>` : ''}
+            ${ev.category ? `<span style="background:${color};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:8px">${getCategoryLabel(ev.category)}</span>` : ''}
             <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:#111">${ev.title}</div>
             <div style="font-size:11px;color:#888;margin-bottom:4px">${formatDate(ev.start_date)}</div>
             ${ev.venue_name ? `<div style="font-size:11px;color:#aaa;margin-bottom:8px">${ev.venue_name}</div>` : ''}
@@ -528,7 +542,7 @@ export default function EventMap() {
                 }`}
                 style={active ? { backgroundColor: color, borderColor: color } : {}}>
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                {cat}
+                {getCategoryLabel(cat)}
               </button>
             )
           })}
