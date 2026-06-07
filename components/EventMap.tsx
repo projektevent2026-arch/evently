@@ -7,7 +7,7 @@ import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 
-interface Event {
+interface MapEvent {
   id: string
   title: string
   slug: string
@@ -24,42 +24,31 @@ interface GeoResult {
   label: string
 }
 
+// Kolory pinezek — obsługuje angielskie (baza) i polskie (legacy)
 const CATEGORY_COLORS: Record<string, string> = {
-  // angielskie — faktyczne wartości z bazy
-  culture:    '#DC2626',
-  music:      '#F59E0B',
-  sport:      '#16A34A',
-  food:       '#F97316',
-  family:     '#EC4899',
-  technology: '#0EA5E9',
-  other:      '#6B7280',
-  // polskie — fallback gdyby były po polsku
-  Kultura:     '#DC2626',
-  Muzyka:      '#F59E0B',
-  Sport:       '#16A34A',
-  Jedzenie:    '#F97316',
-  Rodzinne:    '#EC4899',
-  Technologia: '#0EA5E9',
-  Inne:        '#6B7280',
+  culture: '#DC2626', Kultura: '#DC2626',
+  music: '#F59E0B', Muzyka: '#F59E0B',
+  sport: '#16A34A', Sport: '#16A34A',
+  food: '#F97316', Jedzenie: '#F97316',
+  family: '#EC4899', Rodzinne: '#EC4899',
+  technology: '#0EA5E9', Technologia: '#0EA5E9',
+  other: '#6B7280', Inne: '#6B7280',
 }
 const DEFAULT_COLOR = '#22C55E'
-const CATEGORY_LABELS: Record<string, string> = {
-  culture:    'Kultura',
-  music:      'Muzyka',
-  food:       'Jedzenie',
-  sport:      'Sport',
-  family:     'Rodzinne',
-  technology: 'Technologia',
-  other:      'Inne',
-}
 
-function getCategoryLabel(cat: string | null): string {
-  if (!cat) return 'Inne'
-  return CATEGORY_LABELS[cat.toLowerCase()] ?? cat
+// Polskie etykiety dla angielskich kluczy z bazy
+const CATEGORY_LABELS: Record<string, string> = {
+  culture: 'Kultura', music: 'Muzyka', food: 'Jedzenie',
+  sport: 'Sport', family: 'Rodzinne', technology: 'Technologia', other: 'Inne',
 }
 
 function getCategoryColor(cat: string | null) {
   return cat ? (CATEGORY_COLORS[cat] ?? DEFAULT_COLOR) : DEFAULT_COLOR
+}
+
+function getCategoryLabel(cat: string | null) {
+  if (!cat) return 'Inne'
+  return CATEGORY_LABELS[cat.toLowerCase()] ?? cat
 }
 
 function formatDate(d: string) {
@@ -86,7 +75,7 @@ function isOnDate(d: string, target: string) {
   return new Date(d).toDateString() === new Date(target).toDateString()
 }
 
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371
   const dLat = (lat2 - lat1) * Math.PI / 180
   const dLng = (lng2 - lng1) * Math.PI / 180
@@ -95,16 +84,14 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-async function searchNominatim(query: string): Promise<GeoResult[]> {
+async function geocodeNominatim(query: string): Promise<GeoResult[]> {
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=pl&accept-language=pl`
-  const res = await fetch(url, {
-    headers: { 'Accept-Language': 'pl', 'User-Agent': 'Evently/1.0 (evently-silk-omega.vercel.app)' },
-  })
+  const res = await fetch(url, { headers: { 'User-Agent': 'Evently/1.0' } })
   const data = await res.json()
-  return (data as any[]).map(item => ({
+  return (data as any[]).map((item) => ({
     lat: parseFloat(item.lat),
     lng: parseFloat(item.lon),
-    label: item.display_name.split(',').slice(0, 2).join(',').trim(),
+    label: item.display_name.split(',').slice(0, 3).join(',').trim(),
   }))
 }
 
@@ -121,6 +108,7 @@ export default function EventMap() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
+  // URL params
   const urlLat    = parseFloat(searchParams.get('lat')    ?? '')
   const urlLng    = parseFloat(searchParams.get('lng')    ?? '')
   const urlRadius = parseFloat(searchParams.get('radius') ?? '')
@@ -135,22 +123,21 @@ export default function EventMap() {
   const activeCategories = useMemo<Set<string>>(() => {
     const raw = searchParams.get('category')
     if (!raw) return new Set()
-    return new Set(raw.split(',').map(c => c.trim()).filter(Boolean))
+    return new Set(raw.split(',').map((c) => c.trim()).filter(Boolean))
   }, [searchParams])
 
-  // Leaflet refs
+  // Refs
   const mapRef         = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markerGroupRef = useRef<any>(null)
   const userMarkerRef  = useRef<any>(null)
   const locationBoxRef = useRef<HTMLDivElement>(null)
-
-  // Timers
+  const dateInputRef   = useRef<HTMLInputElement>(null)
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const radiusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // State
-  const [events,       setEvents]       = useState<Event[]>([])
+  const [events,       setEvents]       = useState<MapEvent[]>([])
   const [loading,      setLoading]      = useState(true)
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null)
   const [locInput,     setLocInput]     = useState('')
@@ -161,28 +148,27 @@ export default function EventMap() {
     const r = parseFloat(searchParams.get('radius') ?? '25')
     return isNaN(r) ? 25 : r
   })
-  const [gpsLoading,   setGpsLoading]   = useState(false)
-  const [customDate,   setCustomDate]   = useState('')
-  const dateInputRef = useRef<HTMLInputElement>(null)
+  const [gpsLoading, setGpsLoading] = useState(false)
+  const [customDate, setCustomDate]  = useState('')
 
-  // Gdy URL ma lokalizację, pokaż "Moja lokalizacja" w inpucie
+  // Init: jeśli URL ma lokalizację pokaż "Moja lokalizacja"
   useEffect(() => {
     if (hasLocation) setLocInput('Moja lokalizacja')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Click-outside zamyka dropdown wyników
+  // Click-outside zamyka dropdown lokalizacji
   useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
+    function onDown(e: MouseEvent) {
       if (locationBoxRef.current && !locationBoxRef.current.contains(e.target as Node)) {
         setLocResults([])
       }
     }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
   }, [])
 
-  // Fetch eventów + GPS
+  // Fetch eventów
   useEffect(() => {
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -195,59 +181,53 @@ export default function EventMap() {
       .not('longitude', 'is', null)
       .order('start_date', { ascending: true })
       .then(({ data, error }) => {
-        if (!error && data) setEvents(data as Event[])
+        if (!error && data) setEvents(data as MapEvent[])
         setLoading(false)
       })
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        pos => setUserPosition([pos.coords.latitude, pos.coords.longitude]),
+        (pos) => setUserPosition([pos.coords.latitude, pos.coords.longitude]),
         () => {},
       )
     }
   }, [])
 
-  // Init mapy (raz)
+  // Inicjalizacja mapy (raz)
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
-
     async function initMap() {
       const L = (await import('leaflet')).default
       await import('leaflet.markercluster')
-
       const center = urlCenter ?? userPosition ?? ([54.1, 22.93] as [number, number])
       const map = L.map(mapRef.current!, { center, zoom: urlCenter ? 13 : 11, zoomControl: false })
-
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd', maxZoom: 20,
       }).addTo(map)
-
       L.control.zoom({ position: 'bottomright' }).addTo(map)
       mapInstanceRef.current = map
-
       const mcg = (L as any).markerClusterGroup({
         maxClusterRadius: 50,
         iconCreateFunction: (cluster: any) => {
-          const count = cluster.getChildCount()
           return L.divIcon({
-            html: `<div style="width:40px;height:40px;border-radius:50%;background:#22C55E;color:black;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;border:3px solid rgba(255,255,255,0.8);box-shadow:0 2px 12px rgba(34,197,94,0.5);">${count}</div>`,
+            html: `<div style="width:40px;height:40px;border-radius:50%;background:#22C55E;color:black;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;border:3px solid rgba(255,255,255,0.8);box-shadow:0 2px 12px rgba(34,197,94,0.5);">${cluster.getChildCount()}</div>`,
             className: '', iconSize: [40, 40], iconAnchor: [20, 20],
           })
         },
         spiderfyOnMaxZoom: true, showCoverageOnHover: false, zoomToBoundsOnClick: true,
       })
-
       markerGroupRef.current = mcg
       map.addLayer(mcg)
     }
-
     initMap()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Filtrowanie
   const filtered = useMemo(() => {
-    return events.filter(ev => {
+    return events.filter((ev) => {
+      // czas — customDate ma priorytet
       if (customDate) {
         if (!isOnDate(ev.start_date, customDate)) return false
       } else {
@@ -273,7 +253,7 @@ export default function EventMap() {
     if (!mcg) return
     import('leaflet').then(({ default: L }) => {
       mcg.clearLayers()
-      filtered.forEach(ev => {
+      filtered.forEach((ev) => {
         const color = getCategoryColor(ev.category)
         const icon = L.divIcon({
           className: '',
@@ -295,32 +275,32 @@ export default function EventMap() {
     })
   }, [filtered])
 
-  // Marker pozycji
+  // Marker pozycji użytkownika
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!map) return
     import('leaflet').then(({ default: L }) => {
       if (userMarkerRef.current) userMarkerRef.current.remove()
-      const pos = urlCenter ?? userPosition
-      if (!pos) return
+      const lat = !isNaN(urlLat) ? urlLat : userPosition?.[0]
+      const lng = !isNaN(urlLng) ? urlLng : userPosition?.[1]
+      if (lat == null || lng == null) return
       const icon = L.divIcon({
         html: '<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 0 4px rgba(59,130,246,0.3)"></div>',
         className: '', iconSize: [16, 16], iconAnchor: [8, 8],
       })
-      userMarkerRef.current = L.marker(pos, { icon }).addTo(map)
+      userMarkerRef.current = L.marker([lat, lng], { icon }).addTo(map)
     })
-  }, [userPosition, urlCenter])
+  }, [urlLat, urlLng, userPosition])
 
+  // Kategorie dostępne
   const categories = useMemo(() => {
-    return Array.from(new Set(events.map(e => e.category ?? 'Inne'))).sort()
+    return Array.from(new Set(events.map((e) => e.category ?? 'Inne'))).sort()
   }, [events])
 
+  // Helpers
   function updateParams(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString())
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value === null) params.delete(key)
-      else params.set(key, value)
-    })
+    Object.entries(updates).forEach(([k, v]) => { if (v === null) params.delete(k); else params.set(k, v) })
     router.replace(`/mapa?${params.toString()}`, { scroll: false })
   }
 
@@ -328,53 +308,61 @@ export default function EventMap() {
     mapInstanceRef.current?.flyTo([lat, lng], zoom, { duration: 1.2 })
   }
 
-  // Wybierz lokalizację z listy
+  function moveUserMarker(lat: number, lng: number) {
+    const map = mapInstanceRef.current
+    if (!map) return
+    import('leaflet').then(({ default: L }) => {
+      if (userMarkerRef.current) userMarkerRef.current.remove()
+      const icon = L.divIcon({
+        html: '<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 0 4px rgba(59,130,246,0.3)"></div>',
+        className: '', iconSize: [16, 16], iconAnchor: [8, 8],
+      })
+      userMarkerRef.current = L.marker([lat, lng], { icon }).addTo(map)
+    })
+  }
+
   function applyLocation(r: GeoResult) {
     setLocInput(r.label)
     setLocResults([])
     updateParams({ lat: r.lat.toFixed(6), lng: r.lng.toFixed(6) })
     flyTo(r.lat, r.lng)
+    moveUserMarker(r.lat, r.lng)
   }
 
-  // Szukaj lokalizacji (Nominatim)
   async function runGeoSearch() {
     const q = locInput.trim()
     if (!q || q === 'Moja lokalizacja') return
     setLocLoading(true)
     try {
-      const results = await searchNominatim(q)
+      const results = await geocodeNominatim(q)
       setLocResults(results)
       if (results.length === 1) applyLocation(results[0])
-    } catch {
-      setLocResults([])
-    } finally {
-      setLocLoading(false)
-    }
+    } catch { setLocResults([]) }
+    finally { setLocLoading(false) }
   }
 
   function handleLocKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') { e.preventDefault(); runGeoSearch() }
-    if (e.key === 'Escape') { setLocResults([]) }
+    if (e.key === 'Escape') setLocResults([])
   }
 
   function clearLocation() {
-    setLocInput('')
-    setLocResults([])
+    setLocInput(''); setLocResults([])
     updateParams({ lat: null, lng: null, radius: null })
   }
 
-  // GPS
   function handleGPS() {
     if (!navigator.geolocation) return
     setGpsLoading(true)
     navigator.geolocation.getCurrentPosition(
-      pos => {
+      (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords
         setUserPosition([lat, lng])
         setLocInput('Moja lokalizacja')
         setLocResults([])
         updateParams({ lat: lat.toFixed(6), lng: lng.toFixed(6) })
         flyTo(lat, lng)
+        moveUserMarker(lat, lng)
         setGpsLoading(false)
       },
       () => setGpsLoading(false),
@@ -399,91 +387,68 @@ export default function EventMap() {
     updateParams({ time: value === 'wszystkie' ? null : value })
   }
 
+  function handleToggleCategory(cat: string) {
+    const params = new URLSearchParams(searchParams.toString())
+    const raw = params.get('category')
+    const current = new Set(raw ? raw.split(',').map((c) => c.trim()).filter(Boolean) : [])
+    if (current.has(cat)) current.delete(cat); else current.add(cat)
+    if (current.size === 0) params.delete('category'); else params.set('category', Array.from(current).join(','))
+    router.replace(`/mapa?${params.toString()}`, { scroll: false })
+  }
+
   function openCalendar() {
     try { dateInputRef.current?.showPicker() }
     catch { dateInputRef.current?.click() }
   }
 
-  function handleToggleCategory(cat: string) {
-    const params = new URLSearchParams(searchParams.toString())
-    const raw = params.get('category')
-    const current = new Set(raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [])
-    if (current.has(cat)) current.delete(cat)
-    else current.add(cat)
-    if (current.size === 0) params.delete('category')
-    else params.set('category', Array.from(current).join(','))
-    router.replace(`/mapa?${params.toString()}`, { scroll: false })
-  }
-
   return (
     <div className="relative flex flex-col h-screen overflow-hidden">
-
       <div className="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-gray-200 px-3 py-2 space-y-2">
 
         {/* Lokalizacja */}
         <div ref={locationBoxRef} className="relative">
           <div className="flex items-center gap-2">
-            {/* Input + ikona */}
             <div className="relative flex-1">
-              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-                fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
               </svg>
               <input
                 type="text"
                 value={locInput}
-                onChange={e => { setLocInput(e.target.value); setLocResults([]) }}
+                onChange={(e) => { setLocInput(e.target.value); setLocResults([]) }}
                 onKeyDown={handleLocKeyDown}
                 placeholder="Wpisz miasto i naciśnij Enter..."
-                className="w-full pl-8 pr-8 py-1.5 rounded-full text-sm border border-gray-200 bg-white
-                  focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400
-                  transition-colors text-black placeholder:text-gray-400"
+                className="w-full pl-8 pr-8 py-1.5 rounded-full text-sm border border-gray-200 bg-white focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-colors text-black placeholder:text-gray-400"
               />
               <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
                 {locLoading
                   ? <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
-                  : (locInput
+                  : locInput
                     ? <button onClick={clearLocation} className="text-gray-400 hover:text-gray-700 text-xl leading-none">×</button>
-                    : null)
+                    : null
                 }
               </div>
             </div>
-
-            {/* Przycisk Szukaj */}
-            <button
-              onClick={runGeoSearch}
-              disabled={locLoading}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-500 text-white hover:bg-green-600 transition-colors disabled:opacity-50"
-            >
+            <button onClick={runGeoSearch} disabled={locLoading}
+              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-500 text-white hover:bg-green-600 transition-colors disabled:opacity-50">
               Szukaj
             </button>
-
-            {/* GPS */}
-            <button
-              onClick={handleGPS}
-              disabled={gpsLoading}
-              title="Użyj mojej lokalizacji"
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
+            <button onClick={handleGPS} disabled={gpsLoading} title="Moja lokalizacja"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
               {gpsLoading
                 ? <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                : <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-                  </svg>
+                : <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
               }
             </button>
           </div>
 
-          {/* Wyniki geokodowania */}
+          {/* Dropdown wyników */}
           {locResults.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
               {locResults.map((r, i) => (
-                <button
-                  key={i}
-                  onClick={() => applyLocation(r)}
-                  className="w-full text-left px-3 py-2.5 text-sm text-black hover:bg-green-50 border-b border-gray-100 last:border-0 transition-colors"
-                >
+                <button key={i} onClick={() => applyLocation(r)}
+                  className="w-full text-left px-3 py-2.5 text-sm text-black hover:bg-green-50 border-b border-gray-100 last:border-0 transition-colors">
                   {r.label}
                 </button>
               ))}
@@ -495,43 +460,31 @@ export default function EventMap() {
         {hasLocation && (
           <div className="flex items-center gap-2 px-1">
             <span className="text-xs text-gray-500 flex-shrink-0">Promień:</span>
-            <input type="range" min="5" max="100" step="5"
+            <input type="range" min="1" max="100" step="1"
               value={radiusValue}
-              onChange={e => handleRadiusChange(Number(e.target.value))}
+              onChange={(e) => handleRadiusChange(Number(e.target.value))}
               className="flex-1 h-1.5 accent-green-500 cursor-pointer"
             />
-            <span className="text-xs font-semibold text-black w-12 text-right flex-shrink-0">
-              {radiusValue} km
-            </span>
+            <span className="text-xs font-semibold text-black w-12 text-right flex-shrink-0">{radiusValue} km</span>
           </div>
         )}
 
-        {/* Wyszukiwanie po nazwie */}
+        {/* Szukaj po nazwie */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-              fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
-            <input
-              type="text"
-              value={searchInput}
-              onChange={e => handleSearch(e.target.value)}
+            <input type="text" value={searchInput} onChange={(e) => handleSearch(e.target.value)}
               placeholder="Szukaj po nazwie wydarzenia..."
-              className="w-full pl-8 pr-8 py-1.5 rounded-full text-sm border border-gray-200 bg-white
-                focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400
-                transition-colors text-black placeholder:text-gray-400"
+              className="w-full pl-8 pr-8 py-1.5 rounded-full text-sm border border-gray-200 bg-white focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-colors text-black placeholder:text-gray-400"
             />
             {searchInput && (
               <button onClick={() => { setSearchInput(''); updateParams({ q: null }) }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl leading-none">
-                ×
-              </button>
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
             )}
           </div>
-          <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
-            {filtered.length} wydarzeń
-          </span>
+          <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">{filtered.length} wydarzeń</span>
         </div>
 
         {/* Czas + Kalendarz */}
@@ -544,36 +497,23 @@ export default function EventMap() {
               {label}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={openCalendar}
+          <button type="button" onClick={openCalendar}
             className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
-              customDate
-                ? 'bg-green-500 text-white border-transparent'
-                : 'bg-white text-black border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            📅 {customDate
+              customDate ? 'bg-green-500 text-white border-transparent' : 'bg-white text-black border-gray-200 hover:border-gray-300'
+            }`}>
+            {'\u{1F4C5}'} {customDate
               ? new Date(customDate).toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit' })
               : 'Kalendarz'}
           </button>
-          <input
-            ref={dateInputRef}
-            type="date"
-            className="sr-only"
-            tabIndex={-1}
-            value={customDate}
-            onChange={e => {
-              setCustomDate(e.target.value)
-              updateParams({ time: null })
-            }}
+          <input ref={dateInputRef} type="date" className="sr-only" tabIndex={-1} value={customDate}
+            onChange={(e) => { setCustomDate(e.target.value); updateParams({ time: null }) }}
           />
         </div>
 
         {/* Kategorie */}
         <div className="flex gap-2 flex-wrap">
-          {categories.map(cat => {
-            const color = getCategoryColor(cat)
+          {categories.map((cat) => {
+            const color  = getCategoryColor(cat)
             const active = activeCategories.has(cat)
             return (
               <button key={cat} onClick={() => handleToggleCategory(cat)}
