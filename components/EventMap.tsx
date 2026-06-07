@@ -1,20 +1,19 @@
-
 'use client'
- 
+
 import { useEffect, useState, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
- 
+
 delete (L.Icon.Default.prototype as any)._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 })
- 
+
 const CATEGORY_COLORS: Record<string, string> = {
   Kultura: '#8B5CF6',
   Muzyka: '#EF4444',
@@ -24,14 +23,14 @@ const CATEGORY_COLORS: Record<string, string> = {
   Technologia: '#06B6D4',
   Inne: '#6B7280',
 }
- 
+
 const DEFAULT_COLOR = '#22C55E'
- 
+
 function getCategoryColor(category: string | null): string {
   if (!category) return DEFAULT_COLOR
   return CATEGORY_COLORS[category] ?? DEFAULT_COLOR
 }
- 
+
 function createPin(color: string) {
   return L.divIcon({
     className: '',
@@ -41,7 +40,14 @@ function createPin(color: string) {
     popupAnchor: [0, -30],
   })
 }
- 
+
+const userIcon = L.divIcon({
+  html: '<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 0 4px rgba(59,130,246,0.3)"></div>',
+  className: '',
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+})
+
 interface Event {
   id: string
   title: string
@@ -52,7 +58,7 @@ interface Event {
   latitude: number
   longitude: number
 }
- 
+
 function MapBoundsUpdater({ events }: { events: Event[] }) {
   const map = useMap()
   useEffect(() => {
@@ -62,42 +68,33 @@ function MapBoundsUpdater({ events }: { events: Event[] }) {
   }, [events, map])
   return null
 }
- 
+
 type TimeFilter = 'wszystkie' | 'dzis' | 'jutro' | 'weekend'
- 
+
 function isToday(dateStr: string) {
-  const d = new Date(dateStr)
-  const t = new Date()
+  const d = new Date(dateStr), t = new Date()
   return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate()
 }
- 
 function isTomorrow(dateStr: string) {
-  const d = new Date(dateStr)
-  const t = new Date()
+  const d = new Date(dateStr), t = new Date()
   t.setDate(t.getDate() + 1)
   return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate()
 }
- 
 function isThisWeekend(dateStr: string) {
   const day = new Date(dateStr).getDay()
   return day === 0 || day === 6
 }
- 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('pl-PL', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+  return new Date(dateStr).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
 }
- 
+
 export default function EventMap() {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('wszystkie')
   const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set())
-  const [userPos, setUserPos] = useState<[number, number] | null>(null)
- 
+  const [userPosition, setUserPosition] = useState<[number, number] | null>(null)
+
   useEffect(() => {
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -111,22 +108,24 @@ export default function EventMap() {
         .not('longitude', 'is', null)
         .order('start_date', { ascending: true })
       if (!error && data) setEvents(data as Event[])
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
-            () => {}
-          )
-        }
       setLoading(false)
     }
     load()
+
+    // Pobierz lokalizację użytkownika
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserPosition([pos.coords.latitude, pos.coords.longitude]),
+        () => {}
+      )
+    }
   }, [])
- 
+
   const categories = useMemo(() => {
     const set = new Set(events.map((e) => e.category ?? 'Inne'))
     return Array.from(set).sort()
   }, [events])
- 
+
   const filtered = useMemo(() => {
     return events.filter((e) => {
       if (timeFilter === 'dzis' && !isToday(e.start_date)) return false
@@ -136,7 +135,7 @@ export default function EventMap() {
       return true
     })
   }, [events, timeFilter, activeCategories])
- 
+
   function toggleCategory(cat: string) {
     setActiveCategories((prev) => {
       const next = new Set(prev)
@@ -144,7 +143,7 @@ export default function EventMap() {
       return next
     })
   }
- 
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -152,14 +151,14 @@ export default function EventMap() {
       </div>
     )
   }
- 
+
   const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
     { key: 'wszystkie', label: 'Wszystkie' },
-    { key: 'dzis', label: 'Dzis' },
+    { key: 'dzis', label: 'Dziś' },
     { key: 'jutro', label: 'Jutro' },
     { key: 'weekend', label: 'Weekend' },
   ]
- 
+
   return (
     <div className="relative flex flex-col h-screen overflow-hidden">
       <div className="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm shadow-md px-3 py-2">
@@ -178,7 +177,7 @@ export default function EventMap() {
             </button>
           ))}
           <span className="ml-auto text-xs text-gray-400 self-center">
-            {filtered.length} wydarzen
+            {filtered.length} wydarzeń
           </span>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -190,23 +189,18 @@ export default function EventMap() {
                 key={cat}
                 onClick={() => toggleCategory(cat)}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                  active
-                    ? 'text-white border-transparent shadow-sm'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                  active ? 'text-white border-transparent shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                 }`}
                 style={active ? { backgroundColor: color, borderColor: color } : {}}
               >
-                <span
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: color }}
-                />
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
                 {cat}
               </button>
             )
           })}
         </div>
       </div>
- 
+
       <MapContainer
         center={[54.1, 22.93]}
         zoom={11}
@@ -219,17 +213,6 @@ export default function EventMap() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapBoundsUpdater events={filtered} />
-        {userPos && (
-  <Marker
-    position={userPos}
-    icon={L.divIcon({
-      html: '<div style="width:14px;height:14px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 0 4px rgba(59,130,246,0.3)"></div>',
-      className: '',
-      iconSize: [14, 14],
-      iconAnchor: [7, 7],
-    })}
-  />
-)}
         {filtered.map((event) => (
           <Marker
             key={event.id}
@@ -246,17 +229,9 @@ export default function EventMap() {
                     {event.category}
                   </span>
                 )}
-                <p className="font-semibold text-gray-900 text-sm leading-tight mb-1">
-                  {event.title}
-                </p>
-                <p className="text-xs text-gray-500 mb-1">
-                  {formatDate(event.start_date)}
-                </p>
-                {event.venue_name && (
-                  <p className="text-xs text-gray-400 mb-2">
-                    {event.venue_name}
-                  </p>
-                )}
+                <p className="font-semibold text-gray-900 text-sm leading-tight mb-1">{event.title}</p>
+                <p className="text-xs text-gray-500 mb-1">{formatDate(event.start_date)}</p>
+                {event.venue_name && <p className="text-xs text-gray-400 mb-2">{event.venue_name}</p>}
                 <Link
                   href={`/events/${event.slug}`}
                   className="block text-center bg-green-500 hover:bg-green-600 text-white text-xs font-medium py-1.5 px-3 rounded-lg transition-colors"
@@ -267,6 +242,9 @@ export default function EventMap() {
             </Popup>
           </Marker>
         ))}
+        {userPosition && (
+          <Marker position={userPosition} icon={userIcon} />
+        )}
       </MapContainer>
     </div>
   )
