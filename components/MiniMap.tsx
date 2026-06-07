@@ -43,6 +43,10 @@ export default function MiniMap({ center: externalCenter }: MiniMapProps) {
 
   const center = externalCenter ?? DEFAULT_CENTER
 
+  const mapaHref = externalCenter
+    ? `/mapa?lat=${externalCenter[0]}&lng=${externalCenter[1]}`
+    : '/mapa'
+
   useEffect(() => {
     async function fetchEvents() {
       const { createBrowserClient } = await import("@supabase/ssr")
@@ -76,7 +80,7 @@ export default function MiniMap({ center: externalCenter }: MiniMapProps) {
 
   return (
     <div>
-      <a href="/mapa" style={{ display: "block", cursor: "pointer" }}>
+      <a href={mapaHref} style={{ display: "block", cursor: "pointer" }}>
         <MapContainer
           key={`${center[0]}-${center[1]}`}
           center={center}
@@ -87,10 +91,7 @@ export default function MiniMap({ center: externalCenter }: MiniMapProps) {
           dragging={false}
           doubleClickZoom={false}
         >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution=""
-          />
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="" />
           {events.map((ev) => (
             <Marker key={ev.id} position={[ev.latitude, ev.longitude]} icon={icon}>
               <Popup>
@@ -111,7 +112,7 @@ export default function MiniMap({ center: externalCenter }: MiniMapProps) {
       </a>
       <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 6, textAlign: "center" }}>
         {events.length} wydarzeń na mapie ·{" "}
-        <a href="/mapa" style={{ color: "#16a34a", fontWeight: 600 }}>
+        <a href={mapaHref} style={{ color: "#16a34a", fontWeight: 600 }}>
           otwórz mapę
         </a>
       </p>

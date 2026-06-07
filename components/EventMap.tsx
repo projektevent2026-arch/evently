@@ -1,8 +1,8 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
 import { useEffect, useState, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { useSearchParams } from 'next/navigation'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { createBrowserClient } from '@supabase/ssr'
@@ -16,15 +16,9 @@ L.Icon.Default.mergeOptions({
 })
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Kultura: '#8B5CF6',
-  Muzyka: '#EF4444',
-  Sport: '#3B82F6',
-  Jedzenie: '#F97316',
-  Rodzinne: '#EC4899',
-  Technologia: '#06B6D4',
-  Inne: '#6B7280',
+  Kultura: '#8B5CF6', Muzyka: '#EF4444', Sport: '#3B82F6',
+  Jedzenie: '#F97316', Rodzinne: '#EC4899', Technologia: '#06B6D4', Inne: '#6B7280',
 }
-
 const DEFAULT_COLOR = '#22C55E'
 
 function getCategoryColor(category: string | null): string {
@@ -72,28 +66,25 @@ function MapBoundsUpdater({ events }: { events: Event[] }) {
 
 type TimeFilter = 'wszystkie' | 'dzis' | 'jutro' | 'weekend'
 
-function isToday(dateStr: string) {
-  const d = new Date(dateStr), t = new Date()
-  return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate()
+function isToday(d: string) {
+  const a = new Date(d), b = new Date()
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }
-function isTomorrow(dateStr: string) {
-  const d = new Date(dateStr), t = new Date()
-  t.setDate(t.getDate() + 1)
-  return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate()
+function isTomorrow(d: string) {
+  const a = new Date(d), b = new Date(); b.setDate(b.getDate() + 1)
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }
-function isThisWeekend(dateStr: string) {
-  const day = new Date(dateStr).getDay()
-  return day === 0 || day === 6
-}
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
+function isThisWeekend(d: string) { const day = new Date(d).getDay(); return day === 0 || day === 6 }
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export default function EventMap() {
   const searchParams = useSearchParams()
-const urlLat = parseFloat(searchParams.get('lat') || '')
-const urlLng = parseFloat(searchParams.get('lng') || '')
-const urlCenter: [number, number] | null = (!isNaN(urlLat) && !isNaN(urlLng)) ? [urlLat, urlLng] : null
+  const urlLat = parseFloat(searchParams.get('lat') || '')
+  const urlLng = parseFloat(searchParams.get('lng') || '')
+  const urlCenter: [number, number] | null = (!isNaN(urlLat) && !isNaN(urlLng)) ? [urlLat, urlLng] : null
+
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('wszystkie')
@@ -117,7 +108,6 @@ const urlCenter: [number, number] | null = (!isNaN(urlLat) && !isNaN(urlLng)) ? 
     }
     load()
 
-    // Pobierz lokalizację użytkownika
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setUserPosition([pos.coords.latitude, pos.coords.longitude]),
@@ -164,6 +154,8 @@ const urlCenter: [number, number] | null = (!isNaN(urlLat) && !isNaN(urlLng)) ? 
     { key: 'weekend', label: 'Weekend' },
   ]
 
+  const mapCenter = urlCenter ?? userPosition ?? [54.1, 22.93] as [number, number]
+
   return (
     <div className="relative flex flex-col h-screen overflow-hidden">
       <div className="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm shadow-md px-3 py-2">
@@ -173,17 +165,13 @@ const urlCenter: [number, number] | null = (!isNaN(urlLat) && !isNaN(urlLng)) ? 
               key={key}
               onClick={() => setTimeFilter(key)}
               className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                timeFilter === key
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                timeFilter === key ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
               {label}
             </button>
           ))}
-          <span className="ml-auto text-xs text-gray-400 self-center">
-            {filtered.length} wydarzeń
-          </span>
+          <span className="ml-auto text-xs text-gray-400 self-center">{filtered.length} wydarzeń</span>
         </div>
         <div className="flex gap-2 flex-wrap">
           {categories.map((cat) => {
@@ -207,8 +195,8 @@ const urlCenter: [number, number] | null = (!isNaN(urlLat) && !isNaN(urlLng)) ? 
       </div>
 
       <MapContainer
-center={urlCenter ?? [54.1, 22.93]}
-        zoom={11}
+        center={mapCenter}
+        zoom={urlCenter ? 13 : 11}
         className="flex-1 w-full"
         style={{ height: '100vh', zIndex: 1 }}
         zoomControl={false}
@@ -227,32 +215,25 @@ center={urlCenter ?? [54.1, 22.93]}
             <Popup minWidth={200}>
               <div className="p-1">
                 {event.category && (
-                  <span
-                    className="inline-block text-white text-xs px-2 py-0.5 rounded-full mb-2"
-                    style={{ backgroundColor: getCategoryColor(event.category) }}
-                  >
+                  <span className="inline-block text-white text-xs px-2 py-0.5 rounded-full mb-2"
+                    style={{ backgroundColor: getCategoryColor(event.category) }}>
                     {event.category}
                   </span>
                 )}
                 <p className="font-semibold text-gray-900 text-sm leading-tight mb-1">{event.title}</p>
                 <p className="text-xs text-gray-500 mb-1">{formatDate(event.start_date)}</p>
                 {event.venue_name && <p className="text-xs text-gray-400 mb-2">{event.venue_name}</p>}
-                <Link
-                  href={`/events/${event.slug}`}
-                  className="block text-center bg-green-500 hover:bg-green-600 text-white text-xs font-medium py-1.5 px-3 rounded-lg transition-colors"
-                >
+                <Link href={`/events/${event.slug}`}
+                  className="block text-center bg-green-500 hover:bg-green-600 text-white text-xs font-medium py-1.5 px-3 rounded-lg transition-colors">
                   Zobacz wydarzenie
                 </Link>
               </div>
             </Popup>
           </Marker>
         ))}
-        {userPosition && (
-          <Marker position={userPosition} icon={userIcon} />
+        {(urlCenter ?? userPosition) && (
+          <Marker position={(urlCenter ?? userPosition)!} icon={userIcon} />
         )}
-        {urlCenter && !userPosition && (
-  <Marker position={urlCenter} icon={userIcon} />
-)}
       </MapContainer>
     </div>
   )
