@@ -25,7 +25,7 @@ const emptyForm = {
   city:"", address:"", venue_name:"",
   category:"culture", cover_image_url:"", ticket_url:"", website_url:"",
   organizer_name:"", price_from:"0", is_free:true,
-  latitude:"", longitude:"", status:"published",schedule: [] as {time:string; title:string; description?:string}[],
+  latitude:"", longitude:"", status:"published", schedule: [] as any[],
 }
 
 export default function AdminPage() {
@@ -97,7 +97,7 @@ export default function AdminPage() {
       price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
       latitude: form.latitude ? parseFloat(form.latitude) : null,
       longitude: form.longitude ? parseFloat(form.longitude) : null,
-      status: form.status,schedule: form.schedule,
+      status: form.status, schedule: form.schedule,
     }).eq("id", editingId)
     : await supabase.from("events").insert([{
         title: form.title, slug: form.slug,
@@ -115,11 +115,12 @@ export default function AdminPage() {
         price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
         latitude: form.latitude ? parseFloat(form.latitude) : null,
         longitude: form.longitude ? parseFloat(form.longitude) : null,
-        status: form.status,schedule: form.schedule,
+        status: form.status, schedule: form.schedule,
       }])
     if (error) { setStatusMsg("Blad: " + error.message) }
     else { setStatusMsg(editingId ? "Zapisano!" : "Dodano!"); setForm(emptyForm); setShowForm(false); setEditingId(null); fetchEvents() }
   }
+
   const handleEdit = (event: any) => {
     window.location.href = `/admin/wydarzenia?id=${event.id}`
   }
@@ -127,9 +128,8 @@ export default function AdminPage() {
     await supabase.from("events").update({ status: "published" }).eq("id", id)
     fetchEvents()
   }
-  
   const handleReject = async (id: string) => {
-    if (!confirm("Odrzucić i usunąć to zgłoszenie?")) return
+    if (!confirm("Odrzucic i usunac to zgloszenie?")) return
     await supabase.from("events").delete().eq("id", id)
     fetchEvents()
   }
@@ -140,13 +140,13 @@ export default function AdminPage() {
   }
 
   const filtered = filterStatus === "all" ? events : events.filter(e => e.status === filterStatus)
-const counts = {
-  all: events.length,
-  pending: events.filter(e => e.status === "pending").length,
-  published: events.filter(e => e.status === "published").length,
-  draft: events.filter(e => e.status === "draft").length,
-  archived: events.filter(e => e.status === "archived").length,
-}
+  const counts = {
+    all: events.length,
+    pending: events.filter(e => e.status === "pending").length,
+    published: events.filter(e => e.status === "published").length,
+    draft: events.filter(e => e.status === "draft").length,
+    archived: events.filter(e => e.status === "archived").length,
+  }
 
   const openForm = () => { setForm(emptyForm); setActiveTab("basic"); setStatusMsg(""); setShowForm(true); setMobileShowList(false) }
   const closeForm = () => { setShowForm(false); setEditingId(null) }
@@ -154,7 +154,6 @@ const counts = {
   return (
     <div style={{display:"flex", minHeight:"100vh", fontFamily:"sans-serif", background:"#f9fafb"}}>
 
-      {/* Sidebar - hidden on mobile */}
       <aside style={{width:220, background:"white", borderRight:"1px solid #e5e7eb", padding:"1.5rem 1rem", flexDirection:"column", gap:"0.5rem", display:"flex"}} className="admin-sidebar">
         <div style={{display:"flex", alignItems:"center", gap:8, marginBottom:"1.5rem"}}>
           <div style={{width:32, height:32, borderRadius:8, background:"#16a34a", display:"flex", alignItems:"center", justifyContent:"center"}}>
@@ -167,37 +166,32 @@ const counts = {
         <a href="/admin/wydarzenia" style={navItem(false)}>Dodaj wydarzenie</a>
       </aside>
 
-      {/* Main content */}
       <main style={{flex:1, padding:"1.5rem", minWidth:0}}>
-
-        {/* Header */}
         <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.5rem"}}>
           <div>
             <h1 style={{fontSize:"1.4rem", fontWeight:700, margin:0}}>Wydarzenia</h1>
             <p style={{color:"#6b7280", fontSize:"0.85rem", margin:"4px 0 0"}}>Zarzadzaj wszystkimi wydarzeniami</p>
           </div>
           <a href="/admin/wydarzenia" style={{display:"flex",alignItems:"center",gap:6,background:"#16a34a",color:"white",borderRadius:8,padding:"0.6rem 1rem",fontWeight:600,fontSize:"0.875rem",textDecoration:"none"}}>
-  <Plus size={16} /> Dodaj wydarzenie
-</a>
+            <Plus size={16} /> Dodaj wydarzenie
+          </a>
         </div>
 
-        {/* Status tabs */}
         <div style={{display:"flex", gap:"1rem", marginBottom:"1rem", borderBottom:"1px solid #e5e7eb", paddingBottom:"0.75rem", overflowX:"auto"}}>
-        {(["all","pending","published","draft","archived"] as const).map(val => (
-  <button key={val} onClick={() => setFilterStatus(val)} style={{
-    background:"none", border:"none", cursor:"pointer", fontSize:"0.875rem", whiteSpace:"nowrap",
-    fontWeight: filterStatus === val ? 600 : 400,
-    color: filterStatus === val ? "#16a34a" : "#6b7280",
-    borderBottom: filterStatus === val ? "2px solid #16a34a" : "2px solid transparent",
-    paddingBottom:"0.5rem",
-  }}>
-    {val === "all" ? "Wszystkie" : val === "pending" ? "⏳ Oczekujące" : val === "published" ? "Opublikowane" : val === "draft" ? "Szkice" : "Archiwum"}
-    {" "}<span style={{fontSize:"0.75rem", color:"#9ca3af"}}>{counts[val]}</span>
-  </button>
-))}
+          {(["all","pending","published","draft","archived"] as const).map(val => (
+            <button key={val} onClick={() => setFilterStatus(val)} style={{
+              background:"none", border:"none", cursor:"pointer", fontSize:"0.875rem", whiteSpace:"nowrap",
+              fontWeight: filterStatus === val ? 600 : 400,
+              color: filterStatus === val ? "#16a34a" : "#6b7280",
+              borderBottom: filterStatus === val ? "2px solid #16a34a" : "2px solid transparent",
+              paddingBottom:"0.5rem",
+            }}>
+              {val === "all" ? "Wszystkie" : val === "pending" ? "Oczekujace" : val === "published" ? "Opublikowane" : val === "draft" ? "Szkice" : "Archiwum"}
+              {" "}<span style={{fontSize:"0.75rem", color:"#9ca3af"}}>{counts[val]}</span>
+            </button>
+          ))}
         </div>
 
-        {/* Events table */}
         <div style={{background:"white", borderRadius:12, border:"1px solid #e5e7eb", overflow:"hidden"}}>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%", borderCollapse:"collapse", minWidth:500}}>
@@ -237,29 +231,25 @@ const counts = {
                       </span>
                     </td>
                     <td style={td}>
-                    <div style={{display:"flex", gap:8, alignItems:"center"}}>
-  {event.status === "pending" && <>
-    <button
-      onClick={() => handleApprove(event.id)}
-      style={{background:"#16a34a",color:"white",border:"none",borderRadius:6,padding:"4px 10px",fontSize:"0.75rem",fontWeight:600,cursor:"pointer"}}
-    >
-      ✓ Zatwierdź
-    </button>
-    <button
-      onClick={() => handleReject(event.id)}
-      style={{background:"#fef2f2",color:"#ef4444",border:"1px solid #fecaca",borderRadius:6,padding:"4px 10px",fontSize:"0.75rem",fontWeight:600,cursor:"pointer"}}
-    >
-      ✕ Odrzuć
-    </button>
-  </>}
-  <button onClick={() => handleEdit(event)} style={{background:"none",border:"none",color:"#6b7280",cursor:"pointer"}}>
-    <Edit size={16} />
-  </button>
-  <button onClick={() => handleDelete(event.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer"}}>
-    <Trash2 size={16} />
-  </button>
-</div>
-</td>
+                      <div style={{display:"flex", gap:8, alignItems:"center"}}>
+                        {event.status === "pending" && <>
+                          <button onClick={() => handleApprove(event.id)}
+                            style={{background:"#16a34a",color:"white",border:"none",borderRadius:6,padding:"4px 10px",fontSize:"0.75rem",fontWeight:600,cursor:"pointer"}}>
+                            Zatwierdz
+                          </button>
+                          <button onClick={() => handleReject(event.id)}
+                            style={{background:"#fef2f2",color:"#ef4444",border:"1px solid #fecaca",borderRadius:6,padding:"4px 10px",fontSize:"0.75rem",fontWeight:600,cursor:"pointer"}}>
+                            Odrzuc
+                          </button>
+                        </>}
+                        <button onClick={() => handleEdit(event)} style={{background:"none",border:"none",color:"#6b7280",cursor:"pointer"}}>
+                          <Edit size={16} />
+                        </button>
+                        <button onClick={() => handleDelete(event.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer"}}>
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
@@ -271,68 +261,65 @@ const counts = {
         </div>
       </main>
 
-      {/* Form panel - slide in from right */}
       {showForm && (
         <div style={{position:"fixed", inset:0, zIndex:50, display:"flex", justifyContent:"flex-end"}}>
           <div onClick={closeForm} style={{position:"absolute", inset:0, background:"rgba(0,0,0,0.3)"}} />
-          <div style={{position:"relative", width:"100%", maxWidth:480, background:"white", boxShadow:"-4px 0 24px rgba(0,0,0,0.1)", display:"flex", flexDirection:"column", height:"100%", overflowY:"auto", animation:"slideIn 0.25s ease-out"}}>
+          <div style={{position:"relative", width:"100%", maxWidth:480, background:"white", boxShadow:"-4px 0 24px rgba(0,0,0,0.1)", display:"flex", flexDirection:"column", height:"100%", overflowY:"auto"}}>
 
-            {/* Form header */}
             <div style={{padding:"1.25rem 1.5rem", borderBottom:"1px solid #e5e7eb", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, background:"white", zIndex:1}}>
               <h2 style={{margin:0, fontSize:"1.1rem", fontWeight:700}}>Dodaj wydarzenie</h2>
               <button onClick={closeForm} style={{background:"none", border:"none", cursor:"pointer", color:"#6b7280", padding:4}}>
                 <X size={20} />
               </button>
             </div>
-            <div style={{padding:"0 1.5rem 0.75rem"}}>
-  <PosterScanner
-    onScanComplete={async (data) => {
-      setForm(prev => ({
-        ...prev,
-        slug: (data.title || '').toLowerCase()
-  .replace(/ą/g,"a").replace(/ę/g,"e").replace(/ó/g,"o")
-  .replace(/ś/g,"s").replace(/ł/g,"l").replace(/ż/g,"z")
-  .replace(/ź/g,"z").replace(/ć/g,"c").replace(/ń/g,"n")
-  .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,""),
-        title: data.title || prev.title,
-        city: data.city || prev.city,
-        address: data.address || prev.address,
-        venue_name: data.venue_name || prev.venue_name,
-        start_date: data.start_date || prev.start_date,
-        start_time: data.start_time || prev.start_time,
-        end_date: data.end_date || prev.end_date,
-        end_time: data.end_time || prev.end_time,
-        description: data.description || prev.description,
-        organizer_name: data.organizer_name || prev.organizer_name,
-        category: data.category || prev.category,
-        is_free: data.is_free ?? prev.is_free,
-        price_from: data.price_from?.toString() || prev.price_from,
-        schedule: data.schedule?.length
-        ? (() => {
-            const days: Record<number, any[]> = {}
-            data.schedule.forEach((item: any) => {
-              const d = item.day || 1
-              if (!days[d]) days[d] = []
-              days[d].push({ time: item.time, title: item.title, description: item.description })
-            })
-            return Object.entries(days).map(([d, items]) => ({
-              day: Number(d),
-              label: `Dzień ${d}`,
-              items
-            }))
-          })()
-        : prev.schedule,
-      }))
-    
-      // Auto-geocoding po skanowaniu
-      const cleanAddress = (data.address || '').replace(/ul\.\s*/gi, '').replace(/al\.\s*/gi, '').replace(/os\.\s*/gi, '').trim()
-      await handleGeocode(cleanAddress, data.city)
-      setActiveTab("location")
-    }}
-  />
-</div>
 
-            {/* Tabs */}
+            <div style={{padding:"0 1.5rem 0.75rem"}}>
+              <PosterScanner
+                onScanComplete={async (data) => {
+                  const d = data as any
+                  setForm(prev => ({
+                    ...prev,
+                    slug: (d.title || '').toLowerCase()
+                      .replace(/ą/g,"a").replace(/ę/g,"e").replace(/ó/g,"o")
+                      .replace(/ś/g,"s").replace(/ł/g,"l").replace(/ż/g,"z")
+                      .replace(/ź/g,"z").replace(/ć/g,"c").replace(/ń/g,"n")
+                      .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,""),
+                    title: d.title || prev.title,
+                    city: d.city || prev.city,
+                    address: d.address || prev.address,
+                    venue_name: d.venue_name || prev.venue_name,
+                    start_date: d.start_date || prev.start_date,
+                    start_time: d.start_time || prev.start_time,
+                    end_date: d.end_date || prev.end_date,
+                    end_time: d.end_time || prev.end_time,
+                    description: d.description || prev.description,
+                    organizer_name: d.organizer_name || prev.organizer_name,
+                    category: d.category || prev.category,
+                    is_free: d.is_free ?? prev.is_free,
+                    price_from: d.price_from?.toString() || prev.price_from,
+                    schedule: d.schedule?.length
+                      ? (() => {
+                          const days: Record<number, any[]> = {}
+                          d.schedule.forEach((item: any) => {
+                            const day = item.day || 1
+                            if (!days[day]) days[day] = []
+                            days[day].push({ time: item.time, title: item.title, description: item.description })
+                          })
+                          return Object.entries(days).map(([day, items]) => ({
+                            day: Number(day),
+                            label: `Dzien ${day}`,
+                            items
+                          }))
+                        })()
+                      : prev.schedule,
+                  }))
+                  const cleanAddress = (d.address || '').replace(/ul\.\s*/gi, '').replace(/al\.\s*/gi, '').replace(/os\.\s*/gi, '').trim()
+                  await handleGeocode(cleanAddress, d.city)
+                  setActiveTab("location")
+                }}
+              />
+            </div>
+
             <div style={{display:"flex", borderBottom:"1px solid #e5e7eb", padding:"0 1.5rem"}}>
               {[["basic","Podstawowe informacje"], ["location","Lokalizacja"], ["media","Zdjecia i grafiki"]].map(([tab, label]) => (
                 <button key={tab} onClick={() => setActiveTab(tab)} style={{
@@ -346,7 +333,6 @@ const counts = {
               ))}
             </div>
 
-            {/* Form body */}
             <form onSubmit={handleSubmit} style={{padding:"1.5rem", display:"flex", flexDirection:"column", gap:"1rem", flex:1}}>
 
               {activeTab === "basic" && <>
@@ -355,7 +341,6 @@ const counts = {
                   <input name="title" placeholder="Wpisz nazwe wydarzenia" value={form.title} onChange={handleChange} required style={inp} maxLength={100} />
                   <div style={counter}>{form.title.length}/100</div>
                 </div>
-
                 <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem"}}>
                   <div>
                     <label style={lbl}>Kategoria *</label>
@@ -371,7 +356,6 @@ const counts = {
                     </select>
                   </div>
                 </div>
-
                 <div>
                   <label style={lbl}>Data i godzina</label>
                   <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.5rem", marginBottom:"0.5rem"}}>
@@ -395,24 +379,20 @@ const counts = {
                     </div>
                   </div>
                 </div>
-
                 <div>
                   <label style={lbl}>Krotki opis *</label>
                   <textarea name="short_description" placeholder="Napisz krotki opis wydarzenia..." value={form.short_description} onChange={handleChange} style={{...inp, height:80, resize:"vertical"}} maxLength={200} />
                   <div style={counter}>{form.short_description.length}/200</div>
                 </div>
-
                 <div>
                   <label style={lbl}>Pelny opis</label>
                   <textarea name="description" placeholder="Opisz szczegoly wydarzenia..." value={form.description} onChange={handleChange} style={{...inp, height:120, resize:"vertical"}} maxLength={2000} />
                   <div style={counter}>{form.description.length}/2000</div>
                 </div>
-
                 <div>
                   <label style={lbl}>Organizator</label>
                   <input name="organizer_name" placeholder="Nazwa organizatora" value={form.organizer_name} onChange={handleChange} style={inp} />
                 </div>
-
                 <label style={{display:"flex", alignItems:"center", gap:8, fontSize:"0.9rem", cursor:"pointer"}}>
                   <input name="is_free" type="checkbox" checked={form.is_free} onChange={handleChange} />
                   Wstep wolny
@@ -422,13 +402,14 @@ const counts = {
                     <label style={lbl}>Cena od (PLN)</label>
                     <input name="price_from" type="number" min="0" step="0.01" value={form.price_from} onChange={handleChange} style={inp} />
                   </div>
-                )}<div>
-                <label style={lbl}>Harmonogram imprezy</label>
-                <ScheduleEditor
-                  value={form.schedule}
-                  onChange={(items) => setForm(prev => ({ ...prev, schedule: items }))}
-                />
-              </div>
+                )}
+                <div>
+                  <label style={lbl}>Harmonogram imprezy</label>
+                  <ScheduleEditor
+                    value={form.schedule}
+                    onChange={(items: any) => setForm(prev => ({ ...prev, schedule: items }))}
+                  />
+                </div>
               </>}
 
               {activeTab === "location" && <>
@@ -460,45 +441,41 @@ const counts = {
                   </div>
                 </div>
                 <LocationPicker
-  latitude={form.latitude}
-  longitude={form.longitude}
-  onChange={(lat, lng) => setForm(prev => ({ ...prev, latitude: lat, longitude: lng }))}
-/>
-               
+                  latitude={form.latitude}
+                  longitude={form.longitude}
+                  onChange={(lat, lng) => setForm(prev => ({ ...prev, latitude: lat, longitude: lng }))}
+                />
               </>}
 
               {activeTab === "media" && <>
-  <div>
-    <label style={lbl}>Zdjęcie okładki</label>
-    <ImageUpload
-      currentUrl={form.cover_image_url}
-      onUploadComplete={(url) =>
-        setForm(prev => ({ ...prev, cover_image_url: url }))
-      }
-    />
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0' }}>
-      <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>lub wklej URL</span>
-      <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-    </div>
-    <input name="cover_image_url" placeholder="https://..." value={form.cover_image_url} onChange={handleChange} style={inp} />
-  </div>
-  {form.cover_image_url && (
-    <img src={form.cover_image_url} alt="preview" style={{width:"100%", height:180, objectFit:"cover", borderRadius:8}} />
-  )}
-  <div>
-    <label style={lbl}>Link do biletów</label>
-    <input name="ticket_url" placeholder="https://..." value={form.ticket_url} onChange={handleChange} style={inp} />
-  </div>
-  <div>
-    <label style={lbl}>Strona www</label>
-    <input name="website_url" placeholder="https://..." value={form.website_url} onChange={handleChange} style={inp} />
-  </div>
-</>}
+                <div>
+                  <label style={lbl}>Zdjecie okładki</label>
+                  <ImageUpload
+                    currentUrl={form.cover_image_url}
+                    onUploadComplete={(url) => setForm(prev => ({ ...prev, cover_image_url: url }))}
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0' }}>
+                    <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+                    <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>lub wklej URL</span>
+                    <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+                  </div>
+                  <input name="cover_image_url" placeholder="https://..." value={form.cover_image_url} onChange={handleChange} style={inp} />
+                </div>
+                {form.cover_image_url && (
+                  <img src={form.cover_image_url} alt="preview" style={{width:"100%", height:180, objectFit:"cover", borderRadius:8}} />
+                )}
+                <div>
+                  <label style={lbl}>Link do biletow</label>
+                  <input name="ticket_url" placeholder="https://..." value={form.ticket_url} onChange={handleChange} style={inp} />
+                </div>
+                <div>
+                  <label style={lbl}>Strona www</label>
+                  <input name="website_url" placeholder="https://..." value={form.website_url} onChange={handleChange} style={inp} />
+                </div>
+              </>}
 
               {statusMsg && <p style={{color: statusMsg.includes("lad") ? "#ef4444" : "#16a34a", fontSize:"0.875rem", margin:0}}>{statusMsg}</p>}
 
-              {/* Footer buttons */}
               <div style={{display:"flex", gap:"0.75rem", marginTop:"auto", paddingTop:"1rem", borderTop:"1px solid #e5e7eb"}}>
                 <button type="button" onClick={closeForm} style={{flex:1, padding:"0.7rem", border:"1px solid #e5e7eb", borderRadius:8, background:"white", cursor:"pointer", fontSize:"0.9rem"}}>
                   Zapisz szkic
