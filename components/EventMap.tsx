@@ -33,6 +33,15 @@ const CATEGORY_COLORS: Record<string, string> = {
   technology: '#0EA5E9', Technologia: '#0EA5E9',
   other: '#6B7280', Inne: '#6B7280',
 }
+const CATEGORY_LABELS: Record<string, string> = {
+  culture: 'Kultura', music: 'Muzyka', food: 'Jedzenie',
+  sport: 'Sport', family: 'Rodzinne', technology: 'Technologia', other: 'Inne',
+}
+
+function getCategoryLabel(cat: string | null): string {
+  if (!cat) return 'Inne'
+  return CATEGORY_LABELS[cat.toLowerCase()] ?? cat
+}
 const DEFAULT_COLOR = '#22C55E'
 
 function getCategoryColor(cat: string | null) {
@@ -85,7 +94,7 @@ type TimeFilter = 'wszystkie' | 'dzis' | 'jutro' | 'weekend'
 
 const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
   { key: 'wszystkie', label: 'Wszystkie' },
-  { key: 'dzis', label: 'Dziś' },
+  { key: 'dzis', label: 'Dzis' },
   { key: 'jutro', label: 'Jutro' },
   { key: 'weekend', label: 'Weekend' },
 ]
@@ -111,18 +120,14 @@ export default function EventMap() {
     return new Set(raw.split(',').map(c => c.trim()).filter(Boolean))
   }, [searchParams])
 
-  // Leaflet refs
   const mapRef         = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markerGroupRef = useRef<any>(null)
   const userMarkerRef  = useRef<any>(null)
   const locationBoxRef = useRef<HTMLDivElement>(null)
-
-  // Timers
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const radiusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // State
   const [events,       setEvents]       = useState<Event[]>([])
   const [loading,      setLoading]      = useState(true)
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null)
@@ -136,13 +141,11 @@ export default function EventMap() {
   })
   const [gpsLoading, setGpsLoading] = useState(false)
 
-  // Gdy URL ma lokalizację, pokaż "Moja lokalizacja" w inpucie
   useEffect(() => {
     if (hasLocation) setLocInput('Moja lokalizacja')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Click-outside zamyka dropdown wyników
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
       if (locationBoxRef.current && !locationBoxRef.current.contains(e.target as Node)) {
@@ -153,7 +156,6 @@ export default function EventMap() {
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [])
 
-  // Fetch eventów + GPS
   useEffect(() => {
     supabase
       .from('events')
@@ -174,7 +176,6 @@ export default function EventMap() {
     }
   }, [])
 
-  // Init mapy (raz)
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
 
@@ -212,7 +213,6 @@ export default function EventMap() {
     initMap()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Filtrowanie
   const filtered = useMemo(() => {
     return events.filter(ev => {
       if (urlTime === 'dzis'    && !isToday(ev.start_date))       return false
@@ -230,7 +230,6 @@ export default function EventMap() {
     })
   }, [events, urlTime, activeCategories, urlQ, urlRadius, urlLat, urlLng, hasLocation])
 
-  // Update markerów
   useEffect(() => {
     const mcg = markerGroupRef.current
     if (!mcg) return
@@ -246,7 +245,7 @@ export default function EventMap() {
         const marker = L.marker([ev.latitude, ev.longitude], { icon })
         marker.bindPopup(`
           <div style="min-width:180px;font-family:system-ui,sans-serif">
-            ${ev.category ? `<span style="background:${color};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:8px">${ev.category}</span>` : ''}
+            ${ev.category ? `<span style="background:${color};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:8px">${getCategoryLabel(ev.category)}</span>` : ''}
             <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:#111">${ev.title}</div>
             <div style="font-size:11px;color:#888;margin-bottom:4px">${formatDate(ev.start_date)}</div>
             ${ev.venue_name ? `<div style="font-size:11px;color:#aaa;margin-bottom:8px">${ev.venue_name}</div>` : ''}
@@ -258,7 +257,6 @@ export default function EventMap() {
     })
   }, [filtered])
 
-  // Marker pozycji
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!map) return
@@ -304,7 +302,6 @@ export default function EventMap() {
     })
   }
 
-  // Wybierz lokalizację z listy
   function applyLocation(r: GeoResult) {
     setLocInput(r.label)
     setLocResults([])
@@ -313,7 +310,6 @@ export default function EventMap() {
     moveUserMarker(r.lat, r.lng)
   }
 
-  // Szukaj lokalizacji (Nominatim)
   async function runGeoSearch() {
     const q = locInput.trim()
     if (!q || q === 'Moja lokalizacja') return
@@ -340,7 +336,6 @@ export default function EventMap() {
     updateParams({ lat: null, lng: null, radius: null })
   }
 
-  // GPS
   function handleGPS() {
     if (!navigator.geolocation) return
     setGpsLoading(true)
@@ -389,13 +384,11 @@ export default function EventMap() {
 
   return (
     <div className="relative flex flex-col h-screen overflow-hidden">
-
       <div className="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-gray-200 px-3 py-2 space-y-2">
 
         {/* Lokalizacja */}
         <div ref={locationBoxRef} className="relative">
           <div className="flex items-center gap-2">
-            {/* Input + ikona */}
             <div className="relative flex-1">
               <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
                 fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -407,7 +400,7 @@ export default function EventMap() {
                 value={locInput}
                 onChange={e => { setLocInput(e.target.value); setLocResults([]) }}
                 onKeyDown={handleLocKeyDown}
-                placeholder="Wpisz miasto i naciśnij Enter..."
+                placeholder="Wpisz miasto i nacisnij Enter..."
                 className="w-full pl-8 pr-8 py-1.5 rounded-full text-sm border border-gray-200 bg-white
                   focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400
                   transition-colors text-black placeholder:text-gray-400"
@@ -416,28 +409,17 @@ export default function EventMap() {
                 {locLoading
                   ? <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
                   : (locInput
-                    ? <button onClick={clearLocation} className="text-gray-400 hover:text-gray-700 text-xl leading-none">×</button>
+                    ? <button onClick={clearLocation} className="text-gray-400 hover:text-gray-700 text-xl leading-none">x</button>
                     : null)
                 }
               </div>
             </div>
-
-            {/* Przycisk Szukaj */}
-            <button
-              onClick={runGeoSearch}
-              disabled={locLoading}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-500 text-white hover:bg-green-600 transition-colors disabled:opacity-50"
-            >
+            <button onClick={runGeoSearch} disabled={locLoading}
+              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-500 text-white hover:bg-green-600 transition-colors disabled:opacity-50">
               Szukaj
             </button>
-
-            {/* GPS */}
-            <button
-              onClick={handleGPS}
-              disabled={gpsLoading}
-              title="Użyj mojej lokalizacji"
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
+            <button onClick={handleGPS} disabled={gpsLoading} title="Uzyj mojej lokalizacji"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
               {gpsLoading
                 ? <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
                 : <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -446,16 +428,11 @@ export default function EventMap() {
               }
             </button>
           </div>
-
-          {/* Wyniki geokodowania */}
           {locResults.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
               {locResults.map((r, i) => (
-                <button
-                  key={i}
-                  onClick={() => applyLocation(r)}
-                  className="w-full text-left px-3 py-2.5 text-sm text-black hover:bg-green-50 border-b border-gray-100 last:border-0 transition-colors"
-                >
+                <button key={i} onClick={() => applyLocation(r)}
+                  className="w-full text-left px-3 py-2.5 text-sm text-black hover:bg-green-50 border-b border-gray-100 last:border-0 transition-colors">
                   {r.label}
                 </button>
               ))}
@@ -463,32 +440,27 @@ export default function EventMap() {
           )}
         </div>
 
-        {/* Promień */}
+        {/* Promien */}
         {hasLocation && (
           <div className="flex items-center gap-2 px-1">
-            <span className="text-xs text-gray-500 flex-shrink-0">Promień:</span>
+            <span className="text-xs text-gray-500 flex-shrink-0">Promien:</span>
             <input type="range" min="5" max="100" step="5"
               value={radiusValue}
               onChange={e => handleRadiusChange(Number(e.target.value))}
               className="flex-1 h-1.5 accent-green-500 cursor-pointer"
             />
-            <span className="text-xs font-semibold text-black w-12 text-right flex-shrink-0">
-              {radiusValue} km
-            </span>
+            <span className="text-xs font-semibold text-black w-12 text-right flex-shrink-0">{radiusValue} km</span>
           </div>
         )}
 
-        {/* Wyszukiwanie po nazwie */}
+        {/* Szukaj po nazwie */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
               fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
-            <input
-              type="text"
-              value={searchInput}
-              onChange={e => handleSearch(e.target.value)}
+            <input type="text" value={searchInput} onChange={e => handleSearch(e.target.value)}
               placeholder="Szukaj po nazwie wydarzenia..."
               className="w-full pl-8 pr-8 py-1.5 rounded-full text-sm border border-gray-200 bg-white
                 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400
@@ -496,14 +468,10 @@ export default function EventMap() {
             />
             {searchInput && (
               <button onClick={() => { setSearchInput(''); updateParams({ q: null }) }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl leading-none">
-                ×
-              </button>
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl leading-none">x</button>
             )}
           </div>
-          <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
-            {filtered.length} wydarzeń
-          </span>
+          <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">{filtered.length} wydarzen</span>
         </div>
 
         {/* Czas */}
@@ -530,7 +498,7 @@ export default function EventMap() {
                 }`}
                 style={active ? { backgroundColor: color, borderColor: color } : {}}>
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                {cat}
+                {getCategoryLabel(cat)}
               </button>
             )
           })}
