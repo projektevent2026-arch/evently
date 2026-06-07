@@ -14,6 +14,13 @@ const icon = L.icon({
   popupAnchor: [0, -32],
 })
 
+const userIcon = L.divIcon({
+  html: '<div style="width:12px;height:12px;border-radius:50%;background:#3b82f6;border:2px solid white;box-shadow:0 0 0 4px rgba(59,130,246,0.3)"></div>',
+  className: '',
+  iconSize: [12, 12],
+  iconAnchor: [6, 6],
+})
+
 interface Event {
   id: string
   slug: string
@@ -28,10 +35,13 @@ interface MiniMapProps {
   center?: [number, number]
 }
 
+const DEFAULT_CENTER: [number, number] = [54.1116, 22.9302]
+
 export default function MiniMap({ center: externalCenter }: MiniMapProps) {
   const [events, setEvents] = useState<Event[]>([])
-  const [center, setCenter] = useState<[number, number]>(externalCenter ?? [54.1116, 22.9302])
   const [loading, setLoading] = useState(true)
+
+  const center = externalCenter ?? DEFAULT_CENTER
 
   useEffect(() => {
     async function fetchEvents() {
@@ -50,33 +60,8 @@ export default function MiniMap({ center: externalCenter }: MiniMapProps) {
       setEvents(data || [])
       setLoading(false)
     }
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          if (!externalCenter) {
-            setCenter([pos.coords.latitude, pos.coords.longitude])
-          }
-        },
-        () => {}
-      )
-    }
-
     fetchEvents()
   }, [])
-
-  useEffect(() => {
-    if (externalCenter) {
-      setCenter(externalCenter)
-    }
-  }, [externalCenter])
-
-  const userIcon = L.divIcon({
-    html: '<div style="width:12px;height:12px;border-radius:50%;background:#3b82f6;border:2px solid white;box-shadow:0 0 0 4px rgba(59,130,246,0.3)"></div>',
-    className: '',
-    iconSize: [12, 12],
-    iconAnchor: [6, 6],
-  })
 
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })
