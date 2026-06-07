@@ -82,6 +82,10 @@ function isThisWeekend(d: string) {
   return day === 0 || day === 6
 }
 
+function isOnDate(d: string, target: string) {
+  return new Date(d).toDateString() === new Date(target).toDateString()
+}
+
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
   const dLat = (lat2 - lat1) * Math.PI / 180
@@ -157,7 +161,9 @@ export default function EventMap() {
     const r = parseFloat(searchParams.get('radius') ?? '25')
     return isNaN(r) ? 25 : r
   })
-  const [gpsLoading, setGpsLoading] = useState(false)
+  const [gpsLoading,   setGpsLoading]   = useState(false)
+  const [customDate,   setCustomDate]   = useState('')
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   // Gdy URL ma lokalizację, pokaż "Moja lokalizacja" w inpucie
   useEffect(() => {
@@ -242,9 +248,13 @@ export default function EventMap() {
   // Filtrowanie
   const filtered = useMemo(() => {
     return events.filter(ev => {
-      if (urlTime === 'dzis'    && !isToday(ev.start_date))       return false
-      if (urlTime === 'jutro'   && !isTomorrow(ev.start_date))    return false
-      if (urlTime === 'weekend' && !isThisWeekend(ev.start_date)) return false
+      if (customDate) {
+        if (!isOnDate(ev.start_date, customDate)) return false
+      } else {
+        if (urlTime === 'dzis'    && !isToday(ev.start_date))       return false
+        if (urlTime === 'jutro'   && !isTomorrow(ev.start_date))    return false
+        if (urlTime === 'weekend' && !isThisWeekend(ev.start_date)) return false
+      }
       if (activeCategories.size > 0 && !activeCategories.has(ev.category ?? 'Inne')) return false
       if (urlQ) {
         const hay = `${ev.title} ${ev.venue_name ?? ''}`.toLowerCase()
@@ -255,7 +265,7 @@ export default function EventMap() {
       }
       return true
     })
-  }, [events, urlTime, activeCategories, urlQ, urlRadius, urlLat, urlLng, hasLocation])
+  }, [events, urlTime, activeCategories, urlQ, urlRadius, urlLat, urlLng, hasLocation, customDate])
 
   // Update markerów
   useEffect(() => {
@@ -385,7 +395,13 @@ export default function EventMap() {
   }
 
   function handleTimeFilter(value: TimeFilter) {
+    setCustomDate('')
     updateParams({ time: value === 'wszystkie' ? null : value })
+  }
+
+  function openCalendar() {
+    try { dateInputRef.current?.showPicker() }
+    catch { dateInputRef.current?.click() }
   }
 
   function handleToggleCategory(cat: string) {
@@ -518,16 +534,40 @@ export default function EventMap() {
           </span>
         </div>
 
-        {/* Czas */}
-        <div className="flex gap-2 flex-wrap">
+        {/* Czas + Kalendarz */}
+        <div className="flex gap-2 flex-wrap items-center">
           {TIME_FILTERS.map(({ key, label }) => (
             <button key={key} onClick={() => handleTimeFilter(key)}
               className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                urlTime === key ? 'bg-green-500 text-white' : 'bg-gray-100 text-black hover:bg-gray-200'
+                !customDate && urlTime === key ? 'bg-green-500 text-white' : 'bg-gray-100 text-black hover:bg-gray-200'
               }`}>
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={openCalendar}
+            className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+              customDate
+                ? 'bg-green-500 text-white border-transparent'
+                : 'bg-white text-black border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            📅 {customDate
+              ? new Date(customDate).toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit' })
+              : 'Kalendarz'}
+          </button>
+          <input
+            ref={dateInputRef}
+            type="date"
+            className="sr-only"
+            tabIndex={-1}
+            value={customDate}
+            onChange={e => {
+              setCustomDate(e.target.value)
+              updateParams({ time: null })
+            }}
+          />
         </div>
 
         {/* Kategorie */}
