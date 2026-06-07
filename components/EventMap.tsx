@@ -104,12 +104,17 @@ export default function EventMap() {
   const searchTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
   const locationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const radiusTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const blurTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ─── State ────────────────────────────────────────────────────────────────
   const [events,          setEvents]          = useState<Event[]>([])
   const [loading,         setLoading]         = useState(true)
   const [userPosition,    setUserPosition]    = useState<[number, number] | null>(null)
-  const [locationInput,   setLocationInput]   = useState('')
+
+  // locationInput: jeśli jest GPS w URL, pokaż "Moja lokalizacja"
+  const [locationInput,   setLocationInput]   = useState(
+    () => (parseFloat(new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('lat') ?? '') ? 'Moja lokalizacja' : '')
+  )
   const [locationResults, setLocationResults] = useState<PhotonResult[]>([])
   const [showLocDropdown, setShowLocDropdown] = useState(false)
   const [searchInput,     setSearchInput]     = useState(() => searchParams.get('q') ?? '')
@@ -267,10 +272,12 @@ export default function EventMap() {
   }, [events])
 
   // ─── Helper: aktualizacja URL ─────────────────────────────────────────────
-  function setParam(key: string, value: string | null) {
+  function updateParams(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString())
-    if (value === null) params.delete(key)
-    else params.set(key, value)
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null) params.delete(key)
+      else params.set(key, value)
+    })
     router.replace(`/mapa?${params.toString()}`, { scroll: false })
   }
 
@@ -299,6 +306,7 @@ export default function EventMap() {
             .join(', '),
         }))
         setLocationResults(results)
+        setShowLocDropdown(true)
       } catch {}
     }, 400)
   }
@@ -307,11 +315,25 @@ export default function EventMap() {
     setLocationInput(result.label)
     setLocationResults([])
     setShowLocDropdown(false)
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('lat', result.lat.toFixed(6))
-    params.set('lng', result.lng.toFixed(6))
-    router.replace(`/mapa?${params.toString()}`, { scroll: false })
+    updateParams({
+      lat: result.lat.toFixed(6),
+      lng: result.lng.toFixed(6),
+    })
     flyTo(result.lat, result.lng)
+  }
+
+  // FIX: onBlur z dłuższym timeoutem (300ms) żeby dropdown zdążył obsłużyć klik
+  function handleLocationBlur() {
+    if (blurTimerRef.current) clearTimeout(blurTimerRef.current)
+    blurTimerRef.current = setTimeout(() => setShowLocDropdown(false), 300)
+  }
+
+  // Wyczyszczenie lokalizacji — usuwa lat, lng, radius z URL + resetuje input
+  function clearLocation() {
+    setLocationInput('')
+    setLocationResults([])
+    setShowLocDropdown(false)
+    updateParams({ lat: null, lng: null, radius: null })
   }
 
   // ─── Handler: GPS ─────────────────────────────────────────────────────────
@@ -324,10 +346,10 @@ export default function EventMap() {
         setUserPosition([lat, lng])
         setLocationInput('Moja lokalizacja')
         setShowLocDropdown(false)
-        const params = new URLSearchParams(searchParams.toString())
-        params.set('lat', lat.toFixed(6))
-        params.set('lng', lng.toFixed(6))
-        router.replace(`/mapa?${params.toString()}`, { scroll: false })
+        updateParams({
+          lat: lat.toFixed(6),
+          lng: lng.toFixed(6),
+        })
         flyTo(lat, lng)
         setGpsLoading(false)
       },
@@ -340,7 +362,7 @@ export default function EventMap() {
   function handleRadiusChange(value: number) {
     setRadiusValue(value)
     if (radiusTimerRef.current) clearTimeout(radiusTimerRef.current)
-    radiusTimerRef.current = setTimeout(() => setParam('radius', String(value)), 300)
+    radiusTimerRef.current = setTimeout(() => updateParams({ radius: String(value) }), 300)
   }
 
   // ─── Handler: Wyszukiwanie tekstu ─────────────────────────────────────────
@@ -348,22 +370,19 @@ export default function EventMap() {
     setSearchInput(value)
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     searchTimerRef.current = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString())
-      if (value.trim()) params.set('q', value.trim())
-      else params.delete('q')
-      router.replace(`/mapa?${params.toString()}`, { scroll: false })
+      updateParams({ q: value.trim() || null })
     }, 400)
   }
 
   function clearSearch() {
     setSearchInput('')
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
-    setParam('q', null)
+    updateParams({ q: null })
   }
 
   // ─── Handler: Czas ────────────────────────────────────────────────────────
   function handleTimeFilter(value: TimeFilter) {
-    setParam('time', value === 'wszystkie' ? null : value)
+    updateParams({ time: value === 'wszystkie' ? null : value })
   }
 
   // ─── Handler: Kategoria ───────────────────────────────────────────────────
@@ -399,19 +418,29 @@ export default function EventMap() {
               value={locationInput}
               onChange={e => handleLocationInput(e.target.value)}
               onFocus={() => locationResults.length > 0 && setShowLocDropdown(true)}
-              onBlur={() => setTimeout(() => setShowLocDropdown(false), 200)}
+              onBlur={handleLocationBlur}
               placeholder="Wpisz miasto lub miejscowość..."
-              className="w-full pl-8 pr-3 py-1.5 rounded-full text-sm border border-gray-200 bg-white
+              className="w-full pl-8 pr-8 py-1.5 rounded-full text-sm border border-gray-200 bg-white
                 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400
                 transition-colors text-black placeholder:text-gray-400"
             />
+            {/* Przycisk wyczyść lokalizację — widoczny gdy jest aktywna */}
+            {(locationInput || hasLocation) && (
+              <button
+                onMouseDown={e => { e.preventDefault(); clearLocation() }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-lg leading-none font-medium"
+                title="Wyczyść lokalizację"
+              >
+                ×
+              </button>
+            )}
             {/* Dropdown Photon */}
             {showLocDropdown && locationResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
                 {locationResults.map((r, i) => (
                   <button
                     key={i}
-                    onMouseDown={() => handleLocationSelect(r)}
+                    onMouseDown={e => { e.preventDefault(); handleLocationSelect(r) }}
                     className="w-full text-left px-3 py-2 text-sm text-black hover:bg-gray-50 border-b border-gray-100 last:border-0"
                   >
                     {r.label}
