@@ -25,8 +25,13 @@ interface GeoResult {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Kultura: '#8B5CF6', Muzyka: '#EF4444', Sport: '#3B82F6',
-  Jedzenie: '#F97316', Rodzinne: '#EC4899', Technologia: '#06B6D4', Inne: '#6B7280',
+  Kultura:     '#DC2626', // czerwony
+  Muzyka:      '#F59E0B', // amber
+  Sport:       '#16A34A', // zielony
+  Jedzenie:    '#F97316', // pomarańczowy
+  Rodzinne:    '#EC4899', // różowy
+  Technologia: '#0EA5E9', // niebieski
+  Inne:        '#6B7280', // szary
 }
 const DEFAULT_COLOR = '#22C55E'
 
@@ -63,20 +68,30 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-async function searchNominatim(query: string): Promise<GeoResult[]> {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=pl&accept-language=pl`
-  const res = await fetch(url, {
-    headers: { 'Accept-Language': 'pl', 'User-Agent': 'Evently/1.0 (evently-silk-omega.vercel.app)' },
-  })
+async function searchPhoton(query: string): Promise<GeoResult[]> {
+  const res = await fetch(
+    `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=10&lang=pl`
+  )
   const data = await res.json()
-  return (data as any[]).map(item => ({
-    lat: parseFloat(item.lat),
-    lng: parseFloat(item.lon),
-    label: item.display_name.split(',').slice(0, 2).join(',').trim(),
-  }))
+  return (data.features ?? [])
+    .filter((f: any) => f.properties?.countrycode === 'PL')
+    .slice(0, 6)
+    .map((f: any) => {
+      const p = f.properties
+      const parts = [p.name, p.city, p.county, p.state]
+        .filter(Boolean)
+        .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
+      return {
+        lat: f.geometry.coordinates[1],
+        lng: f.geometry.coordinates[0],
+        label: parts.slice(0, 3).join(', ') || query,
+      }
+    })
 }
 
 type TimeFilter = 'wszystkie' | 'dzis' | 'jutro' | 'weekend'
+
+const KM_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 75, 100]
 
 const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
   { key: 'wszystkie', label: 'Wszystkie' },
@@ -114,8 +129,9 @@ export default function EventMap() {
   const locationBoxRef = useRef<HTMLDivElement>(null)
 
   // Timers
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const radiusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const radiusTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const locationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // State
   const [events,       setEvents]       = useState<Event[]>([])
@@ -125,10 +141,12 @@ export default function EventMap() {
   const [locResults,   setLocResults]   = useState<GeoResult[]>([])
   const [locLoading,   setLocLoading]   = useState(false)
   const [searchInput,  setSearchInput]  = useState(() => searchParams.get('q') ?? '')
-  const [radiusValue,  setRadiusValue]  = useState(() => {
+  const [radiusSlider, setRadiusSlider] = useState(() => {
     const r = parseFloat(searchParams.get('radius') ?? '25')
-    return isNaN(r) ? 25 : r
+    const idx = KM_VALUES.indexOf(isNaN(r) ? 25 : r)
+    return idx >= 0 ? idx : KM_VALUES.indexOf(25)
   })
+  const radiusKm = KM_VALUES[radiusSlider]
   const [gpsLoading, setGpsLoading] = useState(false)
 
   // Gdy URL ma lokalizację, pokaż "Moja lokalizacja" w inpucie
@@ -312,13 +330,28 @@ export default function EventMap() {
     moveUserMarker(r.lat, r.lng)
   }
 
-  // Szukaj lokalizacji (Nominatim)
+  // Autocomplete podczas pisania (Photon debounce 400ms)
+  function handleLocInputChange(value: string) {
+    setLocInput(value)
+    if (!value.trim()) { setLocResults([]); return }
+    if (locationTimerRef.current) clearTimeout(locationTimerRef.current)
+    locationTimerRef.current = setTimeout(async () => {
+      try {
+        const results = await searchPhoton(value)
+        setLocResults(results)
+      } catch {
+        setLocResults([])
+      }
+    }, 400)
+  }
+
+  // Szukaj lokalizacji (Photon on-demand)
   async function runGeoSearch() {
     const q = locInput.trim()
     if (!q || q === 'Moja lokalizacja') return
     setLocLoading(true)
     try {
-      const results = await searchNominatim(q)
+      const results = await searchPhoton(q)
       setLocResults(results)
       if (results.length === 1) applyLocation(results[0])
     } catch {
@@ -359,10 +392,11 @@ export default function EventMap() {
     )
   }
 
-  function handleRadiusChange(value: number) {
-    setRadiusValue(value)
+  function handleRadiusChange(sliderIdx: number) {
+    setRadiusSlider(sliderIdx)
+    const km = KM_VALUES[sliderIdx]
     if (radiusTimerRef.current) clearTimeout(radiusTimerRef.current)
-    radiusTimerRef.current = setTimeout(() => updateParams({ radius: String(value) }), 300)
+    radiusTimerRef.current = setTimeout(() => updateParams({ radius: String(km) }), 300)
   }
 
   function handleSearch(value: string) {
@@ -404,7 +438,7 @@ export default function EventMap() {
               <input
                 type="text"
                 value={locInput}
-                onChange={e => { setLocInput(e.target.value); setLocResults([]) }}
+                onChange={e => handleLocInputChange(e.target.value)}
                 onKeyDown={handleLocKeyDown}
                 placeholder="Wpisz miasto i naciśnij Enter..."
                 className="w-full pl-8 pr-8 py-1.5 rounded-full text-sm border border-gray-200 bg-white
@@ -466,13 +500,17 @@ export default function EventMap() {
         {hasLocation && (
           <div className="flex items-center gap-2 px-1">
             <span className="text-xs text-gray-500 flex-shrink-0">Promień:</span>
-            <input type="range" min="5" max="100" step="5"
-              value={radiusValue}
+            <input
+              type="range"
+              min={0}
+              max={KM_VALUES.length - 1}
+              step={1}
+              value={radiusSlider}
               onChange={e => handleRadiusChange(Number(e.target.value))}
               className="flex-1 h-1.5 accent-green-500 cursor-pointer"
             />
             <span className="text-xs font-semibold text-black w-12 text-right flex-shrink-0">
-              {radiusValue} km
+              {radiusKm} km
             </span>
           </div>
         )}
