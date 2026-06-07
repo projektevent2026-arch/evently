@@ -59,10 +59,7 @@ function isThisWeekend(d: string) {
   return day === 0 || day === 6
 }
 
-function haversineKm(
-  lat1: number, lng1: number,
-  lat2: number, lng2: number,
-): number {
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
   const dLat = (lat2 - lat1) * Math.PI / 180
   const dLng = (lng2 - lng1) * Math.PI / 180
@@ -87,7 +84,7 @@ export default function EventMap() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  // ─── Czytamy filtry z URL (single source of truth) ───────────────────────
+  // ─── Czytamy filtry z URL ─────────────────────────────────────────────────
   const urlLat    = parseFloat(searchParams.get('lat')    ?? '')
   const urlLng    = parseFloat(searchParams.get('lng')    ?? '')
   const urlRadius = parseFloat(searchParams.get('radius') ?? '')
@@ -104,8 +101,12 @@ export default function EventMap() {
     return new Set(raw.split(',').map(c => c.trim()).filter(Boolean))
   }, [searchParams])
 
+  // ─── Lokalny stan inputa wyszukiwania (inicjalizacja z URL) ───────────────
+  const [searchInput, setSearchInput] = useState(() => searchParams.get('q') ?? '')
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // ─── Leaflet refs ─────────────────────────────────────────────────────────
-  const mapRef        = useRef<HTMLDivElement>(null)
+  const mapRef         = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markerGroupRef = useRef<any>(null)
   const userMarkerRef  = useRef<any>(null)
@@ -203,35 +204,22 @@ export default function EventMap() {
   // ─── Filtrowanie (identyczne jak EventsGrid) ──────────────────────────────
   const filtered = useMemo(() => {
     return events.filter(ev => {
-      // czas
-      if (urlTime === 'dzis'    && !isToday(ev.start_date))      return false
-      if (urlTime === 'jutro'   && !isTomorrow(ev.start_date))   return false
+      if (urlTime === 'dzis'    && !isToday(ev.start_date))       return false
+      if (urlTime === 'jutro'   && !isTomorrow(ev.start_date))    return false
       if (urlTime === 'weekend' && !isThisWeekend(ev.start_date)) return false
-
-      // kategoria
-      if (activeCategories.size > 0 && !activeCategories.has(ev.category ?? 'Inne'))
-        return false
-
-      // text search
+      if (activeCategories.size > 0 && !activeCategories.has(ev.category ?? 'Inne')) return false
       if (urlQ) {
         const hay = `${ev.title} ${ev.venue_name ?? ''}`.toLowerCase()
         if (!hay.includes(urlQ)) return false
       }
-
-      // radius (haversine)
-      if (
-        !isNaN(urlRadius) && urlRadius > 0 &&
-        !isNaN(urlLat)    && !isNaN(urlLng)
-      ) {
-        if (haversineKm(urlLat, urlLng, ev.latitude, ev.longitude) > urlRadius)
-          return false
+      if (!isNaN(urlRadius) && urlRadius > 0 && !isNaN(urlLat) && !isNaN(urlLng)) {
+        if (haversineKm(urlLat, urlLng, ev.latitude, ev.longitude) > urlRadius) return false
       }
-
       return true
     })
   }, [events, urlTime, activeCategories, urlQ, urlRadius, urlLat, urlLng])
 
-  // ─── Update markerów przy zmianie filtrów ─────────────────────────────────
+  // ─── Update markerów ──────────────────────────────────────────────────────
   useEffect(() => {
     const mcg = markerGroupRef.current
     if (!mcg) return
@@ -292,12 +280,32 @@ export default function EventMap() {
     })
   }, [userPosition, urlCenter])
 
-  // ─── Kategorie dostępne w danych ──────────────────────────────────────────
+  // ─── Kategorie dostępne w danych ─────────────────────────────────────────
   const categories = useMemo(() => {
     return Array.from(new Set(events.map(e => e.category ?? 'Inne'))).sort()
   }, [events])
 
-  // ─── Handlery → router.replace (zachowuje pozostałe params) ──────────────
+  // ─── Handler wyszukiwania (debounce 400ms → router.replace) ──────────────
+  function handleSearch(value: string) {
+    setSearchInput(value)
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    searchTimerRef.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (value.trim()) params.set('q', value.trim())
+      else params.delete('q')
+      router.replace(`/mapa?${params.toString()}`, { scroll: false })
+    }, 400)
+  }
+
+  function clearSearch() {
+    setSearchInput('')
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('q')
+    router.replace(`/mapa?${params.toString()}`, { scroll: false })
+  }
+
+  // ─── Handlery filtrów → router.replace ───────────────────────────────────
   function handleTimeFilter(value: TimeFilter) {
     const params = new URLSearchParams(searchParams.toString())
     if (value === 'wszystkie') params.delete('time')
@@ -308,9 +316,7 @@ export default function EventMap() {
   function handleToggleCategory(cat: string) {
     const params = new URLSearchParams(searchParams.toString())
     const raw = params.get('category')
-    const current = new Set(
-      raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [],
-    )
+    const current = new Set(raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [])
     if (current.has(cat)) current.delete(cat)
     else current.add(cat)
     if (current.size === 0) params.delete('category')
@@ -322,11 +328,40 @@ export default function EventMap() {
   return (
     <div className="relative flex flex-col h-screen overflow-hidden">
 
-      {/* Pasek filtrów */}
-      <div className="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-gray-200 px-3 py-2">
+      <div className="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-gray-200 px-3 py-2 space-y-2">
 
-        {/* Wiersz 1: czas + badge szukania + licznik */}
-        <div className="flex gap-2 flex-wrap mb-2 items-center">
+        {/* Wiersz 1: input wyszukiwania */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <svg
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+              fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+            >
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              value={searchInput}
+              onChange={e => handleSearch(e.target.value)}
+              placeholder="Szukaj wydarzeń na mapie..."
+              className="w-full pl-8 pr-8 py-1.5 rounded-full text-sm border border-gray-200 bg-white focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-colors"
+            />
+            {searchInput && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <span className="text-xs text-gray-400 whitespace-nowrap">
+            {filtered.length} wydarzeń
+          </span>
+        </div>
+
+        {/* Wiersz 2: filtry czasu */}
+        <div className="flex gap-2 flex-wrap">
           {TIME_FILTERS.map(({ key, label }) => (
             <button
               key={key}
@@ -340,27 +375,14 @@ export default function EventMap() {
               {label}
             </button>
           ))}
-
-          {/* Badge aktywnego wyszukiwania z głównej */}
-          {urlQ && (
-            <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700 font-medium">
-              🔍 {searchParams.get('q')}
-            </span>
-          )}
-
-          {/* Badge aktywnego promienia */}
           {!isNaN(urlRadius) && urlRadius > 0 && (
-            <span className="px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-700 font-medium">
+            <span className="px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-700 font-medium self-center">
               📍 {urlRadius} km
             </span>
           )}
-
-          <span className="ml-auto text-xs text-gray-400">
-            {filtered.length} wydarzeń
-          </span>
         </div>
 
-        {/* Wiersz 2: kategorie */}
+        {/* Wiersz 3: kategorie */}
         <div className="flex gap-2 flex-wrap">
           {categories.map(cat => {
             const color  = getCategoryColor(cat)
@@ -376,10 +398,7 @@ export default function EventMap() {
                 }`}
                 style={active ? { backgroundColor: color, borderColor: color } : {}}
               >
-                <span
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: color }}
-                />
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
                 {cat}
               </button>
             )
@@ -387,14 +406,12 @@ export default function EventMap() {
         </div>
       </div>
 
-      {/* Spinner ładowania */}
       {loading && (
         <div className="absolute inset-0 z-[999] flex items-center justify-center bg-white">
           <div className="animate-spin w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full" />
         </div>
       )}
 
-      {/* Mapa */}
       <div ref={mapRef} className="flex-1 w-full" style={{ height: '100vh' }} />
     </div>
   )
