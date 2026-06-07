@@ -272,9 +272,7 @@ export default function EventMap() {
     })
   }, [userPosition, urlCenter])
 
-  const categories = useMemo(() => {
-    return Array.from(new Set(events.map(e => e.category ?? 'Inne'))).sort()
-  }, [events])
+  const categories = ['culture', 'music', 'food', 'sport', 'family', 'technology', 'other']
 
   function updateParams(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString())
