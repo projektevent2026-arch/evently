@@ -4,6 +4,9 @@ import { useEffect, useState, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
+import 'leaflet/dist/leaflet.css'
+import 'leaflet.markercluster/dist/MarkerCluster.css'
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 
 interface Event {
   id: string
@@ -60,7 +63,6 @@ export default function EventMap() {
   const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set())
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null)
 
-  // Pobierz eventy
   useEffect(() => {
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -85,16 +87,12 @@ export default function EventMap() {
     }
   }, [])
 
-  // Inicjalizuj mapę
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
 
     async function initMap() {
       const L = (await import('leaflet')).default
-      await import('leaflet/dist/leaflet.css')
-      await import('leaflet.markercluster')
-      await import('leaflet.markercluster/dist/MarkerCluster.css')
-      await import('leaflet.markercluster/dist/MarkerCluster.Default.css')
+      const MarkerCluster = await import('leaflet.markercluster')
 
       const center = urlCenter ?? userPosition ?? [54.1, 22.93] as [number, number]
 
@@ -104,7 +102,6 @@ export default function EventMap() {
         zoomControl: false,
       })
 
-      // CartoDB Dark Matter — ciemna mapa
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd',
@@ -112,22 +109,20 @@ export default function EventMap() {
       }).addTo(map)
 
       L.control.zoom({ position: 'bottomright' }).addTo(map)
-
       mapInstanceRef.current = map
 
-      // Klastry
       const mcg = (L as any).markerClusterGroup({
         maxClusterRadius: 50,
         iconCreateFunction: (cluster: any) => {
           const count = cluster.getChildCount()
           return L.divIcon({
             html: `<div style="
-              width: 40px; height: 40px; border-radius: 50%;
-              background: #22C55E; color: black;
-              display: flex; align-items: center; justify-content: center;
-              font-weight: 800; font-size: 14px;
-              border: 3px solid rgba(255,255,255,0.3);
-              box-shadow: 0 2px 12px rgba(34,197,94,0.5);
+              width:40px;height:40px;border-radius:50%;
+              background:#22C55E;color:black;
+              display:flex;align-items:center;justify-content:center;
+              font-weight:800;font-size:14px;
+              border:3px solid rgba(255,255,255,0.8);
+              box-shadow:0 2px 12px rgba(34,197,94,0.5);
             ">${count}</div>`,
             className: '',
             iconSize: [40, 40],
@@ -146,7 +141,6 @@ export default function EventMap() {
     initMap()
   }, [])
 
-  // Aktualizuj markery przy zmianie filtrów
   const filtered = useMemo(() => {
     return events.filter(e => {
       if (timeFilter === 'dzis' && !isToday(e.start_date)) return false
@@ -159,49 +153,43 @@ export default function EventMap() {
 
   useEffect(() => {
     const mcg = markerGroupRef.current
-    const L = (window as any).L
-    if (!mcg || !L) return
+    if (!mcg) return
 
-    mcg.clearLayers()
-
-    filtered.forEach(ev => {
-      const color = getCategoryColor(ev.category)
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:${color};border:2px solid white;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.5);"></div>`,
-        iconSize: [22, 22],
-        iconAnchor: [11, 22],
-        popupAnchor: [0, -25],
+    import('leaflet').then(({ default: L }) => {
+      mcg.clearLayers()
+      filtered.forEach(ev => {
+        const color = getCategoryColor(ev.category)
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:${color};border:2px solid white;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>`,
+          iconSize: [22, 22],
+          iconAnchor: [11, 22],
+          popupAnchor: [0, -25],
+        })
+        const marker = L.marker([ev.latitude, ev.longitude], { icon })
+        marker.bindPopup(`
+          <div style="min-width:180px;font-family:system-ui,sans-serif">
+            ${ev.category ? `<span style="background:${color};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:8px">${ev.category}</span>` : ''}
+            <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:#111">${ev.title}</div>
+            <div style="font-size:11px;color:#888;margin-bottom:4px">${formatDate(ev.start_date)}</div>
+            ${ev.venue_name ? `<div style="font-size:11px;color:#aaa;margin-bottom:8px">${ev.venue_name}</div>` : ''}
+            <a href="/events/${ev.slug}" style="display:block;text-align:center;background:#22C55E;color:black;font-weight:700;font-size:11px;padding:6px;border-radius:8px;text-decoration:none">
+              Zobacz wydarzenie
+            </a>
+          </div>
+        `)
+        mcg.addLayer(marker)
       })
-
-      const marker = L.marker([ev.latitude, ev.longitude], { icon })
-      marker.bindPopup(`
-        <div style="min-width:180px;font-family:system-ui,sans-serif">
-          ${ev.category ? `<span style="background:${color};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:8px">${ev.category}</span>` : ''}
-          <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:#111">${ev.title}</div>
-          <div style="font-size:11px;color:#888;margin-bottom:4px">${formatDate(ev.start_date)}</div>
-          ${ev.venue_name ? `<div style="font-size:11px;color:#aaa;margin-bottom:8px">${ev.venue_name}</div>` : ''}
-          <a href="/events/${ev.slug}" style="display:block;text-align:center;background:#22C55E;color:black;font-weight:700;font-size:11px;padding:6px;border-radius:8px;text-decoration:none">
-            Zobacz wydarzenie
-          </a>
-        </div>
-      `)
-      mcg.addLayer(marker)
     })
   }, [filtered])
 
-  // Marker użytkownika
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!map) return
-
     import('leaflet').then(({ default: L }) => {
-      if (userMarkerRef.current) {
-        userMarkerRef.current.remove()
-      }
+      if (userMarkerRef.current) userMarkerRef.current.remove()
       const pos = urlCenter ?? userPosition
       if (!pos) return
-
       const icon = L.divIcon({
         html: '<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 0 4px rgba(59,130,246,0.3)"></div>',
         className: '',
@@ -233,19 +221,18 @@ export default function EventMap() {
   ]
 
   return (
-    <div className="relative flex flex-col h-screen overflow-hidden bg-[#1a1a2e]">
-      {/* Filtry */}
-      <div className="absolute top-0 left-0 right-0 z-[1000] bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800 px-3 py-2">
+    <div className="relative flex flex-col h-screen overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-gray-200 px-3 py-2">
         <div className="flex gap-2 flex-wrap mb-2">
           {TIME_FILTERS.map(({ key, label }) => (
             <button key={key} onClick={() => setTimeFilter(key)}
               className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                timeFilter === key ? 'bg-green-500 text-black' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                timeFilter === key ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}>
               {label}
             </button>
           ))}
-          <span className="ml-auto text-xs text-zinc-500 self-center">{filtered.length} wydarzeń</span>
+          <span className="ml-auto text-xs text-gray-400 self-center">{filtered.length} wydarzeń</span>
         </div>
         <div className="flex gap-2 flex-wrap">
           {categories.map(cat => {
@@ -254,7 +241,7 @@ export default function EventMap() {
             return (
               <button key={cat} onClick={() => toggleCategory(cat)}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                  active ? 'text-white border-transparent' : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500'
+                  active ? 'text-white border-transparent shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                 }`}
                 style={active ? { backgroundColor: color, borderColor: color } : {}}>
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
@@ -266,7 +253,7 @@ export default function EventMap() {
       </div>
 
       {loading && (
-        <div className="absolute inset-0 z-[999] flex items-center justify-center bg-zinc-900">
+        <div className="absolute inset-0 z-[999] flex items-center justify-center bg-white">
           <div className="animate-spin w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full" />
         </div>
       )}
