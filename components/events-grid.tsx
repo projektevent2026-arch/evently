@@ -5,10 +5,10 @@ import { useSearchParams } from "next/navigation"
 import { EventCard, type EventData } from "@/components/event-card"
 import { supabase } from "@/lib/supabase"
 
-const CATEGORIES = ["culture", "music", "food", "sport", "family", "technology"]
+const CATEGORIES = ["culture", "music", "food", "sport", "family", "technology", "other"]
 const CATEGORY_LABELS: Record<string, string> = {
   culture: "Kultura", music: "Muzyka", food: "Jedzenie",
-  sport: "Sport", family: "Rodzinne", technology: "Technologia",
+  sport: "Sport", family: "Rodzinne", technology: "Technologia", other: "Inne",
 }
 
 const DATE_FILTERS = [
