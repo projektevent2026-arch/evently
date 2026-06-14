@@ -326,7 +326,8 @@ export function MobileHome() {
   const requestGPS = () => {
     navigator.geolocation?.getCurrentPosition(
       p => { setUserLat(p.coords.latitude); setUserLon(p.coords.longitude); setGpsActive(true) },
-      () => {}
+      () => {},
+      { maximumAge: 0, timeout: 10000, enableHighAccuracy: true }
     )
   }
 
