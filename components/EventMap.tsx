@@ -94,7 +94,7 @@ type TimeFilter = 'wszystkie' | 'dzis' | 'jutro' | 'weekend'
 
 const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
   { key: 'wszystkie', label: 'Wszystkie' },
-  { key: 'dzis', label: 'Dzis' },
+  { key: 'dzis', label: 'Dziś' },
   { key: 'jutro', label: 'Jutro' },
   { key: 'weekend', label: 'Weekend' },
 ]
@@ -172,6 +172,7 @@ export default function EventMap() {
       navigator.geolocation.getCurrentPosition(
         pos => setUserPosition([pos.coords.latitude, pos.coords.longitude]),
         () => {},
+        { maximumAge: 0, enableHighAccuracy: true, timeout: 10000 }
       )
     }
   }, [])
@@ -211,6 +212,13 @@ export default function EventMap() {
     }
 
     initMap()
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove()
+        mapInstanceRef.current = null
+        markerGroupRef.current = null
+      }
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = useMemo(() => {
@@ -349,7 +357,7 @@ export default function EventMap() {
         setGpsLoading(false)
       },
       () => setGpsLoading(false),
-      { timeout: 10000 },
+      { timeout: 10000, maximumAge: 0, enableHighAccuracy: true },
     )
   }
 
@@ -398,7 +406,7 @@ export default function EventMap() {
                 value={locInput}
                 onChange={e => { setLocInput(e.target.value); setLocResults([]) }}
                 onKeyDown={handleLocKeyDown}
-                placeholder="Wpisz miasto i nacisnij Enter..."
+                placeholder="Wpisz miasto i naciśnij Enter..."
                 className="w-full pl-8 pr-8 py-1.5 rounded-full text-sm border border-gray-200 bg-white
                   focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400
                   transition-colors text-black placeholder:text-gray-400"
@@ -407,7 +415,7 @@ export default function EventMap() {
                 {locLoading
                   ? <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
                   : (locInput
-                    ? <button onClick={clearLocation} className="text-gray-400 hover:text-gray-700 text-xl leading-none">x</button>
+                    ? <button onClick={clearLocation} className="text-gray-400 hover:text-gray-700 text-xl leading-none">×</button>
                     : null)
                 }
               </div>
@@ -416,7 +424,7 @@ export default function EventMap() {
               className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-500 text-white hover:bg-green-600 transition-colors disabled:opacity-50">
               Szukaj
             </button>
-            <button onClick={handleGPS} disabled={gpsLoading} title="Uzyj mojej lokalizacji"
+            <button onClick={handleGPS} disabled={gpsLoading} title="Użyj mojej lokalizacji"
               className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
               {gpsLoading
                 ? <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
@@ -438,10 +446,10 @@ export default function EventMap() {
           )}
         </div>
 
-        {/* Promien */}
+        {/* Promień */}
         {hasLocation && (
           <div className="flex items-center gap-2 px-1">
-            <span className="text-xs text-gray-500 flex-shrink-0">Promien:</span>
+            <span className="text-xs text-gray-500 flex-shrink-0">Promień:</span>
             <input type="range" min="5" max="100" step="5"
               value={radiusValue}
               onChange={e => handleRadiusChange(Number(e.target.value))}
@@ -466,10 +474,10 @@ export default function EventMap() {
             />
             {searchInput && (
               <button onClick={() => { setSearchInput(''); updateParams({ q: null }) }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl leading-none">x</button>
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
             )}
           </div>
-          <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">{filtered.length} wydarzen</span>
+          <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">{filtered.length} wydarzeń</span>
         </div>
 
         {/* Czas */}
