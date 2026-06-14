@@ -324,10 +324,29 @@ export function MobileHome() {
   const effLon = gpsActive ? userLon : (CITY_COORDS[city]?.[1] ?? null)
 
   const requestGPS = () => {
-    navigator.geolocation?.getCurrentPosition(
-      p => { setUserLat(p.coords.latitude); setUserLon(p.coords.longitude); setGpsActive(true) },
+    if (!navigator.geolocation) return
+    const watchId = navigator.geolocation.watchPosition(
+      async p => {
+        navigator.geolocation.clearWatch(watchId)
+        const lat = p.coords.latitude
+        const lon = p.coords.longitude
+        setUserLat(lat)
+        setUserLon(lon)
+        setGpsActive(true)
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pl`,
+            { headers: { 'User-Agent': 'Evently/1.0' } }
+          )
+          const data = await res.json()
+          const name = data.address?.city || data.address?.town || data.address?.village || 'Moja lokalizacja'
+          setCity(name)
+        } catch {
+          setCity('Moja lokalizacja')
+        }
+      },
       () => {},
-      { maximumAge: 0, timeout: 10000, enableHighAccuracy: true }
+      { maximumAge: 0, timeout: 15000, enableHighAccuracy: true }
     )
   }
 
