@@ -213,7 +213,6 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
       <Link href={`/events/${event.id}`} className="block mb-3">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
           <div className="p-3">
-            {/* Top: category + date */}
             <div className="flex items-start justify-between mb-2">
               <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${tagColor}`}>
                 {tagLabel.toUpperCase()}
@@ -230,7 +229,6 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
               </div>
             </div>
 
-            {/* Content row */}
             <div className="flex gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-[15px] font-black text-white leading-tight mb-1 line-clamp-2">
@@ -273,7 +271,6 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
               )}
             </div>
 
-            {/* Buttons */}
             <div className="flex items-center gap-2 mt-3">
               <button
                 onClick={e => { e.preventDefault(); setGoing(!going) }}
@@ -312,6 +309,7 @@ export function MobileHome() {
   const [userLat, setUserLat] = useState<number | null>(null)
   const [userLon, setUserLon] = useState<number | null>(null)
   const [gpsActive, setGpsActive] = useState(false)
+  const [gpsLoading, setGpsLoading] = useState(false)
   const [city, setCity] = useState('Suwałki')
   const [showCityDropdown, setShowCityDropdown] = useState(false)
   const [radius, setRadius] = useState(25)
@@ -323,45 +321,63 @@ export function MobileHome() {
   const effLat = gpsActive ? userLat : (CITY_COORDS[city]?.[0] ?? null)
   const effLon = gpsActive ? userLon : (CITY_COORDS[city]?.[1] ?? null)
 
+  const applyPosition = async (lat: number, lon: number) => {
+    setUserLat(lat)
+    setUserLon(lon)
+    setGpsActive(true)
+    setGpsLoading(false)
+    localStorage.setItem('evently_lat', String(lat))
+    localStorage.setItem('evently_lon', String(lon))
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pl`,
+        { headers: { 'User-Agent': 'Evently/1.0' } }
+      )
+      const data = await res.json()
+      const name = data.address?.city || data.address?.town || data.address?.village || 'Moja lokalizacja'
+      setCity(name)
+      localStorage.setItem('evently_city', name)
+    } catch {
+      setCity('Moja lokalizacja')
+    }
+  }
+
   const requestGPS = () => {
     if (!navigator.geolocation) return
-    setGpsActive(false)
-  
+    setGpsLoading(true)
+
     const watchId = navigator.geolocation.watchPosition(
-      async p => {
+      p => {
         const isStale = p.timestamp < Date.now() - 5000
-        if (isStale) return // czekaj na świeżą pozycję
-  
+        if (isStale) return
         navigator.geolocation.clearWatch(watchId)
-        const lat = p.coords.latitude
-        const lon = p.coords.longitude
-        setUserLat(lat)
-        setUserLon(lon)
-        setGpsActive(true)
-  
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pl`,
-            { headers: { 'User-Agent': 'Evently/1.0' } }
-          )
-          const data = await res.json()
-          const name = data.address?.city || data.address?.town || data.address?.village || 'Moja lokalizacja'
-          setCity(name)
-        } catch {
-          setCity('Moja lokalizacja')
-        }
+        applyPosition(p.coords.latitude, p.coords.longitude)
       },
-      () => {},
+      () => setGpsLoading(false),
       { maximumAge: 0, timeout: 15000, enableHighAccuracy: true }
     )
-  
-    // Timeout fallback — po 8s pokaż cokolwiek mamy
+
     setTimeout(() => {
       navigator.geolocation.clearWatch(watchId)
+      setGpsLoading(false)
     }, 8000)
   }
 
-  useEffect(() => { requestGPS() }, [])
+  useEffect(() => {
+    // Wczytaj zapisaną lokalizację
+    const savedLat = localStorage.getItem('evently_lat')
+    const savedLon = localStorage.getItem('evently_lon')
+    const savedCity = localStorage.getItem('evently_city')
+
+    if (savedLat && savedLon) {
+      setUserLat(parseFloat(savedLat))
+      setUserLon(parseFloat(savedLon))
+      setGpsActive(true)
+      if (savedCity) setCity(savedCity)
+    }
+
+    requestGPS()
+  }, [])
 
   useEffect(() => {
     async function fetchEvents() {
@@ -408,8 +424,14 @@ export function MobileHome() {
         <CityDropdown
           city={city}
           onClose={() => setShowCityDropdown(false)}
-          onSelectGPS={() => { requestGPS(); setCity('Moja lokalizacja'); setGpsActive(true) }}
-          onSelectCity={c => { setCity(c); setGpsActive(false) }}
+          onSelectGPS={() => { requestGPS(); setCity('Moja lokalizacja') }}
+          onSelectCity={c => {
+            setCity(c)
+            setGpsActive(false)
+            localStorage.removeItem('evently_lat')
+            localStorage.removeItem('evently_lon')
+            localStorage.setItem('evently_city', c)
+          }}
           radius={radius}
           onSetRadius={setRadius}
         />
@@ -434,8 +456,8 @@ export function MobileHome() {
         >
           <span className="text-green-500 text-sm">📍</span>
           <span className="text-[13px] text-green-500 font-semibold">
-  {!gpsActive && city === 'Moja lokalizacja' ? '📡 Szukam...' : city} ▾
-</span>
+            {gpsLoading ? '📡 Szukam...' : city} ▾
+          </span>
           <span className="text-[11px] text-zinc-600">• {radius} km</span>
           <span className="text-[11px] text-zinc-500 ml-1">{filtered.length} wydarzeń</span>
         </button>
