@@ -373,8 +373,9 @@ export function MobileHome() {
       setUserLat(parseFloat(savedLat))
       setUserLon(parseFloat(savedLon))
       setGpsActive(true)
-      if (savedCity) setCity(savedCity)
     }
+
+    if (savedCity) setCity(savedCity)
 
     requestGPS()
   }, [])
