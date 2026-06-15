@@ -325,14 +325,20 @@ export function MobileHome() {
 
   const requestGPS = () => {
     if (!navigator.geolocation) return
+    setGpsActive(false)
+  
     const watchId = navigator.geolocation.watchPosition(
       async p => {
+        const isStale = p.timestamp < Date.now() - 5000
+        if (isStale) return // czekaj na świeżą pozycję
+  
         navigator.geolocation.clearWatch(watchId)
         const lat = p.coords.latitude
         const lon = p.coords.longitude
         setUserLat(lat)
         setUserLon(lon)
         setGpsActive(true)
+  
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pl`,
@@ -348,6 +354,11 @@ export function MobileHome() {
       () => {},
       { maximumAge: 0, timeout: 15000, enableHighAccuracy: true }
     )
+  
+    // Timeout fallback — po 8s pokaż cokolwiek mamy
+    setTimeout(() => {
+      navigator.geolocation.clearWatch(watchId)
+    }, 8000)
   }
 
   useEffect(() => { requestGPS() }, [])
@@ -422,7 +433,9 @@ export function MobileHome() {
           className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 mb-3"
         >
           <span className="text-green-500 text-sm">📍</span>
-          <span className="text-[13px] text-green-500 font-semibold">{city} ▾</span>
+          <span className="text-[13px] text-green-500 font-semibold">
+  {!gpsActive && city === 'Moja lokalizacja' ? '📡 Szukam...' : city} ▾
+</span>
           <span className="text-[11px] text-zinc-600">• {radius} km</span>
           <span className="text-[11px] text-zinc-500 ml-1">{filtered.length} wydarzeń</span>
         </button>
