@@ -311,7 +311,7 @@ export default function EventMap() {
   function applyLocation(r: GeoResult) {
     setLocInput(r.label)
     setLocResults([])
-    updateParams({ lat: r.lat.toFixed(6), lng: r.lng.toFixed(6) })
+    updateParams({ lat: r.lat.toFixed(6), lng: r.lng.toFixed(6), radius: String(radiusValue) })
     flyTo(r.lat, r.lng)
     moveUserMarker(r.lat, r.lng)
   }
@@ -351,7 +351,7 @@ export default function EventMap() {
         setUserPosition([lat, lng])
         setLocInput('Moja lokalizacja')
         setLocResults([])
-        updateParams({ lat: lat.toFixed(6), lng: lng.toFixed(6) })
+        updateParams({ lat: lat.toFixed(6), lng: lng.toFixed(6), radius: String(radiusValue) })
         flyTo(lat, lng)
         moveUserMarker(lat, lng)
         setGpsLoading(false)
