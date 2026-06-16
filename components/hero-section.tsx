@@ -39,7 +39,7 @@ export function HeroSection() {
   useEffect(() => {
     supabase
       .from("events")
-      .select("id, title, start_date, start_time, venue_name, location_name, cover_image_url, image_url")
+      .select("*")
       .eq("status", "published")
       .order("start_date", { ascending: true })
       .limit(5)
