@@ -337,6 +337,7 @@ export function MobileHome() {
       const name = data.address?.city || data.address?.town || data.address?.village || 'Moja lokalizacja'
       setCity(name)
       localStorage.setItem('evently_city', name)
+    localStorage.setItem('evently_mode', 'gps')
     } catch {
       setCity('Moja lokalizacja')
     }
@@ -364,20 +365,26 @@ export function MobileHome() {
   }
 
   useEffect(() => {
-    // Wczytaj zapisaną lokalizację
     const savedLat = localStorage.getItem('evently_lat')
     const savedLon = localStorage.getItem('evently_lon')
     const savedCity = localStorage.getItem('evently_city')
-
-    if (savedLat && savedLon) {
-      setUserLat(parseFloat(savedLat))
-      setUserLon(parseFloat(savedLon))
-      setGpsActive(true)
-    }
+    const savedMode = localStorage.getItem('evently_mode')
 
     if (savedCity) setCity(savedCity)
 
-    requestGPS()
+    if (savedLat && savedLon && savedMode === 'gps') {
+      // Poprzednio GPS — wczytaj i odśwież
+      setUserLat(parseFloat(savedLat))
+      setUserLon(parseFloat(savedLon))
+      setGpsActive(true)
+      requestGPS()
+    } else if (savedMode === 'city') {
+      // Ręczny wybór miasta — nie nadpisuj GPS
+      setGpsActive(false)
+    } else {
+      // Pierwsza wizyta — spróbuj GPS
+      requestGPS()
+    }
   }, [])
 
   useEffect(() => {
@@ -432,6 +439,7 @@ export function MobileHome() {
             localStorage.removeItem('evently_lat')
             localStorage.removeItem('evently_lon')
             localStorage.setItem('evently_city', c)
+            localStorage.setItem('evently_mode', 'city')
           }}
           radius={radius}
           onSetRadius={setRadius}
