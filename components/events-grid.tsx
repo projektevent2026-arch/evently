@@ -5,10 +5,12 @@ import { useSearchParams } from "next/navigation"
 import { EventCard, type EventData } from "@/components/event-card"
 import { supabase } from "@/lib/supabase"
 
-const CATEGORIES = ["culture", "music", "food", "sport", "family", "technology", "other"]
+const CATEGORIES = ["kultura", "muzyka", "sport", "festyny"]
 const CATEGORY_LABELS: Record<string, string> = {
-  culture: "Kultura", music: "Muzyka", food: "Jedzenie",
-  sport: "Sport", family: "Rodzinne", technology: "Technologia", other: "Inne",
+  kultura: "Kultura", culture: "Kultura",
+  muzyka: "Muzyka", music: "Muzyka",
+  sport: "Sport",
+  festyny: "Festyny", folk: "Festyny", family: "Festyny",
 }
 
 const DATE_FILTERS = [
@@ -39,6 +41,16 @@ function isOnDate(d: string, target: string) {
   return new Date(d).toDateString() === new Date(target).toDateString()
 }
 
+function normalizeCategory(cat: string | null): string {
+  if (!cat) return ""
+  const c = cat.toLowerCase()
+  if (c === "kultura" || c === "culture") return "kultura"
+  if (c === "muzyka" || c === "music") return "muzyka"
+  if (c === "sport") return "sport"
+  if (c === "festyny" || c === "folk" || c === "family" || c === "rodzinne") return "festyny"
+  return c
+}
+
 export function EventsGrid() {
   const searchParams = useSearchParams()
   const dateInputRef = useRef<HTMLInputElement>(null)
@@ -56,11 +68,7 @@ export function EventsGrid() {
   const hasLocationFilter = !isNaN(filterLat) && !isNaN(filterLng)
 
   function openCalendar() {
-    try {
-      dateInputRef.current?.showPicker()
-    } catch {
-      dateInputRef.current?.click()
-    }
+    try { dateInputRef.current?.showPicker() } catch { dateInputRef.current?.click() }
   }
 
   useEffect(() => {
@@ -100,12 +108,8 @@ export function EventsGrid() {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         const { data: attendance } = await supabase
-          .from("event_attendees")
-          .select("event_id")
-          .eq("user_id", session.user.id)
-        if (attendance) {
-          setAttendingIds(new Set(attendance.map((a) => a.event_id)))
-        }
+          .from("event_attendees").select("event_id").eq("user_id", session.user.id)
+        if (attendance) setAttendingIds(new Set(attendance.map((a) => a.event_id)))
       }
 
       setLoading(false)
@@ -118,7 +122,9 @@ export function EventsGrid() {
       ? e.title.toLowerCase().includes(q.toLowerCase()) ||
         e.city?.toLowerCase().includes(q.toLowerCase())
       : true
-    const matchCat = activeCategory ? e.category === activeCategory : true
+    const matchCat = activeCategory
+      ? normalizeCategory(e.category) === activeCategory
+      : true
     const matchDate = (() => {
       if (!e.start_date) return true
       if (activeDate === "today") return isToday(e.start_date)
@@ -184,8 +190,6 @@ export function EventsGrid() {
             {d.label}
           </button>
         ))}
-
-        {/* Kalendarz */}
         <button
           type="button"
           onClick={openCalendar}
@@ -215,20 +219,14 @@ export function EventsGrid() {
           <p className="col-span-4 py-12 text-center text-muted-foreground">Ładowanie...</p>
         ) : filtered.length > 0 ? (
           filtered.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              initialGoing={attendingIds.has(String(event.id))}
-            />
+            <EventCard key={event.id} event={event} initialGoing={attendingIds.has(String(event.id))} />
           ))
         ) : (
           <div className="col-span-4 py-16 text-center">
             <p className="text-4xl mb-4">📭</p>
             <p className="text-lg font-semibold text-foreground mb-2">Brak wydarzeń</p>
             <p className="text-sm text-muted-foreground">
-              {hasLocationFilter
-                ? `Nie ma wydarzeń w promieniu ${filterRadius} km.`
-                : "Nie ma wydarzeń spełniających kryteria."}
+              {hasLocationFilter ? `Nie ma wydarzeń w promieniu ${filterRadius} km.` : "Nie ma wydarzeń spełniających kryteria."}
             </p>
           </div>
         )}

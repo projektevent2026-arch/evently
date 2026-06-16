@@ -25,17 +25,16 @@ interface GeoResult {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  culture: '#DC2626', Kultura: '#DC2626',
-  music: '#F59E0B', Muzyka: '#F59E0B',
-  sport: '#16A34A', Sport: '#16A34A',
-  food: '#F97316', Jedzenie: '#F97316',
-  family: '#EC4899', Rodzinne: '#EC4899',
-  technology: '#0EA5E9', Technologia: '#0EA5E9',
-  other: '#6B7280', Inne: '#6B7280',
+  kultura: '#8B5CF6', culture: '#8B5CF6', Kultura: '#8B5CF6',
+  muzyka: '#22C55E',  music: '#22C55E',   Muzyka: '#22C55E',
+  sport: '#3B82F6',   Sport: '#3B82F6',
+  festyny: '#F59E0B', folk: '#F59E0B',    family: '#F59E0B', Rodzinne: '#F59E0B',
 }
 const CATEGORY_LABELS: Record<string, string> = {
-  culture: 'Kultura', music: 'Muzyka', food: 'Jedzenie',
-  sport: 'Sport', family: 'Rodzinne', technology: 'Technologia', other: 'Inne',
+  kultura: 'Kultura', culture: 'Kultura',
+  muzyka: 'Muzyka',   music: 'Muzyka',
+  sport: 'Sport',
+  festyny: 'Festyny', folk: 'Festyny', family: 'Festyny', rodzinne: 'Festyny',
 }
 
 function getCategoryLabel(cat: string | null): string {
@@ -280,7 +279,7 @@ export default function EventMap() {
     })
   }, [userPosition, urlCenter])
 
-  const categories = ['culture', 'music', 'food', 'sport', 'family', 'technology', 'other']
+  const categories = ['kultura', 'muzyka', 'sport', 'festyny']
 
   function updateParams(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString())
@@ -311,7 +310,7 @@ export default function EventMap() {
   function applyLocation(r: GeoResult) {
     setLocInput(r.label)
     setLocResults([])
-    updateParams({ lat: r.lat.toFixed(6), lng: r.lng.toFixed(6), radius: String(radiusValue) })
+    updateParams({ lat: r.lat.toFixed(6), lng: r.lng.toFixed(6) })
     flyTo(r.lat, r.lng)
     moveUserMarker(r.lat, r.lng)
   }
@@ -351,7 +350,7 @@ export default function EventMap() {
         setUserPosition([lat, lng])
         setLocInput('Moja lokalizacja')
         setLocResults([])
-        updateParams({ lat: lat.toFixed(6), lng: lng.toFixed(6), radius: String(radiusValue) })
+        updateParams({ lat: lat.toFixed(6), lng: lng.toFixed(6) })
         flyTo(lat, lng)
         moveUserMarker(lat, lng)
         setGpsLoading(false)
