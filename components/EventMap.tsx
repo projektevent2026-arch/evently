@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import 'leaflet/dist/leaflet.css'
@@ -89,7 +89,7 @@ async function searchNominatim(query: string): Promise<GeoResult[]> {
   }))
 }
 
-type TimeFilter = 'wszystkie' | 'dzis' | 'jutro' | 'weekend'
+type TimeFilter = 'wszystkie' | 'dzis' | 'jutro' | 'weekend' | 'custom'
 
 const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
   { key: 'wszystkie', label: 'Wszystkie' },
@@ -97,6 +97,10 @@ const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
   { key: 'jutro', label: 'Jutro' },
   { key: 'weekend', label: 'Weekend' },
 ]
+
+function isOnDate(d: string, target: string) {
+  return new Date(d).toDateString() === new Date(target).toDateString()
+}
 
 export default function EventMap() {
   const searchParams = useSearchParams()
@@ -139,6 +143,8 @@ export default function EventMap() {
     return isNaN(r) ? 25 : r
   })
   const [gpsLoading, setGpsLoading] = useState(false)
+  const [customDate, setCustomDate] = useState('')
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (hasLocation) setLocInput('Moja lokalizacja')
@@ -225,6 +231,7 @@ export default function EventMap() {
       if (urlTime === 'dzis'    && !isToday(ev.start_date))       return false
       if (urlTime === 'jutro'   && !isTomorrow(ev.start_date))    return false
       if (urlTime === 'weekend' && !isThisWeekend(ev.start_date)) return false
+      if (urlTime === 'custom' && customDate && !isOnDate(ev.start_date, customDate)) return false
       if (activeCategories.size > 0 && !activeCategories.has(ev.category ?? 'Inne')) return false
       if (urlQ) {
         const hay = `${ev.title} ${ev.venue_name ?? ''}`.toLowerCase()
@@ -480,15 +487,40 @@ export default function EventMap() {
         </div>
 
         {/* Czas */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
           {TIME_FILTERS.map(({ key, label }) => (
-            <button key={key} onClick={() => handleTimeFilter(key)}
+            <button key={key} onClick={() => { handleTimeFilter(key); setCustomDate('') }}
               className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
                 urlTime === key ? 'bg-green-500 text-white' : 'bg-gray-100 text-black hover:bg-gray-200'
               }`}>
               {label}
             </button>
           ))}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => { try { dateInputRef.current?.showPicker() } catch { dateInputRef.current?.click() } }}
+              className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                urlTime === 'custom'
+                  ? 'bg-green-500 text-white border-green-500'
+                  : 'bg-gray-100 text-black border-gray-200 hover:bg-gray-200'
+              }`}>
+              📅 {urlTime === 'custom' && customDate
+                ? new Date(customDate).toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit' })
+                : 'Kalendarz'}
+            </button>
+            <input
+              ref={dateInputRef}
+              type="date"
+              className="sr-only"
+              tabIndex={-1}
+              value={customDate}
+              onChange={e => {
+                setCustomDate(e.target.value)
+                updateParams({ time: 'custom' })
+              }}
+            />
+          </div>
         </div>
 
         {/* Kategorie */}
