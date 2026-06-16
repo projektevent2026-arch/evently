@@ -41,7 +41,6 @@ export function HeroSection() {
       .from("events")
       .select("id, title, start_date, start_time, venue_name, location_name, cover_image_url, image_url")
       .eq("status", "published")
-      .gte("start_date", new Date().toISOString().split("T")[0])
       .order("start_date", { ascending: true })
       .limit(5)
       .then(({ data }) => { if (data?.length) setEvents(data) })
