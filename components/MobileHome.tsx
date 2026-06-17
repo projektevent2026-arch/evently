@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createBrowserClient } from '@supabase/ssr'
+import { supabase } from '@/lib/supabase'
 
 interface Event {
   id: string
@@ -34,30 +34,37 @@ const CITY_COORDS: Record<string, [number, number]> = {
 }
 
 const CATEGORIES = [
-  { id: 'all',      label: 'Wszystkie', emoji: '🏠' },
-  { id: 'kultura',  label: 'Kultura',   emoji: '🎭' },
-  { id: 'muzyka',   label: 'Muzyka',    emoji: '🎵' },
-  { id: 'sport',    label: 'Sport',     emoji: '⚽' },
-  { id: 'jedzenie', label: 'Jedzenie',  emoji: '🍽️' },
-  { id: 'family',   label: 'Rodzinne',  emoji: '👨‍👩‍👧' },
-  { id: 'inne',     label: 'Inne',      emoji: '···' },
+  { id: 'all',     label: 'Wszystkie', emoji: '🏠' },
+  { id: 'festyny', label: 'Festyny',   emoji: '🎪' },
+  { id: 'kultura', label: 'Kultura',   emoji: '🎭' },
+  { id: 'muzyka',  label: 'Muzyka',    emoji: '🎵' },
+  { id: 'sport',   label: 'Sport',     emoji: '⚽' },
 ]
 
 const RADII = [5, 10, 25, 50]
 
 const CAT_COLORS: Record<string, string> = {
-  kultura: 'bg-purple-500 text-white',  culture: 'bg-purple-500 text-white',
-  muzyka:  'bg-green-500 text-black',   music:   'bg-green-500 text-black',
-  festiwal:'bg-green-500 text-black',   sport:   'bg-blue-500 text-white',
-  jedzenie:'bg-orange-500 text-white',  food:    'bg-orange-500 text-white',
-  family:  'bg-yellow-400 text-black',  targi:   'bg-amber-500 text-black',
-  inne:    'bg-zinc-600 text-white',
+  festyny: 'bg-amber-500 text-black',
+  kultura: 'bg-purple-500 text-white',
+  muzyka:  'bg-green-500 text-black',
+  sport:   'bg-blue-500 text-white',
 }
 
 const CAT_LABELS: Record<string, string> = {
-  kultura:'Kultura', culture:'Kultura', muzyka:'Muzyka', music:'Muzyka',
-  festiwal:'Festiwal', sport:'Sport', jedzenie:'Jedzenie', food:'Jedzenie',
-  family:'Rodzinne', targi:'Targi', inne:'Inne',
+  festyny: 'Festyny',
+  kultura: 'Kultura',
+  muzyka:  'Muzyka',
+  sport:   'Sport',
+}
+
+// Mapuje wszystkie stare wartości z bazy → 4 docelowe kategorie
+function normalizeCategory(raw: string | null): string {
+  const c = (raw ?? '').toLowerCase().trim()
+  if (c === 'kultura' || c === 'culture') return 'kultura'
+  if (c === 'muzyka' || c === 'music') return 'muzyka'
+  if (c === 'sport') return 'sport'
+  // festiwal, family, rodzinne, food, jedzenie, technology, targi, inne → festyny
+  return 'festyny'
 }
 
 const MONTH_PL = ['STY','LUT','MAR','KWI','MAJ','CZE','LIP','SIE','WRZ','PAŹ','LIS','GRU']
@@ -200,9 +207,9 @@ function CityDropdown({ city, onClose, onSelectGPS, onSelectCity, radius, onSetR
 function EventCard({ event, distance }: { event: Event; distance: number | null }) {
   const [going, setGoing] = useState(false)
   const [posterSrc, setPosterSrc] = useState<string | null>(null)
-  const cat = (event.category ?? 'inne').toLowerCase()
-  const tagColor = CAT_COLORS[cat] ?? 'bg-zinc-600 text-white'
-  const tagLabel = CAT_LABELS[cat] ?? cat
+  const normCat = normalizeCategory(event.category)
+  const tagColor = CAT_COLORS[normCat] ?? 'bg-zinc-600 text-white'
+  const tagLabel = CAT_LABELS[normCat] ?? normCat
   const { day, month, isToday: today, isTomorrow: tomorrow } = getDateParts(event.start_date)
   const time = event.start_time?.slice(0, 5)
   const img = event.cover_image_url || event.image_url
@@ -299,10 +306,6 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
 export function MobileHome() {
   const router = useRouter()
   const dateInputRef = useRef<HTMLInputElement>(null)
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
@@ -337,7 +340,7 @@ export function MobileHome() {
       const name = data.address?.city || data.address?.town || data.address?.village || 'Moja lokalizacja'
       setCity(name)
       localStorage.setItem('evently_city', name)
-    localStorage.setItem('evently_mode', 'gps')
+      localStorage.setItem('evently_mode', 'gps')
     } catch {
       setCity('Moja lokalizacja')
     }
@@ -373,16 +376,13 @@ export function MobileHome() {
     if (savedCity) setCity(savedCity)
 
     if (savedLat && savedLon && savedMode === 'gps') {
-      // Poprzednio GPS — wczytaj i odśwież
       setUserLat(parseFloat(savedLat))
       setUserLon(parseFloat(savedLon))
       setGpsActive(true)
       requestGPS()
     } else if (savedMode === 'city') {
-      // Ręczny wybór miasta — nie nadpisuj GPS
       setGpsActive(false)
     } else {
-      // Pierwsza wizyta — spróbuj GPS
       requestGPS()
     }
   }, [])
@@ -412,8 +412,7 @@ export function MobileHome() {
       if (activeDate === 'weekend' && !isWeekend(e.start_date)) return false
       if (activeDate === 'custom' && customDate && !isOnDate(e.start_date, customDate)) return false
       if (activeCategory !== 'all') {
-        const cat = (e.category ?? '').toLowerCase()
-        if (!cat.includes(activeCategory.toLowerCase())) return false
+        if (normalizeCategory(e.category) !== activeCategory) return false
       }
       if (search.trim()) {
         const q = search.toLowerCase()
@@ -452,7 +451,7 @@ export function MobileHome() {
           <span className="text-[18px] font-black text-green-500 tracking-tight">● evently</span>
           <div className="flex gap-2">
             <button className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm">🔔</button>
-            <Link href="/profile">
+            <Link href="/profil">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-green-600" />
             </Link>
           </div>
