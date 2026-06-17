@@ -21,7 +21,7 @@ const emptyForm = {
   title: "", description: "", short_description: "",
   start_date: "", start_time: "", end_date: "", end_time: "",
   city: "", address: "", venue_name: "",
-  category: "culture", cover_image_url: "",
+  category: "", cover_image_url: "",
   ticket_url: "", website_url: "",
   organizer_name: "", organizer_email: "",
   price_from: "0", is_free: true,
@@ -141,6 +141,10 @@ export default function DodajWydarzenie() {
 
   return (
     <div style={{minHeight:"100vh",background:"#f9fafb",fontFamily:"sans-serif"}}>
+      <style>{`
+        input::placeholder, textarea::placeholder { color: #6b7280; }
+        input, textarea, select { color: #111827; }
+      `}</style>
 
       {/* Header */}
       <header style={{background:"white",borderBottom:"1px solid #e5e7eb",padding:"1rem 1.5rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -155,7 +159,6 @@ export default function DodajWydarzenie() {
 
       <div style={{maxWidth:760,margin:"2rem auto",padding:"0 1rem"}}>
 
-        {/* Title */}
         <div style={{marginBottom:"1.5rem"}}>
           <h1 style={{fontSize:"1.75rem",fontWeight:800,color:"#111827",margin:"0 0 6px"}}>Dodaj wydarzenie</h1>
           <p style={{color:"#6b7280",margin:0}}>Wypełnij formularz — opublikujemy je bezpłatnie po weryfikacji.</p>
@@ -163,7 +166,6 @@ export default function DodajWydarzenie() {
 
         <div style={{background:"white",borderRadius:16,boxShadow:"0 2px 12px rgba(0,0,0,0.07)",overflow:"hidden"}}>
 
-          {/* Tabs */}
           <div style={{display:"flex",borderBottom:"1px solid #e5e7eb",padding:"0 1.5rem",overflowX:"auto"}}>
             {[
               ["basic","📋 Podstawowe"],
@@ -184,49 +186,47 @@ export default function DodajWydarzenie() {
 
           <form onSubmit={handleSubmit} style={{padding:"1.75rem",display:"flex",flexDirection:"column",gap:"1.25rem"}}>
 
-            {/* TAB: Podstawowe */}
             {activeTab === "basic" && <>
               <div>
-                {/* Skaner AI */}
-<div style={{marginBottom:8}}>
-  <PosterScanner
-    onScanComplete={async (data) => {
-      setForm(prev => ({
-        ...prev,
-        title: data.title || prev.title,
-        city: data.city || prev.city,
-        address: data.address || prev.address,
-        venue_name: data.venue_name || prev.venue_name,
-        start_date: data.start_date || prev.start_date,
-        start_time: data.start_time || prev.start_time,
-        end_date: data.end_date || prev.end_date,
-        end_time: data.end_time || prev.end_time,
-        description: data.description || prev.description,
-        organizer_name: data.organizer_name || prev.organizer_name,
-        category: data.category || prev.category,
-        is_free: data.is_free ?? prev.is_free,
-        price_from: data.price_from?.toString() || prev.price_from,
-      }))
-      if (data.address || data.city) {
-        const query = [data.address, data.city].filter(Boolean).join(", ")
-        try {
-          const res = await fetch("/api/geocode?q=" + encodeURIComponent(query))
-          const geo = await res.json()
-          if (geo[0]) {
-            setForm(prev => ({
-              ...prev,
-              latitude: parseFloat(geo[0].lat).toFixed(6),
-              longitude: parseFloat(geo[0].lon).toFixed(6),
-            }))
-          }
-        } catch {}
-      }
-    }}
-  />
-  <p style={{fontSize:"0.75rem",color:"#9ca3af",margin:"4px 0 0"}}>
-    Wgraj zdjęcie plakatu — AI automatycznie wypełni formularz.
-  </p>
-</div>
+                <div style={{marginBottom:8}}>
+                  <PosterScanner
+                    onScanComplete={async (data) => {
+                      setForm(prev => ({
+                        ...prev,
+                        title: data.title || prev.title,
+                        city: data.city || prev.city,
+                        address: data.address || prev.address,
+                        venue_name: data.venue_name || prev.venue_name,
+                        start_date: data.start_date || prev.start_date,
+                        start_time: data.start_time || prev.start_time,
+                        end_date: data.end_date || prev.end_date,
+                        end_time: data.end_time || prev.end_time,
+                        description: data.description || prev.description,
+                        organizer_name: data.organizer_name || prev.organizer_name,
+                        category: data.category || prev.category,
+                        is_free: data.is_free ?? prev.is_free,
+                        price_from: data.price_from?.toString() || prev.price_from,
+                      }))
+                      if (data.address || data.city) {
+                        const query = [data.address, data.city].filter(Boolean).join(", ")
+                        try {
+                          const res = await fetch("/api/geocode?q=" + encodeURIComponent(query))
+                          const geo = await res.json()
+                          if (geo[0]) {
+                            setForm(prev => ({
+                              ...prev,
+                              latitude: parseFloat(geo[0].lat).toFixed(6),
+                              longitude: parseFloat(geo[0].lon).toFixed(6),
+                            }))
+                          }
+                        } catch {}
+                      }
+                    }}
+                  />
+                  <p style={{fontSize:"0.75rem",color:"#9ca3af",margin:"4px 0 0"}}>
+                    Wgraj zdjęcie plakatu — AI automatycznie wypełni formularz.
+                  </p>
+                </div>
                 <label style={lbl}>Nazwa wydarzenia *</label>
                 <input name="title" value={form.title} onChange={handleChange} required
                   placeholder="np. Dni Suwałk 2026" style={inp} maxLength={100} />
@@ -236,7 +236,8 @@ export default function DodajWydarzenie() {
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
                 <div>
                   <label style={lbl}>Kategoria *</label>
-                  <select name="category" value={form.category} onChange={handleChange} style={inp}>
+                  <select name="category" value={form.category} onChange={handleChange} required style={inp}>
+                    <option value="" disabled>Wybierz kategorię...</option>
                     {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
                   </select>
                 </div>
@@ -311,7 +312,6 @@ export default function DodajWydarzenie() {
               </div>
             </>}
 
-            {/* TAB: Lokalizacja */}
             {activeTab === "location" && <>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
                 <div>
@@ -353,7 +353,6 @@ export default function DodajWydarzenie() {
               </div>
             </>}
 
-            {/* TAB: Zdjęcia i linki */}
             {activeTab === "media" && <>
               <div>
                 <label style={lbl}>Link do zdjęcia / plakatu</label>
