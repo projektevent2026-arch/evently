@@ -12,10 +12,9 @@ const LocationPicker = dynamic(
   { ssr: false }
 )
 
-const CATEGORIES = ["culture","music","food","sport","family","technology","festiwal"]
+const CATEGORIES = ["festyny","kultura","muzyka","sport"]
 const CATEGORY_LABELS: Record<string,string> = {
-  culture:"Kultura", music:"Muzyka", food:"Jedzenie",
-  sport:"Sport", family:"Rodzinne", technology:"Technologia", festiwal:"Festiwal"
+  festyny:"Festyny 🎪", kultura:"Kultura", muzyka:"Muzyka", sport:"Sport"
 }
 
 const emptyForm = {
@@ -77,41 +76,47 @@ export default function DodajWydarzenie() {
     e.preventDefault()
     setSubmitting(true)
     setError("")
-    const start = form.start_date && form.start_time
-      ? form.start_date + "T" + form.start_time
-      : form.start_date
-    const end = form.end_date && form.end_time
-      ? form.end_date + "T" + form.end_time
-      : (form.end_date || null)
 
-    const { error } = await supabase.from("events").insert([{
-      title: form.title,
-      slug: generateSlug(form.title),
-      description: form.description || null,
-      short_description: form.short_description || null,
-      start_date: start,
-      end_date: end,
-      city: form.city,
-      address: form.address || null,
-      venue_name: form.venue_name || null,
-      category: form.category,
-      cover_image_url: form.cover_image_url || null,
-      ticket_url: form.ticket_url || null,
-      website_url: form.website_url || null,
-      organizer_name: form.organizer_name || null,
-      organizer_email: form.organizer_email || null,
-      is_free: form.is_free,
-      price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
-      latitude: form.latitude ? parseFloat(form.latitude) : null,
-      longitude: form.longitude ? parseFloat(form.longitude) : null,
-      status: "pending",
-    }])
+    try {
+      const start = form.start_date && form.start_time
+        ? form.start_date + "T" + form.start_time
+        : form.start_date
+      const end = form.end_date && form.end_time
+        ? form.end_date + "T" + form.end_time
+        : (form.end_date || null)
 
-    setSubmitting(false)
-    if (error) {
-      setError("Błąd: " + error.message)
-    } else {
-      setSubmitted(true)
+      const { error: supabaseError } = await supabase.from("events").insert([{
+        title: form.title,
+        slug: generateSlug(form.title),
+        description: form.description || null,
+        short_description: form.short_description || null,
+        start_date: start,
+        end_date: end,
+        city: form.city,
+        address: form.address || null,
+        venue_name: form.venue_name || null,
+        category: form.category,
+        cover_image_url: form.cover_image_url || null,
+        ticket_url: form.ticket_url || null,
+        website_url: form.website_url || null,
+        organizer_name: form.organizer_name || null,
+        organizer_email: form.organizer_email || null,
+        is_free: form.is_free,
+        price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
+        latitude: form.latitude ? parseFloat(form.latitude) : null,
+        longitude: form.longitude ? parseFloat(form.longitude) : null,
+        status: "pending",
+      }])
+
+      if (supabaseError) {
+        setError("Błąd zapisu: " + supabaseError.message)
+      } else {
+        setSubmitted(true)
+      }
+    } catch (err) {
+      setError("Błąd sieci. Sprawdź połączenie i spróbuj ponownie.")
+    } finally {
+      setSubmitting(false)
     }
   }
 
