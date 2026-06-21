@@ -336,15 +336,14 @@ export default function DodajWydarzenie() {
                     {geocoding ? "..." : "📍 Znajdź"}
                   </button>
                 </div>
+                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Wpisz adres i kliknij "Znajdź", albo zaznacz punkt bezpośrednio na mapie poniżej.</div>
               </div>
 
-              {form.latitude && form.longitude && (
-                <LocationPicker
-                  latitude={form.latitude}
-                  longitude={form.longitude}
-                  onChange={(lat, lng) => setForm(prev => ({...prev, latitude: lat, longitude: lng}))}
-                />
-              )}
+              <LocationPicker
+                latitude={form.latitude}
+                longitude={form.longitude}
+                onChange={(lat, lng) => setForm(prev => ({...prev, latitude: lat, longitude: lng}))}
+              />
 
               <div style={{display:"flex",justifyContent:"space-between"}}>
                 <button type="button" onClick={() => setActiveTab("basic")} style={backBtn}>← Wstecz</button>
