@@ -229,6 +229,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       venue_name: form.venue_name || null,
       category: form.category,
       cover_image_url: form.cover_image_url || null,
+      image_url: form.image_url || null,
       ticket_url: form.ticket_url || null,
       website_url: form.website_url || null,
       organizer_name: form.organizer_name || null,
