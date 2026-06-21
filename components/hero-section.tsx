@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Search, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import EventImage from "@/components/EventImage"
 
 interface HeroEvent {
   id: string
@@ -116,13 +117,14 @@ export function HeroSection() {
           {/* Carousel */}
           <div className="relative hidden lg:block">
             <div className="relative h-[420px] w-full overflow-hidden rounded-3xl">
-              <img
+              <EventImage
                 key={current}
                 src={img}
                 alt={event?.title ?? "Wydarzenie"}
-                className="h-full w-full object-cover transition-opacity duration-500"
+                eager
+                className="h-full w-full"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent rounded-3xl" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent rounded-3xl" />
 
               {/* Event info */}
               {event && (
