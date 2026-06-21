@@ -7,21 +7,31 @@ const LocationPicker = dynamic(() => import("@/components/admin/LocationPicker")
 import ImageUpload from "@/components/admin/ImageUpload"
 import ScheduleEditor from "@/components/admin/ScheduleEditor"
 
-const CATEGORIES = ["culture","music","food","sport","family","technology"]
+const CATEGORIES = ["festyny","kultura","muzyka","sport"]
 const CATEGORY_LABELS: Record<string,string> = {
-  culture:"Kultura", music:"Muzyka", food:"Jedzenie",
-  sport:"Sport", family:"Rodzinne", technology:"Technologia"
+  festyny:"Festyny", kultura:"Kultura", muzyka:"Muzyka", sport:"Sport"
 }
 const CATEGORY_COLORS: Record<string,string> = {
-  culture:"#7c3aed", music:"#db2777", food:"#ea580c",
-  sport:"#16a34a", family:"#2563eb", technology:"#0891b2"
+  festyny:"#f59e0b", kultura:"#7c3aed", muzyka:"#16a34a", sport:"#2563eb"
+}
+
+// Mapuje stare/legacy wartości kategorii z bazy na 4 docelowe kategorie
+function normalizeCategory(raw: string | null | undefined): string {
+  const c = (raw ?? "").toLowerCase().trim()
+  if (c === "kultura" || c === "culture") return "kultura"
+  if (c === "muzyka" || c === "music") return "muzyka"
+  if (c === "sport") return "sport"
+  if (c === "festyny" || c === "festiwal") return "festyny"
+  if (!c) return ""
+  // food, family, technology, inne → festyny (rdzeń kategorii Evently)
+  return "festyny"
 }
 
 const emptyForm = {
   title:"", slug:"", description:"", short_description:"",
   start_date:"", start_time:"", end_date:"", end_time:"",
   city:"Suwałki", address:"", venue_name:"",
-  category:"culture", cover_image_url:"", ticket_url:"", website_url:"",
+  category:"", cover_image_url:"", ticket_url:"", website_url:"",
   image_url:"",
   organizer_name:"", price_from:"0", is_free:true,
   latitude:"", longitude:"", status:"published",
@@ -69,7 +79,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       city: data.city || "",
       address: data.address || "",
       venue_name: data.venue_name || "",
-      category: data.category || "culture",
+      category: normalizeCategory(data.category),
       cover_image_url: data.cover_image_url || "",
       ticket_url: data.ticket_url || "",
       website_url: data.website_url || "",
@@ -174,7 +184,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
           end_time: data.end_time || prev.end_time,
           description: data.description || prev.description,
           organizer_name: data.organizer_name || prev.organizer_name,
-          category: data.category || prev.category,
+          category: data.category ? normalizeCategory(data.category) : prev.category,
           is_free: data.is_free ?? prev.is_free,
           price_from: data.price_from?.toString() || prev.price_from,
           schedule: data.schedule?.length
@@ -362,7 +372,8 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
 
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
                 <Field label="Kategoria *">
-                  <select name="category" value={form.category} onChange={handleChange} style={inp}>
+                  <select name="category" value={form.category} onChange={handleChange} required style={inp}>
+                    <option value="" disabled>Wybierz kategorię...</option>
                     {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
                   </select>
                 </Field>
