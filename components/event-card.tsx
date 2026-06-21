@@ -6,10 +6,26 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MapPin, Users, Heart } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import EventImage from "@/components/EventImage"
 
 const CATEGORY_LABELS: Record<string, string> = {
-  culture: "Kultura", music: "Muzyka", food: "Jedzenie",
-  sport: "Sport", family: "Rodzinne", technology: "Technologia",
+  festyny: "Festyny", kultura: "Kultura", muzyka: "Muzyka", sport: "Sport",
+}
+
+const CATEGORY_STYLES: Record<string, string> = {
+  festyny: "bg-amber-500 text-black",
+  kultura: "bg-purple-500 text-white",
+  muzyka: "bg-green-500 text-black",
+  sport: "bg-blue-500 text-white",
+}
+
+function normalizeCategory(raw: string | null | undefined): string {
+  const c = (raw ?? "").toLowerCase().trim()
+  if (c === "kultura" || c === "culture") return "kultura"
+  if (c === "muzyka" || c === "music") return "muzyka"
+  if (c === "sport") return "sport"
+  // festyny, folk, family, rodzinne i wszystko nierozpoznane → festyny (rdzeń kategorii)
+  return "festyny"
 }
 
 function capitalizeCity(city: string): string {
@@ -53,6 +69,7 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
 
   const dayBadge = getDayBadge(event.start_date)
   const time = getTime(event.start_date)
+  const cat = normalizeCategory(event.category)
 
   const handleGoing = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -87,17 +104,16 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
     <Link href={`/events/${event.slug || event.id}`} className="block">
       <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
         <div className="relative aspect-[16/10] overflow-hidden">
-          <img
-            src={event.image || "/images/event-concert.jpg"}
-            onError={(e) => { (e.target as HTMLImageElement).src = "/images/event-concert.jpg" }}
+          <EventImage
+            src={event.image}
             alt={event.title}
-            className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+            className="h-full w-full transition-transform duration-500 group-hover:scale-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
 
           <div className="absolute left-3 top-3">
-            <Badge className="bg-primary/90 text-primary-foreground backdrop-blur-sm">
-              {CATEGORY_LABELS[event.category] || event.category}
+            <Badge className={`backdrop-blur-sm border-0 font-bold ${CATEGORY_STYLES[cat]}`}>
+              {CATEGORY_LABELS[cat]}
             </Badge>
           </div>
 
@@ -117,14 +133,14 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
               </span>
             )}
             {time && (
-              <span className="rounded-md bg-black/60 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
+              <span className="rounded-md bg-black/75 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
                 {time}
               </span>
             )}
           </div>
 
           {event.price && (
-            <div className="absolute bottom-3 right-3 rounded-lg bg-black/50 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+            <div className="absolute bottom-3 right-3 rounded-lg bg-black/75 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
               {event.price}
             </div>
           )}
