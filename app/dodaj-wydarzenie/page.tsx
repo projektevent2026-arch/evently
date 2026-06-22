@@ -22,7 +22,7 @@ const emptyForm = {
   title: "", description: "", short_description: "",
   start_date: "", start_time: "", end_date: "", end_time: "",
   city: "", address: "", venue_name: "",
-  category: "", cover_image_url: "",
+  category: "", cover_image_url: "", image_url: "",
   ticket_url: "", website_url: "",
   organizer_name: "", organizer_email: "",
   price_from: "0", is_free: true,
@@ -98,6 +98,7 @@ export default function DodajWydarzenie() {
         venue_name: form.venue_name || null,
         category: form.category,
         cover_image_url: form.cover_image_url || null,
+        image_url: form.image_url || null,
         ticket_url: form.ticket_url || null,
         website_url: form.website_url || null,
         organizer_name: form.organizer_name || null,
@@ -355,7 +356,7 @@ export default function DodajWydarzenie() {
 
             {activeTab === "media" && <>
               <div>
-                <label style={lbl}>Zdjęcie / plakat</label>
+                <label style={lbl}>Zdjęcie</label>
                 <ImageUpload
                   currentUrl={form.cover_image_url}
                   onUploadComplete={(url) => setForm(prev => ({ ...prev, cover_image_url: url }))}
@@ -373,6 +374,27 @@ export default function DodajWydarzenie() {
               {form.cover_image_url && (
                 <img src={form.cover_image_url} alt="podgląd"
                   style={{width:"100%",height:200,objectFit:"cover",borderRadius:10}} />
+              )}
+
+              <div>
+                <label style={lbl}>Plakat wydarzenia <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie, jeśli masz osobny od zdjęcia)</span></label>
+                <ImageUpload
+                  currentUrl={form.image_url}
+                  onUploadComplete={(url) => setForm(prev => ({ ...prev, image_url: url }))}
+                />
+                <div style={{display:"flex",alignItems:"center",gap:8,margin:"10px 0"}}>
+                  <div style={{flex:1,height:1,background:"#e5e7eb"}} />
+                  <span style={{fontSize:"0.75rem",color:"#9ca3af"}}>albo</span>
+                  <div style={{flex:1,height:1,background:"#e5e7eb"}} />
+                </div>
+                <input name="image_url" value={form.image_url} onChange={handleChange}
+                  placeholder="Wklej link https://..." style={inp} />
+                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Jeśli nie dodasz, w przycisku "Plakat" pokaże się zdjęcie powyżej.</div>
+              </div>
+
+              {form.image_url && (
+                <img src={form.image_url} alt="podgląd plakatu"
+                  style={{width:"100%",maxHeight:280,objectFit:"contain",borderRadius:10,background:"#f3f4f6"}} />
               )}
 
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
