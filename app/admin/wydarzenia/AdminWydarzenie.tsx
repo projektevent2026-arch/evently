@@ -450,6 +450,12 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                 <img src={form.cover_image_url} alt="podgląd" style={{ width:"100%", height:220, objectFit:"cover", borderRadius:10 }} />
               )}
               <Field label="Plakat wydarzenia (pionowy)">
+                <ImageUpload currentUrl={form.image_url||""} onUploadComplete={(url) => setForm(prev => ({ ...prev, image_url: url }))} />
+                <div style={{ display:"flex", alignItems:"center", gap:8, margin:"10px 0" }}>
+                  <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
+                  <span style={{ fontSize:12, color:"#9ca3af" }}>lub wklej URL</span>
+                  <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
+                </div>
                 <input name="image_url" value={form.image_url||""} onChange={handleChange} placeholder="https://... wklej URL plakatu" style={inp} />
                 {form.image_url && (
                   <img src={form.image_url} alt="podgląd plakatu" style={{ width:"100%", maxHeight:280, objectFit:"contain", borderRadius:10, marginTop:10, background:"#f3f4f6" }} />
