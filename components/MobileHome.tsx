@@ -213,6 +213,8 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
   const { day, month, isToday: today, isTomorrow: tomorrow } = getDateParts(event.start_date)
   const time = event.start_time?.slice(0, 5)
   const img = event.cover_image_url || event.image_url
+  // Plakat ma odwrotny priorytet niż miniaturka — najpierw właściwy plakat, potem zdjęcie jako fallback
+  const posterImg = event.image_url || event.cover_image_url
 
   return (
     <>
@@ -286,9 +288,9 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
                 }`}>
                 {going ? '✓ Idę' : 'Idę'}
               </button>
-              {img && (
+              {posterImg && (
                 <button
-                  onClick={e => { e.preventDefault(); setPosterSrc(img) }}
+                  onClick={e => { e.preventDefault(); setPosterSrc(posterImg) }}
                   className="flex items-center gap-1.5 text-[11px] font-bold text-green-400 border border-green-500/30 bg-green-500/10 px-4 py-2 rounded-xl">
                   👁 Plakat
                 </button>
