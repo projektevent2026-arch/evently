@@ -98,6 +98,7 @@ export function EventsGrid() {
           start_date: e.start_date,
           city: e.city,
           image: e.cover_image_url || "/images/event-concert.jpg",
+          image_url: e.image_url || null,
           interested: e.interested_count || 0,
           category: e.category || "Inne",
           price: e.is_free ? "Wstęp wolny" : e.price_from ? `od ${e.price_from} zł` : "Wstęp wolny",

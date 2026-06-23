@@ -4,8 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Users, Heart } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { MapPin, Users, Heart, Eye } from "lucide-react"
 import EventImage from "@/components/EventImage"
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -41,6 +40,7 @@ export interface EventData {
   start_date?: string
   city: string
   image: string
+  image_url?: string | null
   interested: number
   category: string
   price?: string
@@ -62,46 +62,43 @@ function getTime(start_date?: string): string | null {
   return new Date(start_date).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
 }
 
+function PosterModal({ src, onClose }: { src: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose() }}
+    >
+      <img
+        src={src}
+        alt="Plakat"
+        className="max-h-[88vh] max-w-full rounded-xl object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose() }}
+        className="absolute right-5 top-5 flex size-9 items-center justify-center rounded-full bg-zinc-800 text-white"
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
+
 export function EventCard({ event, initialGoing = false }: { event: EventData; initialGoing?: boolean }) {
-  const [going, setGoing] = useState(initialGoing)
   const [liked, setLiked] = useState(false)
   const [interestedCount, setInterestedCount] = useState(event.interested)
+  const [posterSrc, setPosterSrc] = useState<string | null>(null)
 
   const dayBadge = getDayBadge(event.start_date)
   const time = getTime(event.start_date)
   const cat = normalizeCategory(event.category)
-
-  const handleGoing = async (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { window.location.href = "/login"; return }
-    const userId = session.user.id
-    const eventId = event.id
-
-    if (going) {
-      const { error } = await supabase
-        .from("event_attendees")
-        .delete()
-        .eq("user_id", userId)
-        .eq("event_id", eventId)
-      if (!error) {
-        setGoing(false)
-        setInterestedCount((prev) => prev - 1)
-      }
-    } else {
-      const { error } = await supabase
-        .from("event_attendees")
-        .insert({ user_id: userId, event_id: eventId })
-      if (!error) {
-        setGoing(true)
-        setInterestedCount((prev) => prev + 1)
-      }
-    }
-  }
+  // Plakat ma odwrotny priorytet niż zdjęcie na karcie — najpierw właściwy plakat, potem zdjęcie jako fallback
+  const posterImg = event.image_url || event.image
 
   return (
-    <Link href={`/events/${event.slug || event.id}`} className="block">
+    <>
+      {posterSrc && <PosterModal src={posterSrc} onClose={() => setPosterSrc(null)} />}
+      <Link href={`/events/${event.slug || event.id}`} className="block">
       <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
         <div className="relative aspect-[16/10] overflow-hidden">
           <EventImage
@@ -166,17 +163,21 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
             ) : (
               <div />
             )}
-            <Button
-              size="sm"
-              variant={going ? "default" : "outline"}
-              onClick={handleGoing}
-              className={`rounded-lg text-xs font-semibold ${going ? "" : "border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"}`}
-            >
-              {going ? "Ide!" : "Ide"}
-            </Button>
+            {posterImg && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPosterSrc(posterImg) }}
+                className="rounded-lg text-xs font-semibold border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
+              >
+                <Eye className="size-3.5 mr-1" />
+                Plakat
+              </Button>
+            )}
           </div>
         </div>
       </article>
     </Link>
+    </>
   )
 }
