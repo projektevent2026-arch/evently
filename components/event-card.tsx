@@ -123,20 +123,10 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
             <Heart className={`size-4 ${liked ? "fill-current" : ""}`} />
           </button>
 
-          <div className="absolute bottom-3 left-3 flex items-center gap-2">
+          <div className="absolute bottom-3 left-3">
             {dayBadge && (
               <span className={`${dayBadge.color} rounded-md px-2 py-0.5 text-xs font-bold text-white`}>
                 {dayBadge.label}
-              </span>
-            )}
-            {time && (
-              <span className="rounded-md bg-black/75 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
-                {time}
-              </span>
-            )}
-            {event.price && (
-              <span className="rounded-md bg-black/75 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
-                {event.price}
               </span>
             )}
           </div>
@@ -151,6 +141,21 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
             <MapPin className="size-3.5 text-primary/70" />
             <span>{capitalizeCity(event.city)}</span>
           </div>
+
+          {(time || event.price) && (
+            <div className="mt-2 flex items-center gap-2">
+              {time && (
+                <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
+                  {time}
+                </span>
+              )}
+              {event.price && (
+                <span className="rounded-md bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
+                  {event.price}
+                </span>
+              )}
+            </div>
+          )}
 
           <div className="mt-auto flex items-center justify-between border-t border-border/50 pt-4 mt-4">
             {interestedCount > 0 ? (
