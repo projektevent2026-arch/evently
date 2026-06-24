@@ -134,13 +134,12 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
                 {time}
               </span>
             )}
+            {event.price && (
+              <span className="rounded-md bg-black/75 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
+                {event.price}
+              </span>
+            )}
           </div>
-
-          {event.price && (
-            <div className="absolute bottom-3 right-3 rounded-lg bg-black/75 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-              {event.price}
-            </div>
-          )}
         </div>
 
         <div className="flex flex-1 flex-col p-4">
