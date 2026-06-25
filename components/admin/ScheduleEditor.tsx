@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Trash2, ChevronDown } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 
 interface ScheduleItem {
   time: string
@@ -19,12 +19,6 @@ interface ScheduleEditorProps {
   value: ScheduleDay[]
   onChange: (days: ScheduleDay[]) => void
 }
-
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const h = Math.floor(i / 2).toString().padStart(2, '0')
-  const m = i % 2 === 0 ? '00' : '30'
-  return `${h}:${m}`
-})
 
 export default function ScheduleEditor({ value, onChange }: ScheduleEditorProps) {
   const [activeDay, setActiveDay] = useState(0)
@@ -109,17 +103,13 @@ export default function ScheduleEditor({ value, onChange }: ScheduleEditorProps)
       <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {currentDay.items.map((item, j) => (
           <div key={j} style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#f9fafb', borderRadius: 8, padding: '6px 8px' }}>
-            {/* Time select */}
-            <div style={{ position: 'relative', flexShrink: 0 }}>
-              <select
-                value={item.time}
-                onChange={e => updateItem(activeDay, j, 'time', e.target.value)}
-                style={{ padding: '0.4rem 1.5rem 0.4rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '0.85rem', background: 'white', appearance: 'none', cursor: 'pointer', color: '#16a34a', fontWeight: 600, width: 80 }}
-              >
-                {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <ChevronDown size={12} style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} />
-            </div>
+            {/* Time — input zamiast select: przyjmuje każde HH:MM (16:15, 16:45 itd.) */}
+            <input
+              type="time"
+              value={item.time}
+              onChange={e => updateItem(activeDay, j, 'time', e.target.value)}
+              style={{ padding: '0.4rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '0.85rem', background: 'white', color: '#16a34a', fontWeight: 600, width: 92, flexShrink: 0 }}
+            />
 
             {/* Title + description */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
