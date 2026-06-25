@@ -157,6 +157,26 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     setPosterPreviewUrl(localPreview)
     setScanning(true)
     setScanStatus("Analizuję plakat...")
+
+    // Wgraj oryginalny plik do Supabase Storage równolegle ze skanowaniem AI —
+    // żeby zeskanowany plakat automatycznie stał się plakatem/zdjęciem eventu
+    const uploadPromise = (async () => {
+      try {
+        const ext = file.name.split(".").pop() || "jpg"
+        const fileName = `event_${Date.now()}.${ext}`
+        const { data, error: uploadError } = await supabase.storage
+          .from("event-images")
+          .upload(fileName, file, { upsert: true })
+        if (uploadError || !data) return null
+        const { data: urlData } = supabase.storage
+          .from("event-images")
+          .getPublicUrl(data.path)
+        return urlData.publicUrl
+      } catch {
+        return null
+      }
+    })()
+
     try {
       const { base64, mediaType } = await compressImage(file)
       const res = await fetch("/api/scan-poster", {
@@ -167,6 +187,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       const data = await res.json()
       if (data.error) { setScanStatus("Błąd: " + data.error) }
       else {
+        const uploadedUrl = await uploadPromise
         setForm(prev => ({
           ...prev,
           title: data.title || prev.title,
@@ -187,6 +208,8 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
           category: data.category ? normalizeCategory(data.category) : prev.category,
           is_free: data.is_free ?? prev.is_free,
           price_from: data.price_from?.toString() || prev.price_from,
+          image_url: uploadedUrl || prev.image_url,
+          cover_image_url: prev.cover_image_url || uploadedUrl || prev.cover_image_url,
           schedule: data.schedule?.length
             ? (() => {
                 const days: Record<number,any[]> = {}
@@ -201,7 +224,9 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
               })()
             : prev.schedule,
         }))
-        setScanStatus("✅ Formularz wypełniony automatycznie")
+        setScanStatus(uploadedUrl
+          ? "✅ Formularz wypełniony automatycznie, plakat zapisany"
+          : "✅ Formularz wypełniony (plakat nie zapisał się — wgraj go ręcznie w zakładce Zdjęcia)")
         const cleanAddress = (data.address || "").replace(/ul\.\s*/gi,"").trim()
         if (cleanAddress || data.city) {
           await fetch("/api/geocode?q=" + encodeURIComponent([cleanAddress, data.city].filter(Boolean).join(", ")))
