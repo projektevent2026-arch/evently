@@ -52,7 +52,13 @@ Jeśli wydarzenie trwa kilka dni, podziel harmonogram według dni i zwróć osob
   { "time": "HH:MM", "title": "nazwa punktu", "description": "opcjonalny opis", "day": 1 },
   { "time": "HH:MM", "title": "nazwa punktu", "description": "opcjonalny opis", "day": 2 }
 ]
-gdzie "day" to numer dnia (1, 2, 3...). Jeśli impreza trwa 1 dzień, wszystkie punkty mają "day": 1.`,
+gdzie "day" to numer dnia (1, 2, 3...). Jeśli impreza trwa 1 dzień, wszystkie punkty mają "day": 1.
+
+WAŻNE — harmonogram, częsty błąd do uniknięcia:
+- Każdy punkt programu na plakacie ma DOKŁADNIE JEDNĄ godzinę przypisaną (zwykle napisaną przed lub przy nim).
+- Jeśli tytuł punktu programu zawija się na dwie linie (np. "16:45 – Szkoła dziecięca\\npod opieką Pani X"), to jest to JEDEN punkt programu, nie dwa. Połącz tekst w jeden "title", nie twórz drugiego wpisu w schedule dla kontynuacji linii.
+- NIGDY nie zwracaj "00:00" jako zgadywanej/domyślnej godziny. "00:00" zwracaj tylko jeśli plakat dosłownie pokazuje punkt programu o północy.
+- Jeśli naprawdę nie możesz ustalić godziny konkretnego punktu (np. plakat jej nie pokazuje), pomiń ten punkt — nie dodawaj go do schedule z wymyśloną godziną.`,
             },
           ],
         },
