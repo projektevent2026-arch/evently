@@ -13,6 +13,7 @@ interface Event {
   slug: string
   category: string | null
   start_date: string
+  end_date: string | null
   venue_name: string | null
   latitude: number
   longitude: number
@@ -65,6 +66,15 @@ function isTomorrow(d: string) {
 function isThisWeekend(d: string) {
   const day = new Date(d).getDay()
   return day === 0 || day === 6
+}
+function isUpcoming(start_date?: string | null, end_date?: string | null): boolean {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const ref = end_date || start_date
+  if (!ref) return true
+  const refDay = new Date(ref)
+  refDay.setHours(0, 0, 0, 0)
+  return refDay >= today
 }
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -163,15 +173,18 @@ export default function EventMap() {
 
   useEffect(() => {
     supabase
-      .from('events')
-      .select('id, title, slug, category, start_date, venue_name, latitude, longitude')
-      .not('latitude', 'is', null)
-      .not('longitude', 'is', null)
-      .order('start_date', { ascending: true })
-      .then(({ data, error }) => {
-        if (!error && data) setEvents(data as Event[])
-        setLoading(false)
-      })
+    .from('events')
+    .select('id, title, slug, category, start_date, end_date, venue_name, latitude, longitude')
+    .not('latitude', 'is', null)
+    .not('longitude', 'is', null)
+    .order('start_date', { ascending: true })
+    .then(({ data, error }) => {
+      if (!error && data) {
+        // ODETNIJ PRZETERMINOWANE — event znika z mapy po zakończeniu
+        setEvents((data as Event[]).filter(e => isUpcoming(e.start_date, e.end_date)))
+      }
+      setLoading(false)
+    })
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
