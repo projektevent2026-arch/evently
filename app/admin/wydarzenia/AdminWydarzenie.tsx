@@ -27,6 +27,13 @@ function normalizeCategory(raw: string | null | undefined): string {
   return "festyny"
 }
 
+// Zwraca dzisiejszą datę jako YYYY-MM-DD (do atrybutu min i porównań)
+function todayStr(): string {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString().split("T")[0]
+}
+
 const emptyForm = {
   title:"", slug:"", description:"", short_description:"",
   start_date:"", start_time:"", end_date:"", end_time:"",
@@ -241,6 +248,12 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
   }
 
   const handleSave = async (statusOverride?: string) => {
+    // Walidacja: data startu nie może być z przeszłości (poza szkicem)
+    if (statusOverride !== "draft" && form.start_date && form.start_date < todayStr()) {
+      setMsg("Błąd: Data rozpoczęcia nie może być z przeszłości")
+      setSection("basic")
+      return
+    }
     setSaving(true)
     setMsg("Zapisywanie...")
     const start = form.start_date && form.start_time ? form.start_date + "T" + form.start_time : form.start_date
@@ -409,8 +422,8 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
               </div>
 
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:12 }}>
-                <Field label="Data rozpoczęcia *">
-                  <input name="start_date" type="date" value={form.start_date} onChange={handleChange} required style={inp} />
+              <Field label="Data rozpoczęcia *">
+                  <input name="start_date" type="date" min={todayStr()} value={form.start_date} onChange={handleChange} required style={inp} />
                 </Field>
                 <Field label="Godzina">
                   <input name="start_time" type="time" value={form.start_time} onChange={handleChange} style={inp} />

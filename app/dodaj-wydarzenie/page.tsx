@@ -18,6 +18,13 @@ const CATEGORY_LABELS: Record<string,string> = {
   festyny:"Festyny 🎪", kultura:"Kultura", muzyka:"Muzyka", sport:"Sport"
 }
 
+// Zwraca dzisiejszą datę jako YYYY-MM-DD (do atrybutu min i porównań)
+function todayStr(): string {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString().split("T")[0]
+}
+
 const emptyForm = {
   title: "", description: "", short_description: "",
   start_date: "", start_time: "", end_date: "", end_time: "",
@@ -75,6 +82,14 @@ export default function DodajWydarzenie() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Walidacja: data startu nie może być z przeszłości
+    if (form.start_date && form.start_date < todayStr()) {
+      setError("Data rozpoczęcia nie może być z przeszłości.")
+      setActiveTab("basic")
+      return
+    }
+
     setSubmitting(true)
     setError("")
 
@@ -146,6 +161,9 @@ export default function DodajWydarzenie() {
       <style>{`
         input::placeholder, textarea::placeholder { color: #6b7280; }
         input, textarea, select { color: #111827; }
+        /* Pola daty: 2 kolumny na telefonie, 4 na szerszym ekranie */
+        .date-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+        @media (min-width: 640px) { .date-grid { grid-template-columns: 1fr 1fr 1fr 1fr; } }
       `}</style>
 
       {/* Header */}
@@ -259,10 +277,10 @@ export default function DodajWydarzenie() {
 
               <div>
                 <label style={lbl}>Data i godzina *</label>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:"0.5rem"}}>
+                <div className="date-grid">
                   <div>
                     <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Data od</div>
-                    <input name="start_date" type="date" value={form.start_date} onChange={handleChange} required style={inp} />
+                    <input name="start_date" type="date" min={todayStr()} value={form.start_date} onChange={handleChange} required style={inp} />
                   </div>
                   <div>
                     <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Godzina od</div>
@@ -270,7 +288,7 @@ export default function DodajWydarzenie() {
                   </div>
                   <div>
                     <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Data do</div>
-                    <input name="end_date" type="date" value={form.end_date} onChange={handleChange} style={inp} />
+                    <input name="end_date" type="date" min={form.start_date || todayStr()} value={form.end_date} onChange={handleChange} style={inp} />
                   </div>
                   <div>
                     <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Godzina do</div>
