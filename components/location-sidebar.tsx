@@ -9,12 +9,36 @@ const MiniMap = dynamic(() => import("@/components/MiniMap"), { ssr: false })
 
 const RADII = [5, 10, 25, 50]
 
+interface GeoResult {
+  lat: number
+  lng: number
+  label: string
+}
+
+// Ten sam geokoder co /mapa (EventMap): Nominatim + ograniczenie do Polski.
+// countrycodes=pl -> "Ełk" trafia w polski Ełk, nie amerykański Elk.
+async function searchNominatim(query: string): Promise<GeoResult[]> {
+  const url =
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}` +
+    `&format=json&limit=6&countrycodes=pl&accept-language=pl`
+  const res = await fetch(url, {
+    headers: { "Accept-Language": "pl", "User-Agent": "Evently/1.0 (evently-silk-omega.vercel.app)" },
+  })
+  const data = await res.json()
+  return (data as any[]).map((item) => ({
+    lat: parseFloat(item.lat),
+    lng: parseFloat(item.lon),
+    label: item.display_name.split(",").slice(0, 2).join(",").trim(),
+  }))
+}
+
 export function LocationSidebar() {
   const [city, setCity] = useState("")
   const [radius, setRadius] = useState(25)
   const [locating, setLocating] = useState(false)
-  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [suggestions, setSuggestions] = useState<GeoResult[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [searching, setSearching] = useState(false)
   const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const router = useRouter()
@@ -25,9 +49,15 @@ export function LocationSidebar() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords
-        const res = await fetch(`/api/geocode?q=${latitude},${longitude}&reverse=true`)
-        const data = await res.json()
-        const cityName = data[0]?.display_name?.split(",")[0] || ""
+        let cityName = "Moja lokalizacja"
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=pl`,
+            { headers: { "Accept-Language": "pl", "User-Agent": "Evently/1.0" } }
+          )
+          const data = await res.json()
+          cityName = data.address?.city || data.address?.town || data.address?.village || "Moja lokalizacja"
+        } catch {}
         setCity(cityName)
         setMapCenter([latitude, longitude])
         setLocating(false)
@@ -42,47 +72,50 @@ export function LocationSidebar() {
     )
   }
 
+  // Podpowiedzi w trakcie pisania (od 2 znaków)
   const handleCityChange = async (val: string) => {
     setCity(val)
-    if (val.length < 2) { setSuggestions([]); setShowSuggestions(false); return }
+    if (val.trim().length < 2) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
     try {
-      const params = new URLSearchParams({ q: val, limit: "8", layer: "city" })
-      const res = await fetch("https://photon.komoot.io/api/?" + params.toString())
-      const data = await res.json()
-      const cities: string[] = data.features
-        .filter((f: any) =>
-          ["city", "town", "village"].includes(f.properties.type) &&
-          f.properties.countrycode === "PL"
-        )
-        .map((f: any) => String(f.properties.city || f.properties.name))
-        .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
-      setSuggestions(cities)
-      setShowSuggestions(cities.length > 0)
+      const results = await searchNominatim(val.trim())
+      setSuggestions(results)
+      setShowSuggestions(results.length > 0)
     } catch {
       setSuggestions([])
+      setShowSuggestions(false)
     }
   }
 
-  const handleSelectCity = async (s: string) => {
-    setCity(s)
+  // Wybór miasta z listy albo z Enter — ustawia lat/lng i filtruje
+  const applyCity = (r: GeoResult) => {
+    setCity(r.label)
     setShowSuggestions(false)
+    setMapCenter([r.lat, r.lng])
     const params = new URLSearchParams(searchParams.toString())
-    params.set("city", s)
+    params.set("city", r.label)
     params.set("radius", radius.toString())
+    params.set("lat", r.lat.toString())
+    params.set("lng", r.lng.toString())
     router.push(`/?${params.toString()}`)
+  }
+
+  // Enter w polu: jeśli są podpowiedzi, weź pierwszą; jeśli nie — dociągnij z geokodera
+  const handleCitySearch = async () => {
+    if (!city.trim()) return
+    if (suggestions.length > 0) {
+      applyCity(suggestions[0])
+      return
+    }
+    setSearching(true)
     try {
-      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(s)}&limit=1`)
-      const data = await res.json()
-      const f = data.features?.[0]
-      if (f) {
-        const [lng, lat] = f.geometry.coordinates
-        setMapCenter([lat, lng])
-        const updatedParams = new URLSearchParams(params.toString())
-        updatedParams.set("lat", lat.toString())
-        updatedParams.set("lng", lng.toString())
-        router.push(`/?${updatedParams.toString()}`)
-      }
+      const results = await searchNominatim(city.trim())
+      if (results[0]) applyCity(results[0])
     } catch {}
+    setSearching(false)
   }
 
   const sidebarContent = (
@@ -110,19 +143,26 @@ export function LocationSidebar() {
             type="text"
             value={city}
             onChange={(e) => handleCityChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); handleCitySearch() }
+              if (e.key === "Escape") setShowSuggestions(false)
+            }}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-            placeholder="Wpisz miasto lub wieś..."
+            placeholder="Wpisz miasto i naciśnij Enter..."
             className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
+          {searching && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          )}
           {showSuggestions && suggestions.length > 0 && (
             <ul className="absolute z-10 mt-1 w-full rounded-xl border border-border bg-background shadow-md overflow-hidden">
               {suggestions.map((s, i) => (
                 <li
                   key={i}
-                  onMouseDown={() => handleSelectCity(s)}
+                  onMouseDown={() => applyCity(s)}
                   className="cursor-pointer px-3 py-2.5 text-sm text-foreground hover:bg-accent"
                 >
-                  {s}
+                  {s.label}
                 </li>
               ))}
             </ul>
