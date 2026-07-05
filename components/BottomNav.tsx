@@ -11,7 +11,7 @@ export default function BottomNav() {
     href === '/' ? pathname === '/' : pathname.startsWith(href)
 
   const linkClass = (href: string) =>
-    `flex flex-col items-center gap-0.5 pt-2 min-w-[52px] ${
+    `flex flex-col items-center gap-0.5 flex-1 pt-2 ${
       isActive(href) ? 'text-green-500' : 'text-[#555]'
     }`
 
@@ -25,17 +25,14 @@ export default function BottomNav() {
     >
       <div className="flex items-end justify-around h-16 px-2">
 
+        {/* Lewo */}
         <Link href="/" className={linkClass('/')}>
           <Compass size={22} />
           <span className={labelClass('/')}>Odkrywaj</span>
         </Link>
 
-        <Link href="/mapa" className={linkClass('/mapa')}>
-          <Map size={22} />
-          <span className={labelClass('/mapa')}>Mapa</span>
-        </Link>
-
-        <Link href="/dodaj-wydarzenie" className="flex flex-col items-center gap-1 -mt-4">
+        {/* Środek — wyróżniony przycisk Dodaj */}
+        <Link href="/dodaj-wydarzenie" className="flex flex-col items-center gap-1 flex-1 -mt-4">
           <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center"
                style={{ boxShadow: '0 4px 18px rgba(34,197,94,0.45)' }}>
             <Plus size={24} className="text-black" />
@@ -43,8 +40,11 @@ export default function BottomNav() {
           <span className="text-[10px] text-[#555]">Dodaj</span>
         </Link>
 
-        {/* Zapisane i Profil ukryte do czasu logowania (tier D) —
-            prowadziły do 404, funkcja zapisu nie działa bez kont */}
+        {/* Prawo */}
+        <Link href="/mapa" className={linkClass('/mapa')}>
+          <Map size={22} />
+          <span className={labelClass('/mapa')}>Mapa</span>
+        </Link>
 
       </div>
     </nav>
