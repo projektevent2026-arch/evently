@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Compass, Map, Plus, Bookmark, User } from 'lucide-react'
+import { Compass, Map, Plus } from 'lucide-react'
 
 export default function BottomNav() {
   const pathname = usePathname()
@@ -43,15 +43,8 @@ export default function BottomNav() {
           <span className="text-[10px] text-[#555]">Dodaj</span>
         </Link>
 
-        <Link href="/zapisane" className={linkClass('/zapisane')}>
-          <Bookmark size={22} />
-          <span className={labelClass('/zapisane')}>Zapisane</span>
-        </Link>
-
-        <Link href="/profil" className={linkClass('/profil')}>
-          <User size={22} />
-          <span className={labelClass('/profil')}>Profil</span>
-        </Link>
+        {/* Zapisane i Profil ukryte do czasu logowania (tier D) —
+            prowadziły do 404, funkcja zapisu nie działa bez kont */}
 
       </div>
     </nav>

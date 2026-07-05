@@ -58,27 +58,22 @@ const CAT_LABELS: Record<string, string> = {
   sport:   'Sport',
 }
 
-// Mapuje wszystkie stare wartości z bazy → 4 docelowe kategorie
 function normalizeCategory(raw: string | null): string {
   const c = (raw ?? '').toLowerCase().trim()
   if (c === 'kultura' || c === 'culture') return 'kultura'
   if (c === 'muzyka' || c === 'music') return 'muzyka'
   if (c === 'sport') return 'sport'
-  // festiwal, family, rodzinne, food, jedzenie, technology, targi, inne → festyny
   return 'festyny'
 }
 
 const MONTH_PL = ['STY','LUT','MAR','KWI','MAJ','CZE','LIP','SIE','WRZ','PAŹ','LIS','GRU']
 
-// Początek dzisiejszego dnia (00:00).
 function startOfToday(): Date {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
   return d
 }
 
-// Event "aktualny" = jeszcze się nie zakończył.
-// end_date jest -> liczy się koniec; brak end_date -> liczy się start.
 function isUpcoming(start_date?: string | null, end_date?: string | null): boolean {
   const today = startOfToday()
   const ref = end_date || start_date
@@ -122,7 +117,6 @@ function isOnDate(d: string, target: string) {
   return new Date(d).toDateString() === new Date(target).toDateString()
 }
 
-// ─── Poster Modal ─────────────────────────────────────────────────────────────
 function PosterModal({ src, onClose }: { src: string; onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center p-4" onClick={onClose}>
@@ -137,7 +131,6 @@ function PosterModal({ src, onClose }: { src: string; onClose: () => void }) {
   )
 }
 
-// ─── City Dropdown ────────────────────────────────────────────────────────────
 function CityDropdown({ city, onClose, onSelectGPS, onSelectCity, radius, onSetRadius }: {
   city: string; onClose: () => void
   onSelectGPS: () => void; onSelectCity: (c: string) => void
@@ -222,9 +215,7 @@ function CityDropdown({ city, onClose, onSelectGPS, onSelectCity, radius, onSetR
   )
 }
 
-// ─── Event Card ───────────────────────────────────────────────────────────────
 function EventCard({ event, distance }: { event: Event; distance: number | null }) {
-  const [going, setGoing] = useState(false)
   const [posterSrc, setPosterSrc] = useState<string | null>(null)
   const normCat = normalizeCategory(event.category)
   const tagColor = CAT_COLORS[normCat] ?? 'bg-zinc-600 text-white'
@@ -232,7 +223,6 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
   const { day, month, isToday: today, isTomorrow: tomorrow } = getDateParts(event.start_date)
   const time = event.start_time?.slice(0, 5)
   const img = event.cover_image_url || event.image_url
-  // Plakat ma odwrotny priorytet niż miniaturka — najpierw właściwy plakat, potem zdjęcie jako fallback
   const posterImg = event.image_url || event.cover_image_url
 
   return (
@@ -265,9 +255,6 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
                 {(event.venue_name || event.location_name) && (
                   <p className="text-[11px] text-zinc-400 mb-0.5">
                     👥 {event.venue_name || event.location_name}
-                    {event.rsvp_count > 0 && (
-                      <span className="text-zinc-500"> · {event.rsvp_count} zainteresowanych</span>
-                    )}
                   </p>
                 )}
                 {event.address && (
@@ -299,14 +286,8 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
               )}
             </div>
 
+            {/* Akcje karty — „Idę" ukryte (RSVP nie dziala bez kont, wraca w tier D) */}
             <div className="flex items-center gap-2 mt-3">
-              <button
-                onClick={e => { e.preventDefault(); setGoing(!going) }}
-                className={`text-[12px] font-black px-5 py-2 rounded-xl transition-colors ${
-                  going ? 'bg-green-600 text-white' : 'bg-green-500 text-black'
-                }`}>
-                {going ? '✓ Idę' : 'Idę'}
-              </button>
               {posterImg && (
                 <button
                   onClick={e => { e.preventDefault(); setPosterSrc(posterImg) }}
@@ -323,7 +304,6 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
   )
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
 export function MobileHome() {
   const router = useRouter()
   const dateInputRef = useRef<HTMLInputElement>(null)
@@ -414,7 +394,6 @@ export function MobileHome() {
       const { data } = await supabase
         .from('events').select('*').eq('status', 'published')
         .order('start_date', { ascending: true }).limit(100)
-      // ODETNIJ PRZETERMINOWANE — event znika z listy po zakończeniu
       setEvents((data ?? []).filter((e: Event) => isUpcoming(e.start_date, e.end_date)))
       setLoading(false)
     }
@@ -467,19 +446,12 @@ export function MobileHome() {
         />
       )}
 
-      {/* Header */}
+      {/* Header — samo logo. Dzwonek (push) i avatar-atrapa (/profil 404) ukryte do tier D */}
       <div className="px-4 pt-5 pb-3">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[18px] font-black text-green-500 tracking-tight">● evently</span>
-          <div className="flex gap-2">
-            <button className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm">🔔</button>
-            <Link href="/profil">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-green-600" />
-            </Link>
-          </div>
         </div>
 
-        {/* Location bar */}
         <button
           onClick={() => setShowCityDropdown(true)}
           className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 mb-3"
@@ -496,7 +468,6 @@ export function MobileHome() {
           Co dzieje się <span className="text-green-500">w pobliżu?</span>
         </h1>
 
-        {/* Search */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 flex items-center gap-2 mb-3">
           <span className="text-zinc-600">🔍</span>
           <input
@@ -504,12 +475,10 @@ export function MobileHome() {
             placeholder="Szukaj wydarzeń, miejsc, kategorii..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && search.trim() && router.push(`/events?q=${encodeURIComponent(search.trim())}`)}
           />
           {search && <button onClick={() => setSearch('')} className="text-zinc-600 text-sm">✕</button>}
         </div>
 
-        {/* Categories */}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-2">
           {CATEGORIES.map(cat => (
             <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
@@ -521,7 +490,6 @@ export function MobileHome() {
           ))}
         </div>
 
-        {/* Date filters */}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
           {([
             { id: 'all', label: 'Wszystkie' },
@@ -555,7 +523,6 @@ export function MobileHome() {
         </div>
       </div>
 
-      {/* Event list */}
       <div className="px-4">
         {loading ? (
           <div className="space-y-3">
@@ -582,9 +549,10 @@ export function MobileHome() {
         )}
       </div>
 
-      {/* AI Scanner */}
+      {/* Banner skanera — prowadzi do /dodaj-wydarzenie (skaner AI jest w formularzu).
+          Wczesniej linkowal do /skanuj -> 404 */}
       <div className="fixed bottom-[72px] left-4 right-4 z-40">
-        <Link href="/skanuj"
+        <Link href="/dodaj-wydarzenie"
           className="bg-zinc-900/95 backdrop-blur border border-zinc-700 rounded-xl px-3 py-2.5 flex items-center gap-3 block shadow-xl">
           <div className="w-9 h-9 bg-green-500/10 rounded-xl flex items-center justify-center text-lg flex-shrink-0">📷</div>
           <div className="flex-1">
