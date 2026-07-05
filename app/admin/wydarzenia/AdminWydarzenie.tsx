@@ -254,6 +254,11 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       setSection("basic")
       return
     }
+    if (statusOverride !== "draft" && form.end_date && form.start_date && form.end_date < form.start_date) {
+      setMsg("Błąd: Data zakończenia nie może być wcześniejsza niż rozpoczęcia")
+      setSection("basic")
+      return
+    }
     setSaving(true)
     setMsg("Zapisywanie...")
     const start = form.start_date && form.start_time ? form.start_date + "T" + form.start_time : form.start_date
