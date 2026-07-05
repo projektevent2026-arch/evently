@@ -9,6 +9,7 @@ interface Event {
   id: string
   title: string
   start_date: string
+  end_date: string | null
   start_time: string | null
   end_time: string | null
   location_name: string | null
@@ -68,6 +69,24 @@ function normalizeCategory(raw: string | null): string {
 }
 
 const MONTH_PL = ['STY','LUT','MAR','KWI','MAJ','CZE','LIP','SIE','WRZ','PAŹ','LIS','GRU']
+
+// Początek dzisiejszego dnia (00:00).
+function startOfToday(): Date {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+// Event "aktualny" = jeszcze się nie zakończył.
+// end_date jest -> liczy się koniec; brak end_date -> liczy się start.
+function isUpcoming(start_date?: string | null, end_date?: string | null): boolean {
+  const today = startOfToday()
+  const ref = end_date || start_date
+  if (!ref) return true
+  const refDay = new Date(ref)
+  refDay.setHours(0, 0, 0, 0)
+  return refDay >= today
+}
 
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371
@@ -395,7 +414,8 @@ export function MobileHome() {
       const { data } = await supabase
         .from('events').select('*').eq('status', 'published')
         .order('start_date', { ascending: true }).limit(100)
-      setEvents(data ?? [])
+      // ODETNIJ PRZETERMINOWANE — event znika z listy po zakończeniu
+      setEvents((data ?? []).filter((e: Event) => isUpcoming(e.start_date, e.end_date)))
       setLoading(false)
     }
     fetchEvents()

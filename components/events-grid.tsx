@@ -20,6 +20,25 @@ const DATE_FILTERS = [
   { id: "weekend",  label: "Weekend" },
 ]
 
+// Zwraca początek dzisiejszego dnia (00:00) — event z dzisiejszą datą ma zostać widoczny.
+function startOfToday(): Date {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+// Event jest "aktualny", jeśli jeszcze się nie zakończył.
+// - jest end_date  -> liczy się koniec (festiwal 9–11 lipca widoczny do 11-go)
+// - brak end_date  -> liczy się start (jednodniowy festyn)
+function isUpcoming(start_date?: string | null, end_date?: string | null): boolean {
+  const today = startOfToday()
+  const ref = end_date || start_date
+  if (!ref) return true // brak daty — nie ukrywaj, pokaż (rzadki przypadek)
+  const refDay = new Date(ref)
+  refDay.setHours(0, 0, 0, 0)
+  return refDay >= today
+}
+
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
   const dLat = (lat2 - lat1) * Math.PI / 180
@@ -83,6 +102,8 @@ export function EventsGrid() {
       if (error) { console.error(error); setLoading(false); return }
 
       const mapped = (data || [])
+        // ODETNIJ PRZETERMINOWANE — event znika z listy po zakończeniu
+        .filter((e) => isUpcoming(e.start_date, e.end_date))
         .filter((e) => {
           if (!hasLocationFilter) return true
           if (!e.latitude || !e.longitude) return true
