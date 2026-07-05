@@ -75,15 +75,19 @@ export function LocationSidebar() {
   // Podpowiedzi w trakcie pisania (od 2 znaków)
   const handleCityChange = async (val: string) => {
     setCity(val)
-    if (val.trim().length < 2) {
+    if (val.trim().length < 3) {
       setSuggestions([])
       setShowSuggestions(false)
       return
     }
     try {
       const results = await searchNominatim(val.trim())
-      setSuggestions(results)
-      setShowSuggestions(results.length > 0)
+      // usuń duplikaty po etykiecie (Nominatim zwraca Ełk kilka razy)
+      const unique = results.filter(
+        (r, i, arr) => arr.findIndex(x => x.label === r.label) === i
+      )
+      setSuggestions(unique)
+      setShowSuggestions(unique.length > 0)
     } catch {
       setSuggestions([])
       setShowSuggestions(false)
