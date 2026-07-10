@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { EventCard, type EventData } from "@/components/event-card"
 import { supabase } from "@/lib/supabase"
@@ -70,6 +70,45 @@ function normalizeCategory(cat: string | null): string {
   return c
 }
 
+// ─────────────────────────────────────────────────────────────
+// FETCH z timeoutem + retry — ten sam wzorzec co w MobileHome.
+// Jak zapytanie zawiśnie -> po TIMEOUT_MS abort -> ponów. Po MAX_RETRIES
+// nieudanych prób -> rzuć błąd, żeby UI pokazało guzik „Spróbuj ponownie".
+// ─────────────────────────────────────────────────────────────
+const TIMEOUT_MS = 8000
+const MAX_RETRIES = 2
+
+async function fetchPublishedEvents(): Promise<any[]> {
+  let lastErr: unknown = null
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
+
+    try {
+      const { data, error } = await supabase
+        .from("events")
+        .select("*")
+        .eq("status", "published")
+        .order("start_date", { ascending: true })
+        .abortSignal(controller.signal)
+
+      clearTimeout(timeoutId)
+
+      if (error) throw error
+      return data ?? []
+    } catch (err) {
+      clearTimeout(timeoutId)
+      lastErr = err
+      if (attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, 800 * (attempt + 1)))
+      }
+    }
+  }
+
+  throw lastErr ?? new Error("fetch events failed")
+}
+
 export function EventsGrid() {
   const searchParams = useSearchParams()
   const dateInputRef = useRef<HTMLInputElement>(null)
@@ -78,6 +117,7 @@ export function EventsGrid() {
   const [activeDate, setActiveDate] = useState("all")
   const [customDate, setCustomDate] = useState("")
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [attendingIds, setAttendingIds] = useState<Set<string>>(new Set())
 
   const q = searchParams.get("q") || ""
@@ -90,18 +130,14 @@ export function EventsGrid() {
     try { dateInputRef.current?.showPicker() } catch { dateInputRef.current?.click() }
   }
 
-  useEffect(() => {
-    async function fetchEvents() {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from("events")
-        .select("*")
-        .eq("status", "published")
-        .order("start_date", { ascending: true })
+  // loadEvents wydzielone, żeby guzik „Spróbuj ponownie" mógł je wywołać.
+  const loadEvents = useCallback(async () => {
+    setLoading(true)
+    setLoadError(false)
+    try {
+      const data = await fetchPublishedEvents()
 
-      if (error) { console.error(error); setLoading(false); return }
-
-      const mapped = (data || [])
+      const mapped = data
         // ODETNIJ PRZETERMINOWANE — event znika z listy po zakończeniu
         .filter((e) => isUpcoming(e.start_date, e.end_date))
         .filter((e) => {
@@ -127,17 +163,29 @@ export function EventsGrid() {
 
       setEvents(mapped)
 
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        const { data: attendance } = await supabase
-          .from("event_attendees").select("event_id").eq("user_id", session.user.id)
-        if (attendance) setAttendingIds(new Set(attendance.map((a) => a.event_id)))
+      // Pobranie sesji + RSVP jest DRUGORZĘDNE — jego błąd NIE ma pokazywać ekranu awarii.
+      // Główne eventy już są; brak listy „idę" jest akceptowalny.
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          const { data: attendance } = await supabase
+            .from("event_attendees").select("event_id").eq("user_id", session.user.id)
+          if (attendance) setAttendingIds(new Set(attendance.map((a) => a.event_id)))
+        }
+      } catch (attErr) {
+        console.warn("[Evently] Nie udało się pobrać listy RSVP (pomijam):", attErr)
       }
-
+    } catch (err) {
+      console.error("[Evently] Nie udało się pobrać wydarzeń:", err)
+      setLoadError(true)
+    } finally {
       setLoading(false)
     }
-    fetchEvents()
-  }, [filterLat, filterLng, filterRadius])
+  }, [filterLat, filterLng, filterRadius, hasLocationFilter])
+
+  useEffect(() => {
+    loadEvents()
+  }, [loadEvents])
 
   const filtered = events.filter((e) => {
     const matchQ = q
@@ -239,6 +287,18 @@ export function EventsGrid() {
       <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {loading ? (
           <p className="col-span-4 py-12 text-center text-muted-foreground">Ładowanie...</p>
+        ) : loadError ? (
+          <div className="col-span-4 py-16 text-center">
+            <p className="text-4xl mb-4">📡</p>
+            <p className="text-lg font-semibold text-foreground mb-2">Nie udało się załadować wydarzeń</p>
+            <p className="text-sm text-muted-foreground mb-5">Sprawdź połączenie i spróbuj ponownie</p>
+            <button
+              onClick={loadEvents}
+              className="rounded-full bg-primary text-primary-foreground px-6 py-2 text-sm font-semibold hover:bg-primary/90 transition-colors"
+            >
+              Spróbuj ponownie
+            </button>
+          </div>
         ) : filtered.length > 0 ? (
           filtered.map((event) => (
             <EventCard key={event.id} event={event} initialGoing={attendingIds.has(String(event.id))} />
