@@ -55,7 +55,27 @@ function isTomorrow(d: string) {
   const t = new Date(); t.setDate(t.getDate() + 1)
   return new Date(d).toDateString() === t.toDateString()
 }
-function isWeekend(d: string) { const day = new Date(d).getDay(); return day === 0 || day === 6 }
+// Zakres NAJBLIŻSZEGO weekendu: piątek 00:00 -> niedziela 23:59.
+// W sobotę/niedzielę zwraca trwający weekend (nie przeskakuje na następny).
+// Pon–czw -> nadchodzący piątek. To naprawia bug „pokazywał wszystkie weekendy do końca roku".
+function thisWeekendRange(): [Date, Date] {
+  const now = new Date()
+  const day = now.getDay() // 0=niedz, 1=pon, ... 5=pt, 6=sob
+  const offsetToFriday = day === 0 ? -2 : 5 - day // sob(-1), niedz(-2), pt(0), pon(+4)...
+  const start = new Date(now)
+  start.setDate(now.getDate() + offsetToFriday)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 2)
+  end.setHours(23, 59, 59, 999)
+  return [start, end]
+}
+
+function isThisWeekend(d: string): boolean {
+  const [start, end] = thisWeekendRange()
+  const t = new Date(d).getTime()
+  return t >= start.getTime() && t <= end.getTime()
+}
 function isOnDate(d: string, target: string) {
   return new Date(d).toDateString() === new Date(target).toDateString()
 }
@@ -199,7 +219,7 @@ export function EventsGrid() {
       if (!e.start_date) return true
       if (activeDate === "today") return isToday(e.start_date)
       if (activeDate === "tomorrow") return isTomorrow(e.start_date)
-      if (activeDate === "weekend") return isWeekend(e.start_date)
+      if (activeDate === "weekend") return isThisWeekend(e.start_date)
       if (activeDate === "custom" && customDate) return isOnDate(e.start_date, customDate)
       return true
     })()
