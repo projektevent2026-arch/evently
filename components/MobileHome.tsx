@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -115,6 +115,47 @@ function isTomorrow(d: string) {
 function isWeekend(d: string) { const day = new Date(d).getDay(); return day === 0 || day === 6 }
 function isOnDate(d: string, target: string) {
   return new Date(d).toDateString() === new Date(target).toDateString()
+}
+
+// ─────────────────────────────────────────────────────────────
+// FETCH z timeoutem + retry. To jest fix na P1 (nieskończone „Ładowanie").
+// Jak zapytanie zawiśnie -> po TIMEOUT_MS abort -> ponów. Po MAX_RETRIES
+// nieudanych prób -> rzuć błąd, żeby UI pokazało guzik „Spróbuj ponownie".
+// ─────────────────────────────────────────────────────────────
+const TIMEOUT_MS = 8000
+const MAX_RETRIES = 2
+
+async function fetchEventsWithRetry(): Promise<Event[]> {
+  let lastErr: unknown = null
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
+
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('status', 'published')
+        .order('start_date', { ascending: true })
+        .limit(100)
+        .abortSignal(controller.signal)
+
+      clearTimeout(timeoutId)
+
+      if (error) throw error
+      return (data ?? []).filter((e: Event) => isUpcoming(e.start_date, e.end_date))
+    } catch (err) {
+      clearTimeout(timeoutId)
+      lastErr = err
+      // krótka pauza przed kolejną próbą (0.8s, 1.6s)
+      if (attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, 800 * (attempt + 1)))
+      }
+    }
+  }
+
+  throw lastErr ?? new Error('fetch events failed')
 }
 
 function PosterModal({ src, onClose }: { src: string; onClose: () => void }) {
@@ -281,7 +322,7 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
 
               {img && (
                 <div className="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-zinc-700">
-                  <img src={img} alt={event.title} className="w-full h-full object-cover" />
+                  <img src={img} alt={event.title} className="w-full h-full object-cover" loading="lazy" />
                 </div>
               )}
             </div>
@@ -310,6 +351,7 @@ export function MobileHome() {
 
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [userLat, setUserLat] = useState<number | null>(null)
   const [userLon, setUserLon] = useState<number | null>(null)
   const [gpsActive, setGpsActive] = useState(false)
@@ -368,6 +410,21 @@ export function MobileHome() {
     }, 8000)
   }
 
+  // loadEvents wydzielone, żeby guzik „Spróbuj ponownie" mógł je wywołać.
+  const loadEvents = useCallback(async () => {
+    setLoading(true)
+    setLoadError(false)
+    try {
+      const list = await fetchEventsWithRetry()
+      setEvents(list)
+    } catch (err) {
+      console.error('[Evently] Nie udało się pobrać wydarzeń:', err)
+      setLoadError(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     const savedLat = localStorage.getItem('evently_lat')
     const savedLon = localStorage.getItem('evently_lon')
@@ -389,16 +446,8 @@ export function MobileHome() {
   }, [])
 
   useEffect(() => {
-    async function fetchEvents() {
-      setLoading(true)
-      const { data } = await supabase
-        .from('events').select('*').eq('status', 'published')
-        .order('start_date', { ascending: true }).limit(100)
-      setEvents((data ?? []).filter((e: Event) => isUpcoming(e.start_date, e.end_date)))
-      setLoading(false)
-    }
-    fetchEvents()
-  }, [])
+    loadEvents()
+  }, [loadEvents])
 
   const filtered = events
     .map(e => ({
@@ -537,6 +586,17 @@ export function MobileHome() {
                 <div className="h-3 bg-zinc-800 rounded animate-pulse w-2/3" />
               </div>
             ))}
+          </div>
+        ) : loadError ? (
+          <div className="text-center py-16">
+            <div className="text-4xl mb-3">📡</div>
+            <p className="text-zinc-300 text-sm font-semibold">Nie udało się załadować wydarzeń</p>
+            <p className="text-zinc-600 text-xs mt-1 mb-4">Sprawdź połączenie i spróbuj ponownie</p>
+            <button
+              onClick={loadEvents}
+              className="bg-green-500 text-black text-[13px] font-bold px-6 py-2.5 rounded-xl">
+              Spróbuj ponownie
+            </button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
