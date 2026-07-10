@@ -38,13 +38,21 @@ const CAT_GRADIENT: Record<string, string> = {
 
 const TABS = ['O wydarzeniu', 'Program', 'Lokalizacja']
 
+// Data — bezpieczne wyświetlanie. Bierzemy tylko część YYYY-MM-DD, żeby
+// new Date nie przeliczał strefy czasowej i nie zmieniał dnia.
 function fmt(d: string) {
   if (!d) return ''
-  return new Date(d).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
+  const dayPart = d.slice(0, 10) // 'YYYY-MM-DD'
+  const dt = new Date(dayPart + 'T12:00:00') // południe = odporne na strefę
+  return dt.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
 }
-function fmtTime(d: string) {
-  if (!d) return ''
-  return new Date(d).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
+
+// Godzina — czytamy WPROST ze start_time / end_time ('20:00[:00]'), bez new Date.
+// To naprawia bug „20:00 -> 22:00": poprzednio godzina była liczona z pola DATY
+// (start_date), które new Date traktował jako północ UTC -> +2h w PL i start==koniec.
+function fmtClock(t?: string | null) {
+  if (!t) return ''
+  return t.slice(0, 5) // 'HH:MM'
 }
 
 export default function MobileEventDetail({ slug }: { slug: string }) {
@@ -121,6 +129,13 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
   const hasTabs = event.schedule && event.schedule.length > 0
   const tabs = hasTabs ? TABS : ['O wydarzeniu', 'Lokalizacja']
 
+  // Godzina z właściwych pól. Koniec pokazujemy tylko, gdy istnieje i różni się od startu.
+  const startClock = fmtClock(event.start_time)
+  const endClock = fmtClock(event.end_time)
+  const timeLabel = startClock
+    ? (endClock && endClock !== startClock ? `${startClock}–${endClock}` : startClock)
+    : ''
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pb-24">
 
@@ -167,9 +182,8 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
           <h1 className="text-[22px] font-black leading-tight tracking-tight mb-1.5">
             {event.title}
           </h1>
-          <p className="text-[11px] text-zinc-300 mb-2.5">
-            📅 {fmt(event.start_date)}{event.start_date ? ` • ${fmtTime(event.start_date)}` : ''}
-            {event.end_date ? ` – ${fmtTime(event.end_date)}` : ''}
+          <p className="text-[11px] text-zinc-300 mb-2.5 whitespace-pre-line">
+            📅 {fmt(event.start_date)}{timeLabel ? ` • ${timeLabel}` : ''}
             {event.city ? `\n📍 ${event.venue_name || event.address || event.city}` : ''}
           </p>
 
@@ -197,7 +211,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
       <div className="flex bg-zinc-950 border-b border-zinc-800 overflow-x-auto scrollbar-hide">
         {[
           { icon: '📅', label: 'Data', value: fmt(event.start_date) || '—' },
-          { icon: '⏰', label: 'Godzina', value: event.start_date ? `${fmtTime(event.start_date)}${event.end_date ? `–${fmtTime(event.end_date)}` : ''}` : '—' },
+          { icon: '⏰', label: 'Godzina', value: timeLabel || '—' },
           { icon: '📍', label: 'Lokalizacja', value: event.city || event.address || '—' },
           { icon: '🎟️', label: 'Wstęp', value: event.is_free ? 'Wolny' : event.price_from ? `Od ${event.price_from} PLN` : '—', green: event.is_free },
         ].map((item, i) => (
@@ -238,7 +252,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
         {/* Tab 0: O wydarzeniu */}
         {activeTab === 0 && (
           <div>
-            <p className="text-[12px] text-zinc-400 leading-relaxed mb-4">
+            <p className="text-[12px] text-zinc-400 leading-relaxed mb-4 whitespace-pre-line">
               {event.description || event.short_description || 'Brak opisu.'}
             </p>
 
