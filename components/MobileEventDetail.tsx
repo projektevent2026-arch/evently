@@ -55,6 +55,34 @@ function fmtClock(t?: string | null) {
   return t.slice(0, 5) // 'HH:MM'
 }
 
+// Zamienia URL-e w tekście opisu na klikalne linki. Reszta tekstu (w tym akapity
+// dzięki whitespace-pre-line) zostaje bez zmian. Końcowa interpunkcja (., ,) nie
+// wpada do linka.
+function linkify(text: string) {
+  const parts = text.split(/(https?:\/\/[^\s]+|www\.[^\s]+)/g)
+  return parts.map((part, i) => {
+    if (/^(https?:\/\/|www\.)/.test(part)) {
+      const trailing = part.match(/[.,);]+$/)?.[0] ?? ''
+      const clean = trailing ? part.slice(0, part.length - trailing.length) : part
+      const href = clean.startsWith('http') ? clean : `https://${clean}`
+      return (
+        <span key={i}>
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-green-400 underline break-all"
+          >
+            {clean}
+          </a>
+          {trailing}
+        </span>
+      )
+    }
+    return part ? <span key={i}>{part}</span> : null
+  })
+}
+
 export default function MobileEventDetail({ slug }: { slug: string }) {
   const router = useRouter()
   const [event, setEvent] = useState<any>(null)
@@ -253,7 +281,9 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
         {activeTab === 0 && (
           <div>
             <p className="text-[12px] text-zinc-400 leading-relaxed mb-4 whitespace-pre-line">
-              {event.description || event.short_description || 'Brak opisu.'}
+              {event.description || event.short_description
+                ? linkify(event.description || event.short_description)
+                : 'Brak opisu.'}
             </p>
 
             {/* Schedule preview */}
