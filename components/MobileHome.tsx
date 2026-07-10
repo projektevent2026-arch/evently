@@ -112,7 +112,27 @@ function isTomorrow(d: string) {
   const t = new Date(); t.setDate(t.getDate() + 1)
   return new Date(d).toDateString() === t.toDateString()
 }
-function isWeekend(d: string) { const day = new Date(d).getDay(); return day === 0 || day === 6 }
+// Zakres NAJBLIŻSZEGO weekendu: piątek 00:00 -> niedziela 23:59.
+// W sobotę/niedzielę zwraca trwający weekend (nie przeskakuje na następny).
+// Pon–czw -> nadchodzący piątek. To naprawia bug „pokazywał wszystkie weekendy do końca roku".
+function thisWeekendRange(): [Date, Date] {
+  const now = new Date()
+  const day = now.getDay() // 0=niedz, 1=pon, ... 5=pt, 6=sob
+  const offsetToFriday = day === 0 ? -2 : 5 - day // sob(-1), niedz(-2), pt(0), pon(+4)...
+  const start = new Date(now)
+  start.setDate(now.getDate() + offsetToFriday)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 2)
+  end.setHours(23, 59, 59, 999)
+  return [start, end]
+}
+
+function isThisWeekend(d: string): boolean {
+  const [start, end] = thisWeekendRange()
+  const t = new Date(d).getTime()
+  return t >= start.getTime() && t <= end.getTime()
+}
 function isOnDate(d: string, target: string) {
   return new Date(d).toDateString() === new Date(target).toDateString()
 }
@@ -156,6 +176,30 @@ async function fetchEventsWithRetry(): Promise<Event[]> {
   }
 
   throw lastErr ?? new Error('fetch events failed')
+}
+
+// Geokoder miast — ten sam wzorzec co LocationSidebar / EventMap (Nominatim + PL).
+// countrycodes=pl -> „Ełk" trafia w polski Ełk, nie amerykański. Zwraca [lat, lon] albo null.
+// To naprawia bug: miasto wpisane ręcznie (Olecko, Pisz, Gołdap) spoza CITY_COORDS
+// nie dostawało współrzędnych -> brak dystansu i filtra promienia.
+async function geocodeCity(query: string): Promise<[number, number] | null> {
+  try {
+    const url =
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}` +
+      `&format=json&limit=1&countrycodes=pl&accept-language=pl`
+    const res = await fetch(url, {
+      headers: { 'Accept-Language': 'pl', 'User-Agent': 'Evently/1.0 (evently-silk-omega.vercel.app)' },
+    })
+    const data = await res.json()
+    if (Array.isArray(data) && data[0]) {
+      const lat = parseFloat(data[0].lat)
+      const lon = parseFloat(data[0].lon)
+      if (!isNaN(lat) && !isNaN(lon)) return [lat, lon]
+    }
+    return null
+  } catch {
+    return null
+  }
 }
 
 function PosterModal({ src, onClose }: { src: string; onClose: () => void }) {
@@ -357,6 +401,10 @@ export function MobileHome() {
   const [gpsActive, setGpsActive] = useState(false)
   const [gpsLoading, setGpsLoading] = useState(false)
   const [city, setCity] = useState('Suwałki')
+  // Współrzędne wybranego miasta. Dla miast z CITY_COORDS bierzemy je od razu,
+  // dla wpisanych ręcznie dociągamy z Nominatim. Domyślnie Suwałki.
+  const [cityCoords, setCityCoords] = useState<[number, number] | null>(CITY_COORDS['Suwałki'] ?? null)
+  const [cityLoading, setCityLoading] = useState(false)
   const [showCityDropdown, setShowCityDropdown] = useState(false)
   const [radius, setRadius] = useState(25)
   const [activeDate, setActiveDate] = useState<'all'|'today'|'tomorrow'|'weekend'|'custom'>('all')
@@ -364,8 +412,34 @@ export function MobileHome() {
   const [activeCategory, setActiveCategory] = useState('all')
   const [search, setSearch] = useState('')
 
-  const effLat = gpsActive ? userLat : (CITY_COORDS[city]?.[0] ?? null)
-  const effLon = gpsActive ? userLon : (CITY_COORDS[city]?.[1] ?? null)
+  const effLat = gpsActive ? userLat : (cityCoords?.[0] ?? null)
+  const effLon = gpsActive ? userLon : (cityCoords?.[1] ?? null)
+
+  // Wybór miasta (z listy popularnych albo wpisane ręcznie). Ustala współrzędne:
+  // najpierw słownik CITY_COORDS, a jak nie ma -> geokoder Nominatim.
+  const selectCity = async (name: string) => {
+    setGpsActive(false)
+    localStorage.removeItem('evently_lat')
+    localStorage.removeItem('evently_lon')
+    setCity(name)
+    localStorage.setItem('evently_city', name)
+    localStorage.setItem('evently_mode', 'city')
+
+    let coords: [number, number] | null = CITY_COORDS[name] ?? null
+    if (!coords) {
+      setCityLoading(true)
+      coords = await geocodeCity(name)
+      setCityLoading(false)
+    }
+    setCityCoords(coords)
+    if (coords) {
+      localStorage.setItem('evently_city_lat', String(coords[0]))
+      localStorage.setItem('evently_city_lon', String(coords[1]))
+    } else {
+      localStorage.removeItem('evently_city_lat')
+      localStorage.removeItem('evently_city_lon')
+    }
+  }
 
   const applyPosition = async (lat: number, lon: number) => {
     setUserLat(lat)
@@ -440,6 +514,16 @@ export function MobileHome() {
       requestGPS()
     } else if (savedMode === 'city') {
       setGpsActive(false)
+      // Odtwórz współrzędne miasta: zapisane z geokodera -> słownik -> null.
+      const cLat = localStorage.getItem('evently_city_lat')
+      const cLon = localStorage.getItem('evently_city_lon')
+      if (cLat && cLon) {
+        setCityCoords([parseFloat(cLat), parseFloat(cLon)])
+      } else if (savedCity && CITY_COORDS[savedCity]) {
+        setCityCoords(CITY_COORDS[savedCity])
+      } else {
+        setCityCoords(null)
+      }
     } else {
       requestGPS()
     }
@@ -459,7 +543,7 @@ export function MobileHome() {
       if (e.distance !== null && e.distance > radius) return false
       if (activeDate === 'today' && !isToday(e.start_date)) return false
       if (activeDate === 'tomorrow' && !isTomorrow(e.start_date)) return false
-      if (activeDate === 'weekend' && !isWeekend(e.start_date)) return false
+      if (activeDate === 'weekend' && !isThisWeekend(e.start_date)) return false
       if (activeDate === 'custom' && customDate && !isOnDate(e.start_date, customDate)) return false
       if (activeCategory !== 'all') {
         if (normalizeCategory(e.category) !== activeCategory) return false
@@ -482,14 +566,7 @@ export function MobileHome() {
           city={city}
           onClose={() => setShowCityDropdown(false)}
           onSelectGPS={() => { requestGPS(); setCity('Moja lokalizacja') }}
-          onSelectCity={c => {
-            setCity(c)
-            setGpsActive(false)
-            localStorage.removeItem('evently_lat')
-            localStorage.removeItem('evently_lon')
-            localStorage.setItem('evently_city', c)
-            localStorage.setItem('evently_mode', 'city')
-          }}
+          onSelectCity={c => { selectCity(c) }}
           radius={radius}
           onSetRadius={setRadius}
         />
@@ -507,7 +584,7 @@ export function MobileHome() {
         >
           <span className="text-green-500 text-sm">📍</span>
           <span className="text-[13px] text-green-500 font-semibold">
-            {gpsLoading ? '📡 Szukam...' : city} ▾
+            {gpsLoading || cityLoading ? '📡 Szukam...' : city} ▾
           </span>
           <span className="text-[11px] text-zinc-600">• {radius} km</span>
           <span className="text-[11px] text-zinc-500 ml-1">{filtered.length} wydarzeń</span>
