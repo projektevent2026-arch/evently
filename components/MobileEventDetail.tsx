@@ -194,7 +194,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
     : ''
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white pb-24">
+    <div className="min-h-screen bg-[#0a0a0a] text-white pb-40">
 
       {/* ── HERO ── */}
       <div className={`relative h-52 overflow-hidden bg-gradient-to-br ${gradient}`}>
@@ -383,8 +383,8 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
         )}
       </div>
 
-      {/* ── BOTTOM BAR ── (Idę ukryte do tier D; zostają Kalendarz + Udostępnij) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-zinc-950 border-t border-zinc-800 px-4 py-3 flex gap-2 z-50 md:hidden">
+      {/* ── BOTTOM BAR ── (nad nawigacją Odkrywaj/Dodaj/Mapa; wcześniej bottom-0 chował się pod nią) */}
+      <div className="fixed bottom-[72px] left-0 right-0 bg-zinc-950 border-t border-zinc-800 px-4 py-3 flex gap-2 z-50 md:hidden">
         <button
           onClick={() => downloadIcs(event)}
           className="flex-1 py-3 rounded-2xl text-[13px] font-black flex items-center justify-center gap-1.5 bg-green-500 text-black"
