@@ -144,9 +144,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
   const router = useRouter()
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [going, setGoing] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [attendees, setAttendees] = useState(0)
   const [activeTab, setActiveTab] = useState(0)
 
   useEffect(() => {
@@ -156,38 +154,12 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
           .eq(isUUID ? "id" : "slug", slug).single()
       if (!error && data) {
         setEvent(data)
-        const { count } = await supabase
-          .from('event_attendees')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_id', data.id)
-        setAttendees(count || 0)
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          const { data: ex } = await supabase
-            .from('event_attendees').select('user_id')
-            .eq('user_id', session.user.id).eq('event_id', data.id).maybeSingle()
-          setGoing(!!ex)
-        }
+        // Pobieranie RSVP (kto idzie) usunięte — RSVP wraca w tier D razem z kontami.
       }
       setLoading(false)
     }
     load()
   }, [slug])
-
-  const handleGoing = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { router.push('/login'); return }
-    if (going) {
-      await supabase.from('event_attendees').delete()
-        .eq('user_id', session.user.id).eq('event_id', event.id)
-      setGoing(false); setAttendees(p => p - 1)
-    } else {
-      await supabase.from('event_attendees').insert(
-        { user_id: session.user.id, event_id: event.id }
-      )
-      setGoing(true); setAttendees(p => p + 1)
-    }
-  }
 
   const handleShare = async () => {
     if (navigator.share) await navigator.share({ title: event?.title, url: window.location.href })
@@ -272,23 +244,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
             {event.city ? `\n📍 ${event.venue_name || event.address || event.city}` : ''}
           </p>
 
-          {/* Attendees + Idę */}
-          <div className="flex items-center gap-2">
-            <div className="flex">
-              {['#3b5998', '#e91e63', '#ff9800'].map((c, i) => (
-                <div key={i} className="w-6 h-6 rounded-full border-2 border-black -ml-1.5 first:ml-0" style={{ background: c }} />
-              ))}
-            </div>
-            <span className="text-[11px] text-zinc-300">{attendees} idą</span>
-            <button
-              onClick={handleGoing}
-              className={`ml-auto px-5 py-2 rounded-full text-[12px] font-black transition-colors ${
-                going ? 'bg-white text-green-600' : 'bg-green-500 text-black'
-              }`}
-            >
-              {going ? '✓ Idę' : '👥 Idę'}
-            </button>
-          </div>
+          {/* RSVP („Idę" + licznik + awatary) UKRYTE — wymaga kont/logowania (tier D). */}
         </div>
       </div>
 
@@ -427,25 +383,17 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
         )}
       </div>
 
-      {/* ── BOTTOM BAR ── */}
+      {/* ── BOTTOM BAR ── (Idę ukryte do tier D; zostają Kalendarz + Udostępnij) */}
       <div className="fixed bottom-0 left-0 right-0 bg-zinc-950 border-t border-zinc-800 px-4 py-3 flex gap-2 z-50 md:hidden">
         <button
-          onClick={handleGoing}
-          className={`flex-1 py-3 rounded-2xl text-[13px] font-black flex items-center justify-center gap-1.5 transition-colors ${
-            going ? 'bg-green-600 text-white' : 'bg-green-500 text-black'
-          }`}
-        >
-          👥 {going ? 'Idę ✓' : 'Idę'}
-        </button>
-        <button
           onClick={() => downloadIcs(event)}
-          className="bg-zinc-900 border border-zinc-700 text-white py-3 px-4 rounded-2xl text-[13px] font-semibold flex items-center gap-1.5"
+          className="flex-1 py-3 rounded-2xl text-[13px] font-black flex items-center justify-center gap-1.5 bg-green-500 text-black"
         >
-          📅 Kalendarz
+          📅 Dodaj do kalendarza
         </button>
         <button
           onClick={handleShare}
-          className="bg-zinc-900 border border-zinc-700 text-white py-3 px-4 rounded-2xl text-[13px] font-semibold flex items-center gap-1.5"
+          className="bg-zinc-900 border border-zinc-700 text-white py-3 px-5 rounded-2xl text-[13px] font-semibold flex items-center gap-1.5"
         >
           ↗ Udostępnij
         </button>
