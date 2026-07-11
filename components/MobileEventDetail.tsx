@@ -194,7 +194,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
     : ''
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white pb-40">
+    <div className="min-h-screen bg-[#0a0a0a] text-white pb-28">
 
       {/* ── HERO ── */}
       <div className={`relative h-52 overflow-hidden bg-gradient-to-br ${gradient}`}>
@@ -342,6 +342,15 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                 </span>
               </div>
             )}
+
+            {/* Kalendarz — w treści, przewija się ze stroną (jak karta organizatora).
+                Udostępnianie jest w hero (prawy górny róg), więc tu tylko kalendarz. */}
+            <button
+              onClick={() => downloadIcs(event)}
+              className="mt-5 w-full py-3.5 rounded-2xl text-[14px] font-black flex items-center justify-center gap-2 bg-green-500 text-black"
+            >
+              📅 Dodaj do kalendarza
+            </button>
           </div>
         )}
 
@@ -381,22 +390,6 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
             </div>
           </div>
         )}
-      </div>
-
-      {/* ── BOTTOM BAR ── (nad nawigacją Odkrywaj/Dodaj/Mapa; wcześniej bottom-0 chował się pod nią) */}
-      <div className="fixed bottom-[72px] left-0 right-0 bg-zinc-950 border-t border-zinc-800 px-4 py-3 flex gap-2 z-50 md:hidden">
-        <button
-          onClick={() => downloadIcs(event)}
-          className="flex-1 py-3 rounded-2xl text-[13px] font-black flex items-center justify-center gap-1.5 bg-green-500 text-black"
-        >
-          📅 Dodaj do kalendarza
-        </button>
-        <button
-          onClick={handleShare}
-          className="bg-zinc-900 border border-zinc-700 text-white py-3 px-5 rounded-2xl text-[13px] font-semibold flex items-center gap-1.5"
-        >
-          ↗ Udostępnij
-        </button>
       </div>
 
     </div>
