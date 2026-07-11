@@ -83,6 +83,63 @@ function linkify(text: string) {
   })
 }
 
+// Escapowanie tekstu do formatu .ics.
+function icsEscape(s: string) {
+  return String(s || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r?\n/g, "\\n")
+}
+
+// Generuje i pobiera plik .ics. Na telefonie tapnięcie od razu otwiera Kalendarz
+// (Google/Apple) z gotowym wpisem = darmowe przypomnienie bez push.
+// Godzina ze start_time/end_time jako czas lokalny -> 20:00 zostaje 20:00.
+function downloadIcs(event: any) {
+  const startDate = (event.start_date || "").slice(0, 10).replace(/-/g, "")
+  if (!startDate) return
+  const startT = (event.start_time || "").slice(0, 5).replace(":", "")
+  const endDate = (event.end_date || event.start_date || "").slice(0, 10).replace(/-/g, "")
+  const endT = (event.end_time || "").slice(0, 5).replace(":", "")
+  const dtstamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")
+
+  let timeLines: string[]
+  if (startT) {
+    timeLines = [`DTSTART:${startDate}T${startT}00`]
+    if (endT) timeLines.push(`DTEND:${endDate}T${endT}00`)
+    else timeLines.push("DURATION:PT2H")
+  } else {
+    timeLines = [`DTSTART;VALUE=DATE:${startDate}`, "DURATION:P1D"]
+  }
+
+  const loc = [event.venue_name, event.address, event.city].filter(Boolean).join(", ")
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Evently//PL//EN",
+    "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT",
+    `UID:${event.id || event.slug || "evently"}@evently`,
+    `DTSTAMP:${dtstamp}`,
+    ...timeLines,
+    `SUMMARY:${icsEscape(event.title)}`,
+    loc ? `LOCATION:${icsEscape(loc)}` : "",
+    event.description ? `DESCRIPTION:${icsEscape(event.description)}` : "",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].filter(Boolean)
+
+  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `${event.slug || "wydarzenie"}.ics`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export default function MobileEventDetail({ slug }: { slug: string }) {
   const router = useRouter()
   const [event, setEvent] = useState<any>(null)
@@ -381,10 +438,10 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
           👥 {going ? 'Idę ✓' : 'Idę'}
         </button>
         <button
-          onClick={() => setSaved(!saved)}
+          onClick={() => downloadIcs(event)}
           className="bg-zinc-900 border border-zinc-700 text-white py-3 px-4 rounded-2xl text-[13px] font-semibold flex items-center gap-1.5"
         >
-          🔖 Zapisz
+          📅 Kalendarz
         </button>
         <button
           onClick={handleShare}
