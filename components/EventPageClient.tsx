@@ -14,6 +14,85 @@ const CATEGORY_LABELS: Record<string,string> = {
   sport:"Sport", family:"Rodzinne", technology:"Technologia", festiwal:"Festiwal"
 }
 
+// Zamienia URL-e w opisie na klikalne linki (parytet z wersją mobilną).
+function linkify(text: string) {
+  const parts = text.split(/(https?:\/\/[^\s]+|www\.[^\s]+)/g)
+  return parts.map((part, i) => {
+    if (/^(https?:\/\/|www\.)/.test(part)) {
+      const trailing = part.match(/[.,);]+$/)?.[0] ?? ""
+      const clean = trailing ? part.slice(0, part.length - trailing.length) : part
+      const href = clean.startsWith("http") ? clean : `https://${clean}`
+      return (
+        <span key={i}>
+          <a href={href} target="_blank" rel="noopener noreferrer" style={{color:"#16a34a",textDecoration:"underline",wordBreak:"break-all"}}>{clean}</a>
+          {trailing}
+        </span>
+      )
+    }
+    return part ? <span key={i}>{part}</span> : null
+  })
+}
+
+// Escapowanie tekstu do formatu .ics (przecinki, średniki, nowe linie).
+function icsEscape(s: string) {
+  return String(s || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r?\n/g, "\\n")
+}
+
+// Generuje i pobiera plik .ics dla wydarzenia. Godzina bierze się ze start_time/end_time
+// jako czas LOKALNY (bez Z) -> 20:00 zostaje 20:00 w kalendarzu usera.
+// To działa w Google/Apple/Outlook Calendar i daje darmowe przypomnienie (bez push).
+function downloadIcs(event: any) {
+  const startDate = (event.start_date || "").slice(0, 10).replace(/-/g, "")
+  if (!startDate) return
+  const startT = (event.start_time || "").slice(0, 5).replace(":", "")
+  const endDate = (event.end_date || event.start_date || "").slice(0, 10).replace(/-/g, "")
+  const endT = (event.end_time || "").slice(0, 5).replace(":", "")
+
+  const dtstamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")
+
+  let timeLines: string[]
+  if (startT) {
+    timeLines = [`DTSTART:${startDate}T${startT}00`]
+    if (endT) timeLines.push(`DTEND:${endDate}T${endT}00`)
+    else timeLines.push("DURATION:PT2H") // brak końca -> domyślnie 2h
+  } else {
+    timeLines = [`DTSTART;VALUE=DATE:${startDate}`, "DURATION:P1D"] // całodniowe
+  }
+
+  const loc = [event.venue_name, event.address, event.city].filter(Boolean).join(", ")
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Evently//PL//EN",
+    "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT",
+    `UID:${event.id || event.slug || "evently"}@evently`,
+    `DTSTAMP:${dtstamp}`,
+    ...timeLines,
+    `SUMMARY:${icsEscape(event.title)}`,
+    loc ? `LOCATION:${icsEscape(loc)}` : "",
+    event.description ? `DESCRIPTION:${icsEscape(event.description)}` : "",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].filter(Boolean)
+
+  const ics = lines.join("\r\n")
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `${event.slug || "wydarzenie"}.ics`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export default function EventPageClient({ slug }: { slug: string }) {
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -72,7 +151,16 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
   const fmt = (d:string) => d ? new Date(d).toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long",year:"numeric"}) : ""
   const fmtDate = (d:string) => d ? new Date(d).toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"}) : ""
-  const fmtTime = (d:string) => d ? new Date(d).toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}) : ""
+  // Godzina — WPROST ze start_time/end_time (string 'HH:MM'), bez new Date.
+  // Naprawia bug +2h: poprzednio godzina liczona z pola DATY (start_date) przez new Date,
+  // które traktowało ją jako północ UTC -> +2h w Polsce.
+  const fmtClock = (t?: string | null) => t ? t.slice(0, 5) : ""
+  const timeLabel = (() => {
+    const s = fmtClock(event?.start_time)
+    const e = fmtClock(event?.end_time)
+    if (!s) return ""
+    return (e && e !== s) ? `${s} - ${e}` : s
+  })()
   const fmtShort = (d:string) => { if(!d) return {day:"",month:""}; const dt=new Date(d); return {day:dt.getDate(), month:dt.toLocaleDateString("pl-PL",{month:"short"}).toUpperCase()} }
   const isToday = (d:string) => d ? new Date(d).toDateString()===new Date().toDateString() : false
   const isTomorrow = (d:string) => { if(!d) return false; const t=new Date(); t.setDate(t.getDate()+1); return new Date(d).toDateString()===t.toDateString() }
@@ -124,7 +212,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </Link>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {dateBadge && <span style={{background:"#16a34a",color:"white",fontSize:12,fontWeight:700,padding:"5px 14px",borderRadius:20,letterSpacing:0.3}}>{dateBadge}</span>}
-            {event.start_date && <span style={{background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",fontSize:12,padding:"5px 12px",borderRadius:20,border:"1px solid rgba(255,255,255,0.15)"}}>{fmtTime(event.start_date)}</span>}
+            {timeLabel && <span style={{background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",fontSize:12,padding:"5px 12px",borderRadius:20,border:"1px solid rgba(255,255,255,0.15)"}}>{fmtClock(event.start_time)}</span>}
           </div>
         </div>
 
@@ -191,7 +279,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </div>
           <div>
             <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,textTransform:"uppercase",letterSpacing:0.5}}>Godzina</div>
-            <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{fmtTime(event.start_date)}{event.end_date ? ` - ${fmtTime(event.end_date)}` : ""}</div>
+            <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{timeLabel || "—"}</div>
           </div>
         </div>
         <div className="info-bar-item">
@@ -242,8 +330,10 @@ export default function EventPageClient({ slug }: { slug: string }) {
               <div style={{padding:"28px"}}>
                 {(activeTab==="details" || !hasTabs) && (
                   <div>
-                    <p style={{fontSize:15,color:"#374151",lineHeight:1.85,margin:0}}>
-                      {event.description||event.short_description||<span style={{color:"#9ca3af"}}>Brak opisu.</span>}
+                    <p style={{fontSize:15,color:"#374151",lineHeight:1.85,margin:0,whiteSpace:"pre-line"}}>
+                      {(event.description||event.short_description)
+                        ? linkify(event.description||event.short_description)
+                        : <span style={{color:"#9ca3af"}}>Brak opisu.</span>}
                     </p>
                     {(event.is_free || !event.price_from) && (
                       <div style={{marginTop:24}}>
@@ -276,7 +366,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
                   Kup bilety
                 </a>
               )}
-              <button style={{flex:1,padding:"13px 16px",background:"white",border:"none",borderRadius:14,fontSize:14,color:"#374151",cursor:"pointer",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxShadow:"0 2px 8px rgba(0,0,0,0.07)",minWidth:160}}>
+              <button onClick={() => downloadIcs(event)} style={{flex:1,padding:"13px 16px",background:"white",border:"none",borderRadius:14,fontSize:14,color:"#374151",cursor:"pointer",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxShadow:"0 2px 8px rgba(0,0,0,0.07)",minWidth:160}}>
                 Dodaj do kalendarza
               </button>
             </div>
