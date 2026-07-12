@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Compass, Map, Plus, Heart } from 'lucide-react'
+import { Compass, Map, PlusCircle, Heart } from 'lucide-react'
 import { useFavorites } from '@/hooks/useFavorites'
 
 export default function BottomNav() {
@@ -12,6 +12,8 @@ export default function BottomNav() {
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href)
 
+  // Wszystkie taby mają teraz JEDEN styl. Wcześniej „Dodaj" był wypukłym zielonym kołem,
+  // co przy 4 pozycjach rozwalało symetrię paska.
   const linkClass = (href: string) =>
     `flex flex-col items-center gap-0.5 flex-1 pt-2 ${
       isActive(href) ? 'text-green-500' : 'text-[#555]'
@@ -25,7 +27,7 @@ export default function BottomNav() {
       className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#161616] border-t border-[#222]"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="flex items-end justify-around h-16 px-2">
+      <div className="flex items-center justify-around h-16 px-2">
 
         {/* Odkrywaj */}
         <Link href="/" className={linkClass('/')}>
@@ -33,7 +35,7 @@ export default function BottomNav() {
           <span className={labelClass('/')}>Odkrywaj</span>
         </Link>
 
-        {/* Ulubione — licznik pokazuje liczbę zapisanych (localStorage) */}
+        {/* Ulubione — licznik zapisanych (localStorage) */}
         <Link href="/ulubione" className={linkClass('/ulubione')}>
           <div className="relative">
             <Heart size={22} className={isActive('/ulubione') ? 'fill-current' : ''} />
@@ -46,13 +48,10 @@ export default function BottomNav() {
           <span className={labelClass('/ulubione')}>Ulubione</span>
         </Link>
 
-        {/* Środek — wyróżniony przycisk Dodaj */}
-        <Link href="/dodaj-wydarzenie" className="flex flex-col items-center gap-1 flex-1 -mt-4">
-          <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center"
-               style={{ boxShadow: '0 4px 18px rgba(34,197,94,0.45)' }}>
-            <Plus size={24} className="text-black" />
-          </div>
-          <span className="text-[10px] text-[#555]">Dodaj</span>
+        {/* Dodaj — teraz zwykły tab, spójny z resztą */}
+        <Link href="/dodaj-wydarzenie" className={linkClass('/dodaj-wydarzenie')}>
+          <PlusCircle size={22} />
+          <span className={labelClass('/dodaj-wydarzenie')}>Dodaj</span>
         </Link>
 
         {/* Mapa */}
