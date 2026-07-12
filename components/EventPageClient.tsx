@@ -96,8 +96,6 @@ function downloadIcs(event: any) {
 export default function EventPageClient({ slug }: { slug: string }) {
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [going, setGoing] = useState(false)
-  const [interestedCount, setInterestedCount] = useState(0)
   const [activeTab, setActiveTab] = useState("details")
   const [similarEvents, setSimilarEvents] = useState<any[]>([])
   const [showPoster, setShowPoster] = useState(false)
@@ -109,21 +107,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
           .eq(isUUID ? "id" : "slug", slug).single()
       if (!error) {
         setEvent(data)
-        const { count } = await supabase
-          .from("event_attendees")
-          .select("*", { count: "exact", head: true })
-          .eq("event_id", data.id)
-        setInterestedCount(count || 0)
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          const { data: existing } = await supabase
-            .from("event_attendees")
-            .select("user_id")
-            .eq("user_id", session.user.id)
-            .eq("event_id", data.id)
-            .maybeSingle()
-          setGoing(!!existing)
-        }
+        // Pobieranie RSVP (licznik / kto idzie) usunięte — wraca w tier D razem z kontami.
         const { data: similar } = await supabase.from("events").select("*").eq("status","published").neq("id",slug).limit(4)
         setSimilarEvents(similar || [])
       }
@@ -131,18 +115,6 @@ export default function EventPageClient({ slug }: { slug: string }) {
     }
     fetchEvent()
   }, [slug])
-
-  const handleGoing = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { window.location.href = "/login"; return }
-    if (going) {
-      const { error } = await supabase.from("event_attendees").delete().eq("user_id", session.user.id).eq("event_id", event.id)
-      if (!error) { setGoing(false); setInterestedCount((p: number) => p - 1) }
-    } else {
-      const { error } = await supabase.from("event_attendees").insert({ user_id: session.user.id, event_id: event.id })
-      if (!error) { setGoing(true); setInterestedCount((p: number) => p + 1) }
-    }
-  }
 
   const handleShare = async () => {
     if (navigator.share) await navigator.share({ title: event?.title, url: window.location.href })
@@ -232,23 +204,10 @@ export default function EventPageClient({ slug }: { slug: string }) {
               {event.short_description}
             </p>
           )}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
-            {interestedCount > 0 && (
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{display:"flex"}}>
-                  {["#f59e0b","#16a34a","#2563eb","#dc2626"].map((c,i) => (
-                    <div key={i} style={{width:30,height:30,borderRadius:"50%",background:c,border:"2.5px solid rgba(255,255,255,0.9)",marginLeft:i===0?0:-10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"white",fontWeight:700}}>
-                      {String.fromCharCode(65+i)}
-                    </div>
-                  ))}
-                </div>
-                <span style={{color:"rgba(255,255,255,0.85)",fontSize:13,fontWeight:500}}>{interestedCount} zainteresowanych</span>
-              </div>
-            )}
+          {/* RSVP („Idę" + licznik zainteresowanych + awatary) UKRYTE — wymaga kont (tier D).
+              Zostają: Udostępnij + Plakat. */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",flexWrap:"wrap",gap:12}}>
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-              <button onClick={handleGoing} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"11px 26px",background:going?"white":"#16a34a",color:going?"#16a34a":"white",border:"2px solid "+(going?"white":"#16a34a"),borderRadius:26,fontSize:15,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.25)",transition:"all 0.15s"}}>
-                {going ? "Ide ✓" : "Ide"}
-              </button>
               <button onClick={handleShare} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"11px 18px",background:"transparent",backdropFilter:"blur(12px)",color:"white",border:"2px solid rgba(255,255,255,0.45)",borderRadius:26,fontSize:15,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
                 Udostepnij
               </button>
