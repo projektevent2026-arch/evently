@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { useFavorites } from '@/hooks/useFavorites'
 
 interface Event {
   id: string
@@ -302,6 +303,9 @@ function CityDropdown({ city, onClose, onSelectGPS, onSelectCity, radius, onSetR
 
 function EventCard({ event, distance }: { event: Event; distance: number | null }) {
   const [posterSrc, setPosterSrc] = useState<string | null>(null)
+  // Ulubione na localStorage — bez kont.
+  const { isFavorite, toggleFavorite } = useFavorites()
+  const liked = isFavorite(event.id)
   const normCat = normalizeCategory(event.category)
   const tagColor = CAT_COLORS[normCat] ?? 'bg-zinc-600 text-white'
   const tagLabel = CAT_LABELS[normCat] ?? normCat
@@ -320,15 +324,26 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
               <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${tagColor}`}>
                 {tagLabel.toUpperCase()}
               </span>
-              <div className={`flex flex-col items-center px-2.5 py-1 rounded-xl min-w-[42px] ${
-                today ? 'bg-green-500' : tomorrow ? 'bg-yellow-400' : 'bg-zinc-800'
-              }`}>
-                <span className={`text-[16px] font-black leading-none ${
-                  today || tomorrow ? 'text-black' : 'text-white'
-                }`}>{today ? 'DZIŚ' : tomorrow ? 'JUTRO' : day}</span>
-                {!today && !tomorrow && (
-                  <span className="text-[9px] font-bold text-zinc-400 leading-none mt-0.5">{month}</span>
-                )}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={e => { e.preventDefault(); toggleFavorite(event.id) }}
+                  aria-label={liked ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-colors ${
+                    liked ? 'bg-red-500 text-white' : 'bg-zinc-800 text-zinc-400'
+                  }`}
+                >
+                  {liked ? '♥' : '♡'}
+                </button>
+                <div className={`flex flex-col items-center px-2.5 py-1 rounded-xl min-w-[42px] ${
+                  today ? 'bg-green-500' : tomorrow ? 'bg-yellow-400' : 'bg-zinc-800'
+                }`}>
+                  <span className={`text-[16px] font-black leading-none ${
+                    today || tomorrow ? 'text-black' : 'text-white'
+                  }`}>{today ? 'DZIŚ' : tomorrow ? 'JUTRO' : day}</span>
+                  {!today && !tomorrow && (
+                    <span className="text-[9px] font-bold text-zinc-400 leading-none mt-0.5">{month}</span>
+                  )}
+                </div>
               </div>
             </div>
 

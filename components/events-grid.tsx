@@ -173,6 +173,7 @@ export function EventsGrid() {
             day: "numeric", month: "long", year: "numeric",
           }) : "",
           start_date: e.start_date,
+          start_time: e.start_time ?? null,
           city: e.city,
           image: e.cover_image_url || "/images/event-concert.jpg",
           image_url: e.image_url || null,

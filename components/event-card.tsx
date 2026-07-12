@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MapPin, Users, Heart, Eye } from "lucide-react"
 import EventImage from "@/components/EventImage"
+import { useFavorites } from "@/hooks/useFavorites"
 
 const CATEGORY_LABELS: Record<string, string> = {
   festyny: "Festyny", kultura: "Kultura", muzyka: "Muzyka", sport: "Sport",
@@ -38,6 +39,7 @@ export interface EventData {
   title: string
   date: string
   start_date?: string
+  start_time?: string | null
   city: string
   image: string
   image_url?: string | null
@@ -57,9 +59,11 @@ function getDayBadge(start_date?: string): { label: string; color: string } | nu
   return null
 }
 
-function getTime(start_date?: string): string | null {
-  if (!start_date) return null
-  return new Date(start_date).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
+// Godzina ze start_time (string 'HH:MM'), NIE z start_date przez new Date
+// (to dawało +2h przez strefę czasową).
+function getTime(start_time?: string | null): string | null {
+  if (!start_time) return null
+  return start_time.slice(0, 5)
 }
 
 function PosterModal({ src, onClose }: { src: string; onClose: () => void }) {
@@ -85,12 +89,13 @@ function PosterModal({ src, onClose }: { src: string; onClose: () => void }) {
 }
 
 export function EventCard({ event, initialGoing = false }: { event: EventData; initialGoing?: boolean }) {
-  const [liked, setLiked] = useState(false)
-  const [interestedCount, setInterestedCount] = useState(event.interested)
   const [posterSrc, setPosterSrc] = useState<string | null>(null)
+  // Ulubione na localStorage — bez kont. Serce jest zsynchronizowane z detalem i stroną /ulubione.
+  const { isFavorite, toggleFavorite } = useFavorites()
+  const liked = isFavorite(event.id)
 
   const dayBadge = getDayBadge(event.start_date)
-  const time = getTime(event.start_date)
+  const time = getTime(event.start_time)
   const cat = normalizeCategory(event.category)
   // Plakat ma odwrotny priorytet niż zdjęcie na karcie — najpierw właściwy plakat, potem zdjęcie jako fallback
   const posterImg = event.image_url || event.image
@@ -115,7 +120,8 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
           </div>
 
           <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiked(!liked) }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(event.id) }}
+            aria-label={liked ? "Usuń z ulubionych" : "Dodaj do ulubionych"}
             className={`absolute right-3 top-3 flex size-8 items-center justify-center rounded-full backdrop-blur-sm transition-all ${
               liked ? "bg-red-500 text-white" : "bg-black/30 text-white/80 hover:bg-black/50 hover:text-white"
             }`}
@@ -157,16 +163,8 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
             </div>
           )}
 
-          <div className="mt-auto flex items-center justify-between border-t border-border/50 pt-4 mt-4">
-            {interestedCount > 0 ? (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Users className="size-3.5" />
-                <span className="font-medium">{interestedCount}</span>
-                <span>zainteresowanych</span>
-              </div>
-            ) : (
-              <div />
-            )}
+          <div className="mt-auto flex items-center justify-end border-t border-border/50 pt-4 mt-4">
+            {/* Licznik „zainteresowanych" (RSVP) UKRYTY — wymaga kont (tier D). */}
             {posterImg && (
               <Button
                 size="sm"

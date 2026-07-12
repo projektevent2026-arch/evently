@@ -6,6 +6,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 import EventSchedule from '@/components/EventSchedule'
+import { useFavorites } from '@/hooks/useFavorites'
 
 const EventMap = dynamic(() => import('@/components/event-map').then(m => m.EventMap), { ssr: false })
 
@@ -144,8 +145,9 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
   const router = useRouter()
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [saved, setSaved] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
+  // Ulubione na localStorage — bez kont. Zsynchronizowane z kartami i stroną /ulubione.
+  const { isFavorite, toggleFavorite } = useFavorites()
 
   useEffect(() => {
     async function load() {
@@ -217,10 +219,15 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
           </button>
           <div className="flex gap-2">
             <button
-              onClick={() => setSaved(!saved)}
-              className="w-8 h-8 rounded-full bg-black/55 border border-white/18 flex items-center justify-center text-base"
+              onClick={() => toggleFavorite(event.id)}
+              aria-label={isFavorite(event.id) ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
+              className={`w-8 h-8 rounded-full border flex items-center justify-center text-base transition-colors ${
+                isFavorite(event.id)
+                  ? 'bg-red-500 border-red-500 text-white'
+                  : 'bg-black/55 border-white/18 text-white'
+              }`}
             >
-              {saved ? '🔖' : '♡'}
+              {isFavorite(event.id) ? '♥' : '♡'}
             </button>
             <button
               onClick={handleShare}
@@ -337,9 +344,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                     </a>
                   )}
                 </div>
-                <span className="text-[10px] font-bold text-green-400 border border-green-500/30 bg-green-500/10 px-2.5 py-1 rounded-lg">
-                  Obserwuj
-                </span>
+                {/* „Obserwuj" UKRYTE — wymaga kont + push (tier D). */}
               </div>
             )}
 
