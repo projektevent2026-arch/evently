@@ -15,21 +15,37 @@ interface GeoResult {
   label: string
 }
 
-// Ten sam geokoder co /mapa (EventMap): Nominatim + ograniczenie do Polski.
-// countrycodes=pl -> "Ełk" trafia w polski Ełk, nie amerykański Elk.
+// Geokoder MIAST — featureType=settlement zawęża wyniki do MIEJSCOWOŚCI
+// (miasta / miasteczka / wsie) i odsiewa firmy, ulice, stacje uzdatniania wody.
+// Wcześniej "suw" zwracało: "SUW, 28", "Rem-Suw sp. z o.o.", "PWiK SUW Siedlice".
+// Sortowanie po place_rank stawia większe miasta wyżej (Suwałki przed wsią Suwałki-kolonia).
 async function searchNominatim(query: string): Promise<GeoResult[]> {
   const url =
     `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}` +
-    `&format=json&limit=6&countrycodes=pl&accept-language=pl`
+    `&format=json&limit=8&countrycodes=pl&accept-language=pl` +
+    `&featureType=settlement&addressdetails=1`
+
   const res = await fetch(url, {
     headers: { "Accept-Language": "pl", "User-Agent": "Evently/1.0 (evently-silk-omega.vercel.app)" },
   })
   const data = await res.json()
-  return (data as any[]).map((item) => ({
-    lat: parseFloat(item.lat),
-    lng: parseFloat(item.lon),
-    label: item.display_name.split(",").slice(0, 2).join(",").trim(),
-  }))
+
+  return (data as any[])
+    .map((item) => {
+      const a = item.address || {}
+      const place = a.city || a.town || a.village || a.municipality || item.name || ""
+      const region = a.state || ""
+      return {
+        lat: parseFloat(item.lat),
+        lng: parseFloat(item.lon),
+        label: place && region ? `${place}, ${region}` : (place || String(item.display_name || "").split(",")[0]),
+        placeRank: item.place_rank ?? 99,      // niższy = ważniejsza miejscowość
+        importance: item.importance ?? 0,      // większe miasta = wyższa wartość
+      }
+    })
+    .filter((r) => r.label && !isNaN(r.lat) && !isNaN(r.lng))
+    .sort((x, y) => (x.placeRank - y.placeRank) || (y.importance - x.importance))
+    .map(({ lat, lng, label }) => ({ lat, lng, label }))
 }
 
 export function LocationSidebar() {
@@ -72,7 +88,7 @@ export function LocationSidebar() {
     )
   }
 
-  // Podpowiedzi w trakcie pisania (od 2 znaków)
+  // Podpowiedzi w trakcie pisania (od 3 znaków)
   const handleCityChange = async (val: string) => {
     setCity(val)
     if (val.trim().length < 3) {
@@ -82,7 +98,7 @@ export function LocationSidebar() {
     }
     try {
       const results = await searchNominatim(val.trim())
-      // usuń duplikaty po etykiecie (Nominatim zwraca Ełk kilka razy)
+      // usuń duplikaty po etykiecie
       const unique = results.filter(
         (r, i, arr) => arr.findIndex(x => x.label === r.label) === i
       )
