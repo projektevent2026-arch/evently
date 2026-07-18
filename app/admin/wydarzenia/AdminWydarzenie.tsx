@@ -268,6 +268,8 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       description: form.description || null,
       short_description: form.short_description || null,
       start_date: start, end_date: end,
+      start_time: form.start_time || null,
+      end_time: form.end_time || null,
       city: form.city, address: form.address || null,
       venue_name: form.venue_name || null,
       category: form.category,
