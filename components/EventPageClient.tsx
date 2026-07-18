@@ -123,13 +123,18 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
   const fmt = (d:string) => d ? new Date(d).toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long",year:"numeric"}) : ""
   const fmtDate = (d:string) => d ? new Date(d).toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"}) : ""
-  // Godzina — WPROST ze start_time/end_time (string 'HH:MM'), bez new Date.
-  // Naprawia bug +2h: poprzednio godzina liczona z pola DATY (start_date) przez new Date,
-  // które traktowało ją jako północ UTC -> +2h w Polsce.
-  const fmtClock = (t?: string | null) => t ? t.slice(0, 5) : ""
+// Godzina wyciągana ze start_date / end_date (timestamp "2026-07-25T16:00:00+00").
+  // Bierzemy część po "T", pierwsze 5 znaków (HH:MM) — BEZ new Date, żeby strefa
+  // czasowa nie przesuwała godziny. 16:00 zostaje 16:00.
+  const clockFromTimestamp = (ts?: string | null): string => {
+    if (!ts) return ""
+    const t = String(ts)
+    const timePart = t.includes("T") ? t.split("T")[1] : t.split(" ")[1]
+    return timePart ? timePart.slice(0, 5) : ""
+  }
   const timeLabel = (() => {
-    const s = fmtClock(event?.start_time)
-    const e = fmtClock(event?.end_time)
+    const s = clockFromTimestamp(event?.start_date)
+    const e = clockFromTimestamp(event?.end_date)
     if (!s) return ""
     return (e && e !== s) ? `${s} - ${e}` : s
   })()
@@ -184,7 +189,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </Link>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {dateBadge && <span style={{background:"#16a34a",color:"white",fontSize:12,fontWeight:700,padding:"5px 14px",borderRadius:20,letterSpacing:0.3}}>{dateBadge}</span>}
-            {timeLabel && <span style={{background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",fontSize:12,padding:"5px 12px",borderRadius:20,border:"1px solid rgba(255,255,255,0.15)"}}>{fmtClock(event.start_time)}</span>}
+            {timeLabel && <span style={{background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",fontSize:12,padding:"5px 12px",borderRadius:20,border:"1px solid rgba(255,255,255,0.15)"}}>{timeLabel}</span>}
           </div>
         </div>
 
