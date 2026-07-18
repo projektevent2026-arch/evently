@@ -19,8 +19,8 @@ interface EventScheduleProps {
   eventDate?: string
 }
 
-const ACCENT = '#60a5fa'
-const LIVE = '#22c55e'
+const ACCENT = '#16a34a'
+const LIVE = '#16a34a'
 
 /** "9:00" | "09.00" | "9" -> "09:00". Zwraca null gdy to nie jest godzina. */
 function normalizeTime(raw?: string): string | null {
@@ -107,44 +107,28 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
     return 'upcoming'
   }
 
-  const card: React.CSSProperties = {
-    background: 'rgba(255,255,255,0.04)',
-    borderRadius: 12,
-    border: '1px solid rgba(255,255,255,0.10)',
-    overflow: 'hidden',
-    marginTop: 24,
-  }
-
   return (
-    <div style={card}>
-      <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#f3f4f6' }}>Program imprezy</h3>
-      </div>
+    <div style={{ marginTop: 8 }}>
+      <h3 style={{ margin: '0 0 16px', fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
+        Program imprezy
+      </h3>
 
       {schedule.length > 1 && (
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            padding: '0.75rem 1.25rem',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
-            overflowX: 'auto',
-          }}
-        >
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20, overflowX: 'auto' }}>
           {schedule.map((d, i) => (
             <button
               key={i}
               onClick={() => setActiveDay(i)}
               style={{
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 1.1rem',
                 borderRadius: 8,
-                border: '1px solid rgba(255,255,255,0.10)',
+                border: activeDay === i ? 'none' : '1px solid #d1d5db',
                 cursor: 'pointer',
-                fontSize: '0.85rem',
+                fontSize: '0.875rem',
                 fontWeight: 600,
                 whiteSpace: 'nowrap',
-                background: activeDay === i ? ACCENT : 'rgba(255,255,255,0.06)',
-                color: activeDay === i ? '#0b1220' : '#d1d5db',
+                background: activeDay === i ? ACCENT : '#ffffff',
+                color: activeDay === i ? '#ffffff' : '#374151',
               }}
             >
               {d.label}
@@ -154,24 +138,24 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
       )}
 
       {timed.length > 0 && (
-        <div style={{ padding: '1rem 1.25rem 0.5rem' }}>
+        <div>
           {timed.map((group, i) => {
             const status = statusOf(i)
             const isActive = status === 'active'
             const isPast = status === 'past'
-            const dotColor = isActive ? LIVE : isPast ? '#4b5563' : ACCENT
+            const dotColor = isActive ? LIVE : isPast ? '#cbd5e1' : ACCENT
 
             return (
-              <div key={group.time} style={{ display: 'flex', gap: 12, position: 'relative' }}>
+              <div key={group.time} style={{ display: 'flex', gap: 14, position: 'relative' }}>
                 {i < timed.length - 1 && (
                   <div
                     style={{
                       position: 'absolute',
-                      left: 48,
+                      left: 51,
                       top: 22,
                       width: 2,
                       height: '100%',
-                      background: 'rgba(255,255,255,0.10)',
+                      background: '#e2e8f0',
                       zIndex: 0,
                     }}
                   />
@@ -179,12 +163,12 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
 
                 <div
                   style={{
-                    width: 42,
+                    width: 44,
                     flexShrink: 0,
-                    fontSize: '0.85rem',
+                    fontSize: '0.875rem',
                     fontWeight: 700,
-                    color: isActive ? LIVE : isPast ? '#6b7280' : '#e5e7eb',
-                    paddingTop: 2,
+                    color: isActive ? LIVE : isPast ? '#94a3b8' : '#334155',
+                    paddingTop: 1,
                     textAlign: 'right',
                   }}
                 >
@@ -199,13 +183,13 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
                     flexShrink: 0,
                     marginTop: 4,
                     zIndex: 1,
-                    background: isActive ? LIVE : isPast ? '#374151' : 'transparent',
+                    background: isActive ? LIVE : isPast ? '#e2e8f0' : '#ffffff',
                     border: `2px solid ${dotColor}`,
-                    boxShadow: isActive ? `0 0 0 4px ${LIVE}33` : 'none',
+                    boxShadow: isActive ? `0 0 0 4px ${LIVE}22` : 'none',
                   }}
                 />
 
-                <div style={{ flex: 1, paddingBottom: 18, opacity: isPast ? 0.45 : 1 }}>
+                <div style={{ flex: 1, paddingBottom: 20, opacity: isPast ? 0.55 : 1 }}>
                   {isActive && (
                     <span
                       style={{
@@ -214,10 +198,10 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
                         fontWeight: 700,
                         letterSpacing: '0.04em',
                         background: LIVE,
-                        color: '#052e16',
+                        color: '#ffffff',
                         borderRadius: 4,
-                        padding: '2px 6px',
-                        marginBottom: 4,
+                        padding: '2px 7px',
+                        marginBottom: 5,
                       }}
                     >
                       TERAZ
@@ -225,20 +209,27 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
                   )}
 
                   {group.items.map((item, j) => (
-                    <div key={j} style={{ marginTop: j === 0 ? 0 : 8 }}>
+                    <div key={j} style={{ marginTop: j === 0 ? 0 : 10 }}>
                       <p
                         style={{
                           margin: 0,
                           fontSize: '0.95rem',
-                          fontWeight: isActive ? 700 : 500,
-                          color: isActive ? '#ffffff' : '#f3f4f6',
-                          lineHeight: 1.35,
+                          fontWeight: isActive ? 700 : 600,
+                          color: '#0f172a',
+                          lineHeight: 1.4,
                         }}
                       >
                         {item.title}
                       </p>
                       {item.description && (
-                        <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#9ca3af', lineHeight: 1.4 }}>
+                        <p
+                          style={{
+                            margin: '3px 0 0',
+                            fontSize: '0.85rem',
+                            color: '#475569',
+                            lineHeight: 1.5,
+                          }}
+                        >
                           {item.description}
                         </p>
                       )}
@@ -252,16 +243,16 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
       )}
 
       {untimed.length > 0 && (
-        <div style={{ padding: timed.length > 0 ? '0.25rem 1.25rem 1.25rem' : '1rem 1.25rem 1.25rem' }}>
+        <div style={{ marginTop: timed.length > 0 ? 4 : 0 }}>
           {timed.length > 0 && (
             <p
               style={{
-                margin: '0 0 8px',
+                margin: '0 0 10px',
                 fontSize: '0.75rem',
                 fontWeight: 700,
                 letterSpacing: '0.05em',
                 textTransform: 'uppercase',
-                color: '#9ca3af',
+                color: '#64748b',
               }}
             >
               W programie również
@@ -269,7 +260,7 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
           )}
           <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
             {untimed.map((item, i) => (
-              <li key={i} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+              <li key={i} style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
                 <span
                   style={{
                     width: 6,
@@ -277,15 +268,30 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
                     borderRadius: '50%',
                     background: ACCENT,
                     flexShrink: 0,
-                    marginTop: 7,
+                    marginTop: 8,
                   }}
                 />
                 <div style={{ flex: 1 }}>
-                  <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 500, color: '#f3f4f6', lineHeight: 1.35 }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: '0.95rem',
+                      fontWeight: 600,
+                      color: '#0f172a',
+                      lineHeight: 1.4,
+                    }}
+                  >
                     {item.title}
                   </p>
                   {item.description && (
-                    <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#9ca3af', lineHeight: 1.4 }}>
+                    <p
+                      style={{
+                        margin: '3px 0 0',
+                        fontSize: '0.85rem',
+                        color: '#475569',
+                        lineHeight: 1.5,
+                      }}
+                    >
                       {item.description}
                     </p>
                   )}
