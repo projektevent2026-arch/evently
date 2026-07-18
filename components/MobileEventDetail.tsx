@@ -48,12 +48,13 @@ function fmt(d: string) {
   return dt.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-// Godzina — czytamy WPROST ze start_time / end_time ('20:00[:00]'), bez new Date.
-// To naprawia bug „20:00 -> 22:00": poprzednio godzina była liczona z pola DATY
-// (start_date), które new Date traktował jako północ UTC -> +2h w PL i start==koniec.
-function fmtClock(t?: string | null) {
-  if (!t) return ''
-  return t.slice(0, 5) // 'HH:MM'
+// Godzina wyciągana ze stringa timestamptz (start_date/end_date), BEZ new Date,
+// żeby nie przeliczać stref. "2026-07-25 16:00:00+00" -> "16:00".
+// (Kolumny start_time/end_time nie istnieją — godzina siedzi w start_date.)
+function fmtClock(dt?: string | null): string {
+  if (!dt) return ''
+  const m = /[T ](\d{2}):(\d{2})/.exec(dt)
+  return m ? `${m[1]}:${m[2]}` : ''
 }
 
 // Zamienia URL-e w tekście opisu na klikalne linki. Reszta tekstu (w tym akapity
@@ -188,9 +189,9 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
   const hasTabs = event.schedule && event.schedule.length > 0
   const tabs = hasTabs ? TABS : ['O wydarzeniu', 'Lokalizacja']
 
-  // Godzina z właściwych pól. Koniec pokazujemy tylko, gdy istnieje i różni się od startu.
-  const startClock = fmtClock(event.start_time)
-  const endClock = fmtClock(event.end_time)
+// Godzina ze start_date/end_date (tam jest zapisana). Koniec tylko gdy istnieje i różni się od startu.
+const startClock = fmtClock(event.start_date)
+const endClock = fmtClock(event.end_date)
   const timeLabel = startClock
     ? (endClock && endClock !== startClock ? `${startClock}–${endClock}` : startClock)
     : ''
