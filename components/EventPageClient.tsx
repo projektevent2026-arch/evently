@@ -294,7 +294,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
               <div style={{padding:"28px"}}>
                 {(activeTab==="details" || !hasTabs) && (
                   <div>
-                    <p style={{fontSize:15,color:"#374151",lineHeight:1.85,margin:0,whiteSpace:"pre-line"}}>
+<p style={{fontSize:15,color:"#1f2937",lineHeight:1.85,margin:0,whiteSpace:"pre-line"}}>
                       {(event.description||event.short_description)
                         ? linkify(event.description||event.short_description)
                         : <span style={{color:"#9ca3af"}}>Brak opisu.</span>}

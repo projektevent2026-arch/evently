@@ -294,7 +294,7 @@ const endClock = fmtClock(event.end_date)
         {/* Tab 0: O wydarzeniu */}
         {activeTab === 0 && (
           <div>
-            <p className="text-[12px] text-zinc-400 leading-relaxed mb-4 whitespace-pre-line">
+<p className="text-[13.5px] text-zinc-200 leading-relaxed mb-4 whitespace-pre-line">
               {event.description || event.short_description
                 ? linkify(event.description || event.short_description)
                 : 'Brak opisu.'}
