@@ -556,7 +556,9 @@ export function MobileHome() {
         ? haversine(effLat, effLon, e.latitude, e.longitude) : null
     }))
     .filter(e => {
-      if (e.distance !== null && e.distance > radius) return false
+// Przy aktywnym wyszukiwaniu promień nie odcina — szukasz konkretnej rzeczy,
+      // masz ją znaleźć niezależnie od odległości. Dystans dalej liczy się na karcie.
+      if (!search.trim() && e.distance !== null && e.distance > radius) return false
       if (activeDate === 'today' && !isToday(e.start_date)) return false
       if (activeDate === 'tomorrow' && !isTomorrow(e.start_date)) return false
       if (activeDate === 'weekend' && !isThisWeekend(e.start_date)) return false

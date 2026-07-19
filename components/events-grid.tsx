@@ -156,6 +156,7 @@ export function EventsGrid() {
       const mapped = data
         .filter((e) => isUpcoming(e.start_date, e.end_date))
         .filter((e) => {
+          if (q) return true
           if (!hasLocationFilter) return true
           if (!e.latitude || !e.longitude) return true
           return haversineKm(filterLat, filterLng, e.latitude, e.longitude) <= filterRadius
@@ -203,7 +204,7 @@ export function EventsGrid() {
     } finally {
       setLoading(false)
     }
-  }, [filterLat, filterLng, filterRadius, hasLocationFilter])
+  }, [filterLat, filterLng, filterRadius, hasLocationFilter, q])
 
   useEffect(() => {
     loadEvents()
