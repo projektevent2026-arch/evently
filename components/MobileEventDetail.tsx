@@ -1,5 +1,6 @@
 'use client'
 
+import PosterButton from '@/components/PosterButton'
 import EventHero from '@/components/EventHero'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -229,6 +230,7 @@ const endClock = fmtClock(event.end_date)
             >
               ↗
             </button>
+            <PosterButton src={event.image_url || event.cover_image_url} />
           </div>
         </div>
 
