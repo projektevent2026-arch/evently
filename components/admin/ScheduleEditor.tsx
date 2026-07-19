@@ -117,13 +117,13 @@ export default function ScheduleEditor({ value, onChange }: ScheduleEditorProps)
                 placeholder="Nazwa punktu programu *"
                 value={item.title}
                 onChange={e => updateItem(activeDay, j, 'title', e.target.value)}
-                style={{ padding: '0.4rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
+                style={{ padding: '0.4rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box', color: '#111827', fontWeight: 500, background: 'white' }}
               />
               <input
                 placeholder="Opis (opcjonalnie)"
                 value={item.description || ''}
                 onChange={e => updateItem(activeDay, j, 'description', e.target.value)}
-                style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '0.78rem', width: '100%', boxSizing: 'border-box', color: '#6b7280' }}
+                style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '0.82rem', width: '100%', boxSizing: 'border-box', color: '#374151', background: 'white' }}
               />
             </div>
 
