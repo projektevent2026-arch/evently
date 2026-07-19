@@ -15,6 +15,10 @@ interface Event {
   start_date: string
   end_date: string | null
   venue_name: string | null
+  city: string | null
+  cover_image_url: string | null
+  image_url: string | null
+  is_free: boolean | null
   latitude: number
   longitude: number
 }
@@ -48,8 +52,22 @@ function getCategoryColor(cat: string | null) {
   return cat ? (CATEGORY_COLORS[cat] ?? DEFAULT_COLOR) : DEFAULT_COLOR
 }
 
+/** Popup składany ze stringa — tytuły z cudzysłowami muszą być bezpieczne. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function formatDist(km: number): string {
+  return km < 1 ? `${Math.round(km * 1000)} m od Ciebie` : `${km.toFixed(1)} km od Ciebie`
 }
 
 function isToday(d: string) {
@@ -67,6 +85,7 @@ function isThisWeekend(d: string) {
   const day = new Date(d).getDay()
   return day === 0 || day === 6
 }
+
 function isUpcoming(start_date?: string | null, end_date?: string | null): boolean {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -174,7 +193,7 @@ export default function EventMap() {
   useEffect(() => {
     supabase
     .from('events')
-    .select('id, title, slug, category, start_date, end_date, venue_name, latitude, longitude')
+    .select('id, title, slug, category, start_date, end_date, venue_name, city, cover_image_url, image_url, is_free, latitude, longitude')
     .not('latitude', 'is', null)
     .not('longitude', 'is', null)
     .order('start_date', { ascending: true })
@@ -255,11 +274,12 @@ export default function EventMap() {
       }
       return true
     })
-  }, [events, urlTime, activeCategories, urlQ, urlRadius, urlLat, urlLng, hasLocation])
+  }, [events, urlTime, activeCategories, urlQ, urlRadius, urlLat, urlLng, hasLocation, customDate])
 
   useEffect(() => {
     const mcg = markerGroupRef.current
     if (!mcg) return
+    const refPos = urlCenter ?? userPosition
     import('leaflet').then(({ default: L }) => {
       mcg.clearLayers()
       filtered.forEach(ev => {
@@ -270,19 +290,30 @@ export default function EventMap() {
           iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -25],
         })
         const marker = L.marker([ev.latitude, ev.longitude], { icon })
+
+        const poster = ev.cover_image_url || ev.image_url
+        const dist = refPos ? haversineKm(refPos[0], refPos[1], ev.latitude, ev.longitude) : null
+        const place = ev.venue_name || ev.city || ''
+
         marker.bindPopup(`
-          <div style="min-width:180px;font-family:system-ui,sans-serif">
-            ${ev.category ? `<span style="background:${color};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:8px">${getCategoryLabel(ev.category)}</span>` : ''}
-            <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:#111">${ev.title}</div>
-            <div style="font-size:11px;color:#888;margin-bottom:4px">${formatDate(ev.start_date)}</div>
-            ${ev.venue_name ? `<div style="font-size:11px;color:#aaa;margin-bottom:8px">${ev.venue_name}</div>` : ''}
-            <a href="/events/${ev.slug}" style="display:block;text-align:center;background:#22C55E;color:black;font-weight:700;font-size:11px;padding:6px;border-radius:8px;text-decoration:none">Zobacz wydarzenie</a>
+          <div style="width:230px;font-family:system-ui,sans-serif">
+            ${poster ? `<img src="${escapeHtml(poster)}" alt="" style="width:100%;height:110px;object-fit:cover;border-radius:8px;margin-bottom:8px;display:block" />` : ''}
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+              ${ev.category ? `<span style="background:${color};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">${escapeHtml(getCategoryLabel(ev.category))}</span>` : ''}
+              ${ev.is_free ? `<span style="background:#dcfce7;color:#15803d;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">Wstęp wolny</span>` : ''}
+            </div>
+            <div style="font-weight:700;font-size:14px;line-height:1.3;margin-bottom:5px;color:#111">${escapeHtml(ev.title)}</div>
+            <div style="font-size:11px;color:#666;margin-bottom:3px">${formatDate(ev.start_date)}</div>
+            ${place ? `<div style="font-size:11px;color:#888;margin-bottom:3px">${escapeHtml(place)}</div>` : ''}
+            ${dist !== null ? `<div style="font-size:11px;font-weight:600;color:#16a34a;margin-bottom:8px">${formatDist(dist)}</div>` : '<div style="margin-bottom:8px"></div>'}
+            <a href="/events/${escapeHtml(ev.slug)}" style="display:block;text-align:center;background:#22C55E;color:black;font-weight:700;font-size:11px;padding:7px;border-radius:8px;text-decoration:none">Zobacz wydarzenie</a>
           </div>
-        `)
+        `, { maxWidth: 260 })
+
         mcg.addLayer(marker)
       })
     })
-  }, [filtered])
+  }, [filtered, urlCenter, userPosition])
 
   useEffect(() => {
     const map = mapInstanceRef.current
