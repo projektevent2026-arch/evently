@@ -1,6 +1,5 @@
 "use client"
 
-import AdminRedirect from '@/components/AdminRedirect'
 import PosterScanner from "@/components/admin/PosterScanner"
 import ImageUpload from "@/components/admin/ImageUpload"
 import dynamic from "next/dynamic"
@@ -166,7 +165,6 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
 
   return (
     <div style={{minHeight:"100vh",background:"#f9fafb",fontFamily:"sans-serif"}}>
-      <AdminRedirect />
       <style>{`
         input::placeholder, textarea::placeholder { color: #6b7280; }
         input, textarea, select { color: #111827; }

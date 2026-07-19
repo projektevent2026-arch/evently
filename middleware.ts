@@ -3,7 +3,11 @@ import type { NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 
 export async function middleware(req: NextRequest) {
-  if (!req.nextUrl.pathname.startsWith("/admin")) {
+  const path = req.nextUrl.pathname
+  const isAdminPath = path.startsWith("/admin")
+  const isAddPath = path.startsWith("/dodaj-wydarzenie")
+
+  if (!isAdminPath && !isAddPath) {
     return NextResponse.next()
   }
 
@@ -22,6 +26,24 @@ export async function middleware(req: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
+  // /dodaj-wydarzenie: publiczne dla wszystkich, ale admin leci do panelu.
+  if (isAddPath) {
+    if (!session) return res
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single()
+
+    if (profile?.role === "admin" || profile?.role === "moderator") {
+      return NextResponse.redirect(new URL("/admin", req.url))
+    }
+
+    return res
+  }
+
+  // /admin: bez zmian — wymaga sesji i roli.
   if (!session) {
     return NextResponse.redirect(new URL("/login", req.url))
   }
@@ -40,5 +62,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/dodaj-wydarzenie/:path*", "/dodaj-wydarzenie"],
 }
