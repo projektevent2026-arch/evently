@@ -83,12 +83,19 @@ export default function DodajWydarzenie() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Walidacja: data startu nie może być z przeszłości
-    if (form.start_date && form.start_date < todayStr()) {
-      setError("Data rozpoczęcia nie może być z przeszłości.")
-      setActiveTab("basic")
-      return
-    }
+// Walidacja: data startu nie może być z przeszłości
+if (form.start_date && form.start_date < todayStr()) {
+  setError("Data rozpoczęcia nie może być z przeszłości.")
+  setActiveTab("basic")
+  return
+}
+
+// Walidacja: data końca nie może być wcześniejsza niż start
+if (form.end_date && form.start_date && form.end_date < form.start_date) {
+  setError("Data zakończenia nie może być wcześniejsza niż rozpoczęcia.")
+  setActiveTab("basic")
+  return
+}
 
     setSubmitting(true)
     setError("")
@@ -350,12 +357,12 @@ export default function DodajWydarzenie() {
                 <label style={lbl}>Adres</label>
                 <div style={{display:"flex",gap:"0.5rem"}}>
                   <input name="address" value={form.address} onChange={handleChange}
-                    placeholder="ul. Kościuszki 1" style={{...inp,flex:1}} />
+                    placeholder="ul. Kościuszki 1 lub 54.10, 22.93" style={{...inp,flex:1}} />
                   <button type="button" onClick={handleGeocode} disabled={geocoding} style={geoBtn}>
                     {geocoding ? "..." : "📍 Znajdź"}
                   </button>
                 </div>
-                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Wpisz adres i kliknij "Znajdź", albo zaznacz punkt bezpośrednio na mapie poniżej.</div>
+                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Wpisz adres (np. ul. Kościuszki 1) lub wklej współrzędne (54.10, 22.93) i kliknij "Znajdź". Możesz też zaznaczyć punkt bezpośrednio na mapie.</div>
               </div>
 
               <LocationPicker
