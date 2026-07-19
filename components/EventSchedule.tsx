@@ -17,10 +17,47 @@ interface ScheduleDay {
 interface EventScheduleProps {
   schedule: ScheduleDay[]
   eventDate?: string
+  variant?: 'light' | 'dark'
 }
 
-const ACCENT = '#16a34a'
-const LIVE = '#16a34a'
+const THEMES = {
+  light: {
+    heading: '#0f172a',
+    title: '#0f172a',
+    desc: '#475569',
+    time: '#334155',
+    timePast: '#94a3b8',
+    line: '#e2e8f0',
+    dotBg: '#ffffff',
+    dotPast: '#e2e8f0',
+    dotBorderPast: '#cbd5e1',
+    accent: '#16a34a',
+    live: '#16a34a',
+    liveText: '#ffffff',
+    tabBg: '#ffffff',
+    tabBorder: '#d1d5db',
+    tabText: '#374151',
+    sectionLabel: '#64748b',
+  },
+  dark: {
+    heading: '#f8fafc',
+    title: '#f1f5f9',
+    desc: '#cbd5e1',
+    time: '#e2e8f0',
+    timePast: '#64748b',
+    line: 'rgba(255,255,255,0.14)',
+    dotBg: 'transparent',
+    dotPast: '#334155',
+    dotBorderPast: '#475569',
+    accent: '#22c55e',
+    live: '#22c55e',
+    liveText: '#052e16',
+    tabBg: 'rgba(255,255,255,0.07)',
+    tabBorder: 'rgba(255,255,255,0.18)',
+    tabText: '#e2e8f0',
+    sectionLabel: '#94a3b8',
+  },
+}
 
 /** "9:00" | "09.00" | "9" -> "09:00". Zwraca null gdy to nie jest godzina. */
 function normalizeTime(raw?: string): string | null {
@@ -53,9 +90,11 @@ function todayISO(): string {
     .padStart(2, '0')}`
 }
 
-export default function EventSchedule({ schedule, eventDate }: EventScheduleProps) {
+export default function EventSchedule({ schedule, eventDate, variant = 'light' }: EventScheduleProps) {
   const [activeDay, setActiveDay] = useState(0)
   const [now, setNow] = useState<{ time: string; date: string } | null>(null)
+
+  const t = THEMES[variant]
 
   useEffect(() => {
     const update = () => {
@@ -83,11 +122,11 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
   const untimed: ScheduleItem[] = []
 
   for (const item of valid) {
-    const t = normalizeTime(item.time)
-    if (t) {
-      const group = timed.find((g) => g.time === t)
+    const norm = normalizeTime(item.time)
+    if (norm) {
+      const group = timed.find((g) => g.time === norm)
       if (group) group.items.push(item)
-      else timed.push({ time: t, items: [item] })
+      else timed.push({ time: norm, items: [item] })
     } else {
       untimed.push(item)
     }
@@ -109,7 +148,7 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
 
   return (
     <div style={{ marginTop: 8 }}>
-      <h3 style={{ margin: '0 0 16px', fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
+      <h3 style={{ margin: '0 0 16px', fontSize: '1.05rem', fontWeight: 700, color: t.heading }}>
         Program imprezy
       </h3>
 
@@ -122,13 +161,13 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
               style={{
                 padding: '0.5rem 1.1rem',
                 borderRadius: 8,
-                border: activeDay === i ? 'none' : '1px solid #d1d5db',
+                border: activeDay === i ? 'none' : `1px solid ${t.tabBorder}`,
                 cursor: 'pointer',
                 fontSize: '0.875rem',
                 fontWeight: 600,
                 whiteSpace: 'nowrap',
-                background: activeDay === i ? ACCENT : '#ffffff',
-                color: activeDay === i ? '#ffffff' : '#374151',
+                background: activeDay === i ? t.accent : t.tabBg,
+                color: activeDay === i ? '#ffffff' : t.tabText,
               }}
             >
               {d.label}
@@ -143,7 +182,7 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
             const status = statusOf(i)
             const isActive = status === 'active'
             const isPast = status === 'past'
-            const dotColor = isActive ? LIVE : isPast ? '#cbd5e1' : ACCENT
+            const dotBorder = isActive ? t.live : isPast ? t.dotBorderPast : t.accent
 
             return (
               <div key={group.time} style={{ display: 'flex', gap: 14, position: 'relative' }}>
@@ -155,7 +194,7 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
                       top: 22,
                       width: 2,
                       height: '100%',
-                      background: '#e2e8f0',
+                      background: t.line,
                       zIndex: 0,
                     }}
                   />
@@ -167,7 +206,7 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
                     flexShrink: 0,
                     fontSize: '0.875rem',
                     fontWeight: 700,
-                    color: isActive ? LIVE : isPast ? '#94a3b8' : '#334155',
+                    color: isActive ? t.live : isPast ? t.timePast : t.time,
                     paddingTop: 1,
                     textAlign: 'right',
                   }}
@@ -183,9 +222,9 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
                     flexShrink: 0,
                     marginTop: 4,
                     zIndex: 1,
-                    background: isActive ? LIVE : isPast ? '#e2e8f0' : '#ffffff',
-                    border: `2px solid ${dotColor}`,
-                    boxShadow: isActive ? `0 0 0 4px ${LIVE}22` : 'none',
+                    background: isActive ? t.live : isPast ? t.dotPast : t.dotBg,
+                    border: `2px solid ${dotBorder}`,
+                    boxShadow: isActive ? `0 0 0 4px ${t.live}33` : 'none',
                   }}
                 />
 
@@ -197,8 +236,8 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
                         fontSize: '0.7rem',
                         fontWeight: 700,
                         letterSpacing: '0.04em',
-                        background: LIVE,
-                        color: '#ffffff',
+                        background: t.live,
+                        color: t.liveText,
                         borderRadius: 4,
                         padding: '2px 7px',
                         marginBottom: 5,
@@ -215,21 +254,14 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
                           margin: 0,
                           fontSize: '0.95rem',
                           fontWeight: isActive ? 700 : 600,
-                          color: '#0f172a',
+                          color: t.title,
                           lineHeight: 1.4,
                         }}
                       >
                         {item.title}
                       </p>
                       {item.description && (
-                        <p
-                          style={{
-                            margin: '3px 0 0',
-                            fontSize: '0.85rem',
-                            color: '#475569',
-                            lineHeight: 1.5,
-                          }}
-                        >
+                        <p style={{ margin: '3px 0 0', fontSize: '0.85rem', color: t.desc, lineHeight: 1.5 }}>
                           {item.description}
                         </p>
                       )}
@@ -252,7 +284,7 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
                 fontWeight: 700,
                 letterSpacing: '0.05em',
                 textTransform: 'uppercase',
-                color: '#64748b',
+                color: t.sectionLabel,
               }}
             >
               W programie również
@@ -266,32 +298,17 @@ export default function EventSchedule({ schedule, eventDate }: EventScheduleProp
                     width: 6,
                     height: 6,
                     borderRadius: '50%',
-                    background: ACCENT,
+                    background: t.accent,
                     flexShrink: 0,
                     marginTop: 8,
                   }}
                 />
                 <div style={{ flex: 1 }}>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: '0.95rem',
-                      fontWeight: 600,
-                      color: '#0f172a',
-                      lineHeight: 1.4,
-                    }}
-                  >
+                  <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: t.title, lineHeight: 1.4 }}>
                     {item.title}
                   </p>
                   {item.description && (
-                    <p
-                      style={{
-                        margin: '3px 0 0',
-                        fontSize: '0.85rem',
-                        color: '#475569',
-                        lineHeight: 1.5,
-                      }}
-                    >
+                    <p style={{ margin: '3px 0 0', fontSize: '0.85rem', color: t.desc, lineHeight: 1.5 }}>
                       {item.description}
                     </p>
                   )}

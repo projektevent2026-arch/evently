@@ -362,7 +362,7 @@ const endClock = fmtClock(event.end_date)
 
         {/* Tab 1: Program (jeśli jest) */}
         {activeTab === 1 && hasTabs && (
-          <EventSchedule schedule={event.schedule} eventDate={event.start_date} />
+          <EventSchedule schedule={event.schedule} eventDate={event.start_date} variant="dark" />
         )}
 
         {/* Tab: Lokalizacja */}
