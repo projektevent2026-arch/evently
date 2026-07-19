@@ -50,6 +50,19 @@ function fmt(d: string) {
   return dt.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+// Zakres dat dla wielodniowych: "25–26 lipca 2026" gdy ten sam miesiąc,
+// inaczej pełne obie daty. Jednodniowy -> bez zmian.
+function dateRange(start?: string, end?: string): string {
+  if (!start) return ''
+  const s = start.slice(0, 10)
+  const e = end ? end.slice(0, 10) : ''
+  if (!e || e === s) return fmt(start)
+  if (s.slice(0, 7) === e.slice(0, 7)) {
+    return `${parseInt(s.slice(8, 10), 10)}–${fmt(e)}`
+  }
+  return `${fmt(start)} – ${fmt(e)}`
+}
+
 // Godzina wyciągana ze stringa timestamptz (start_date/end_date), BEZ new Date,
 // żeby nie przeliczać stref. "2026-07-25 16:00:00+00" -> "16:00".
 // (Kolumny start_time/end_time nie istnieją — godzina siedzi w start_date.)
@@ -254,7 +267,7 @@ const endClock = fmtClock(event.end_date)
       {/* ── INFO BAR ── */}
       <div className="flex bg-zinc-950 border-b border-zinc-800 overflow-x-auto scrollbar-hide">
         {[
-          { icon: '📅', label: 'Data', value: fmt(event.start_date) || '—' },
+          { icon: '📅', label: 'Data', value: dateRange(event.start_date, event.end_date) || '—' },
           { icon: '⏰', label: 'Godzina', value: timeLabel || '—' },
           { icon: '📍', label: 'Lokalizacja', value: event.city || event.address || '—' },
           { icon: '🎟️', label: 'Wstęp', value: event.is_free ? 'Wolny' : event.price_from ? `Od ${event.price_from} PLN` : '—', green: event.is_free },
