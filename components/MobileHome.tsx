@@ -1,5 +1,6 @@
 'use client'
 
+import { matchesQuery } from '@/lib/searchEvent'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -564,8 +565,7 @@ export function MobileHome() {
         if (normalizeCategory(e.category) !== activeCategory) return false
       }
       if (search.trim()) {
-        const q = search.toLowerCase()
-        if (!e.title?.toLowerCase().includes(q) && !e.city?.toLowerCase().includes(q)) return false
+        if (!matchesQuery(e, search)) return false
       }
       return true
     })
