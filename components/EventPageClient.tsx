@@ -124,6 +124,18 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
   const fmt = (d:string) => d ? new Date(d).toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long",year:"numeric"}) : ""
   const fmtDate = (d:string) => d ? new Date(d).toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"}) : ""
+  
+  // Zakres dat dla wielodniowych: "25–26 lipca 2026" gdy ten sam miesiąc.
+  const dateRange = (start?: string, end?: string): string => {
+    if (!start) return ""
+    const s = start.slice(0, 10)
+    const e = end ? end.slice(0, 10) : ""
+    if (!e || e === s) return fmtDate(s)
+    if (s.slice(0, 7) === e.slice(0, 7)) {
+      return `${parseInt(s.slice(8, 10), 10)}–${fmtDate(e)}`
+    }
+    return `${fmtDate(s)} – ${fmtDate(e)}`
+  }
 // Godzina wyciągana ze start_date / end_date (timestamp "2026-07-25T16:00:00+00").
   // Bierzemy część po "T", pierwsze 5 znaków (HH:MM) — BEZ new Date, żeby strefa
   // czasowa nie przesuwała godziny. 16:00 zostaje 16:00.
@@ -234,7 +246,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </div>
           <div>
             <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,textTransform:"uppercase",letterSpacing:0.5}}>Data</div>
-            <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{fmtDate(event.start_date)}</div>
+            <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{dateRange(event.start_date, event.end_date)}</div>
           </div>
         </div>
         <div className="info-bar-item">
