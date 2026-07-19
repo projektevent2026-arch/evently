@@ -1,5 +1,6 @@
 "use client"
 
+import EventHero from '@/components/EventHero'
 import { Calendar, Clock, MapPin, Tag, Ticket, Building2, Navigation } from "lucide-react"
 import EventSchedule from '@/components/EventSchedule'
 import { useState, useEffect } from "react"
@@ -180,8 +181,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
       {/* HERO */}
       <div style={{position:"relative", height:"min(500px, 45vw)", minHeight:300, overflow:"hidden"}}>
-        <img src={event.cover_image_url||"/images/event-concert.jpg"} alt={event.title} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
-        <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 35%, rgba(0,0,0,0.15) 65%, rgba(0,0,0,0.05) 100%)"}} />
+      <EventHero src={event.cover_image_url || "/images/event-concert.jpg"} alt={event.title} />
 
         <div style={{position:"absolute",top:0,left:0,right:0,padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <Link href="/" style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",padding:"8px 16px",borderRadius:24,fontSize:13,fontWeight:600,textDecoration:"none",border:"1px solid rgba(255,255,255,0.15)"}}>

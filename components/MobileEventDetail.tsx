@@ -1,5 +1,6 @@
 'use client'
 
+import EventHero from '@/components/EventHero'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -201,15 +202,7 @@ const endClock = fmtClock(event.end_date)
 
       {/* ── HERO ── */}
       <div className={`relative h-52 overflow-hidden bg-gradient-to-br ${gradient}`}>
-        {(event.cover_image_url || event.image_url) && (
-          <img
-            src={event.cover_image_url || event.image_url}
-            alt={event.title}
-            className="absolute inset-0 w-full h-full object-cover opacity-60"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/10" />
-
+      <EventHero src={event.cover_image_url || event.image_url} alt={event.title} />
         {/* Top bar */}
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
           <button
