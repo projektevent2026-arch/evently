@@ -1,5 +1,6 @@
 "use client"
 
+import { matchesQuery } from '@/lib/searchEvent'
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { EventCard, type EventData } from "@/components/event-card"
@@ -28,12 +29,10 @@ function startOfToday(): Date {
 }
 
 // Event jest "aktualny", jeśli jeszcze się nie zakończył.
-// - jest end_date  -> liczy się koniec (festiwal 9–11 lipca widoczny do 11-go)
-// - brak end_date  -> liczy się start (jednodniowy festyn)
 function isUpcoming(start_date?: string | null, end_date?: string | null): boolean {
   const today = startOfToday()
   const ref = end_date || start_date
-  if (!ref) return true // brak daty — nie ukrywaj, pokaż (rzadki przypadek)
+  if (!ref) return true
   const refDay = new Date(ref)
   refDay.setHours(0, 0, 0, 0)
   return refDay >= today
@@ -55,13 +54,12 @@ function isTomorrow(d: string) {
   const t = new Date(); t.setDate(t.getDate() + 1)
   return new Date(d).toDateString() === t.toDateString()
 }
+
 // Zakres NAJBLIŻSZEGO weekendu: piątek 00:00 -> niedziela 23:59.
-// W sobotę/niedzielę zwraca trwający weekend (nie przeskakuje na następny).
-// Pon–czw -> nadchodzący piątek. To naprawia bug „pokazywał wszystkie weekendy do końca roku".
 function thisWeekendRange(): [Date, Date] {
   const now = new Date()
-  const day = now.getDay() // 0=niedz, 1=pon, ... 5=pt, 6=sob
-  const offsetToFriday = day === 0 ? -2 : 5 - day // sob(-1), niedz(-2), pt(0), pon(+4)...
+  const day = now.getDay()
+  const offsetToFriday = day === 0 ? -2 : 5 - day
   const start = new Date(now)
   start.setDate(now.getDate() + offsetToFriday)
   start.setHours(0, 0, 0, 0)
@@ -76,6 +74,7 @@ function isThisWeekend(d: string): boolean {
   const t = new Date(d).getTime()
   return t >= start.getTime() && t <= end.getTime()
 }
+
 function isOnDate(d: string, target: string) {
   return new Date(d).toDateString() === new Date(target).toDateString()
 }
@@ -92,8 +91,6 @@ function normalizeCategory(cat: string | null): string {
 
 // ─────────────────────────────────────────────────────────────
 // FETCH z timeoutem + retry — ten sam wzorzec co w MobileHome.
-// Jak zapytanie zawiśnie -> po TIMEOUT_MS abort -> ponów. Po MAX_RETRIES
-// nieudanych prób -> rzuć błąd, żeby UI pokazało guzik „Spróbuj ponownie".
 // ─────────────────────────────────────────────────────────────
 const TIMEOUT_MS = 8000
 const MAX_RETRIES = 2
@@ -150,7 +147,6 @@ export function EventsGrid() {
     try { dateInputRef.current?.showPicker() } catch { dateInputRef.current?.click() }
   }
 
-  // loadEvents wydzielone, żeby guzik „Spróbuj ponownie" mógł je wywołać.
   const loadEvents = useCallback(async () => {
     setLoading(true)
     setLoadError(false)
@@ -158,7 +154,6 @@ export function EventsGrid() {
       const data = await fetchPublishedEvents()
 
       const mapped = data
-        // ODETNIJ PRZETERMINOWANE — event znika z listy po zakończeniu
         .filter((e) => isUpcoming(e.start_date, e.end_date))
         .filter((e) => {
           if (!hasLocationFilter) return true
@@ -180,12 +175,18 @@ export function EventsGrid() {
           interested: e.interested_count || 0,
           category: e.category || "Inne",
           price: e.is_free ? "Wstęp wolny" : e.price_from ? `od ${e.price_from} zł` : "Wstęp wolny",
+          // Pola tylko do wyszukiwania — nie renderowane w kartach.
+          description: e.description ?? null,
+          short_description: e.short_description ?? null,
+          venue_name: e.venue_name ?? null,
+          organizer_name: e.organizer_name ?? null,
+          address: e.address ?? null,
+          schedule: e.schedule ?? null,
         }))
 
       setEvents(mapped)
 
       // Pobranie sesji + RSVP jest DRUGORZĘDNE — jego błąd NIE ma pokazywać ekranu awarii.
-      // Główne eventy już są; brak listy „idę" jest akceptowalny.
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
@@ -209,10 +210,7 @@ export function EventsGrid() {
   }, [loadEvents])
 
   const filtered = events.filter((e) => {
-    const matchQ = q
-      ? e.title.toLowerCase().includes(q.toLowerCase()) ||
-        e.city?.toLowerCase().includes(q.toLowerCase())
-      : true
+    const matchQ = q ? matchesQuery(e, q) : true
     const matchCat = activeCategory
       ? normalizeCategory(e.category) === activeCategory
       : true
