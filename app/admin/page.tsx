@@ -38,6 +38,8 @@ export default function AdminPage() {
   const [filterStatus, setFilterStatus] = useState("all")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [mobileShowList, setMobileShowList] = useState(true)
+  const [search, setSearch] = useState("")
+  const [sortBy, setSortBy] = useState("date_desc")
 
   useEffect(() => { fetchEvents() }, [])
 
@@ -139,7 +141,23 @@ export default function AdminPage() {
     fetchEvents()
   }
 
-  const filtered = filterStatus === "all" ? events : events.filter(e => e.status === filterStatus)
+  const norm = (s: string) =>
+    s.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+
+  const filtered = events
+    .filter(e => filterStatus === "all" || e.status === filterStatus)
+    .filter(e => {
+      const q = norm(search.trim())
+      if (!q) return true
+      const hay = norm([e.title, e.city, e.venue_name, e.organizer_name].filter(Boolean).join(" "))
+      return q.split(/\s+/).every(w => hay.includes(w))
+    })
+    .sort((a, b) => {
+      if (sortBy === "date_asc") return (a.start_date || "").localeCompare(b.start_date || "")
+      if (sortBy === "title") return (a.title || "").localeCompare(b.title || "", "pl")
+      if (sortBy === "newest") return (b.created_at || "").localeCompare(a.created_at || "")
+      return (b.start_date || "").localeCompare(a.start_date || "")
+    })
   const counts = {
     all: events.length,
     pending: events.filter(e => e.status === "pending").length,
@@ -190,6 +208,31 @@ export default function AdminPage() {
               {" "}<span style={{fontSize:"0.75rem", color:"#9ca3af"}}>{counts[val]}</span>
             </button>
           ))}
+        </div>
+
+        <div style={{display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap", alignItems:"center"}}>
+          <div style={{position:"relative", flex:1, minWidth:220}}>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Szukaj po nazwie, miescie, organizatorze..."
+              style={{padding:"0.6rem 2rem 0.6rem 0.75rem", borderRadius:8, border:"1px solid #e5e7eb", fontSize:"0.875rem", width:"100%", boxSizing:"border-box", outline:"none", background:"white", color:"#111827"}}
+            />
+            {search && (
+              <button onClick={() => setSearch("")} style={{position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#9ca3af", fontSize:18, lineHeight:1}}>×</button>
+            )}
+          </div>
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value)}
+            style={{padding:"0.6rem 0.75rem", borderRadius:8, border:"1px solid #e5e7eb", fontSize:"0.875rem", background:"white", color:"#111827", cursor:"pointer"}}
+          >
+            <option value="date_desc">Data: od najnowszych</option>
+            <option value="date_asc">Data: od najstarszych</option>
+            <option value="newest">Ostatnio dodane</option>
+            <option value="title">Nazwa A-Z</option>
+          </select>
+          <span style={{fontSize:"0.8rem", color:"#6b7280", whiteSpace:"nowrap"}}>{filtered.length} z {events.length}</span>
         </div>
 
         <div style={{background:"white", borderRadius:12, border:"1px solid #e5e7eb", overflow:"hidden"}}>
