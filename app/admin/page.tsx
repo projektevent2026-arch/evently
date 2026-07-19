@@ -254,13 +254,13 @@ export default function AdminPage() {
                         <img src={event.cover_image_url || "/images/event-concert.jpg"} alt={event.title}
                           style={{width:44, height:44, borderRadius:8, objectFit:"cover", flexShrink:0}} />
                         <div>
-                          <p style={{fontWeight:600, margin:0, fontSize:"0.875rem"}}>{event.title}</p>
+                        <p style={{fontWeight:600, margin:0, fontSize:"0.9rem", color:"#111827"}}>{event.title}</p>
                           <p style={{color:"#6b7280", margin:0, fontSize:"0.8rem"}}>{event.address || event.city}</p>
                         </div>
                       </div>
                     </td>
                     <td style={td}>
-                      <p style={{margin:0, fontSize:"0.875rem"}}>{event.start_date ? new Date(event.start_date).toLocaleDateString("pl-PL") : "-"}</p>
+                    <p style={{margin:0, fontSize:"0.875rem", color:"#111827", fontWeight:500}}>{event.start_date ? new Date(event.start_date).toLocaleDateString("pl-PL") : "-"}</p>
                       <p style={{color:"#6b7280", margin:0, fontSize:"0.8rem"}}>
                         {event.start_date ? new Date(event.start_date).toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}) : ""}
                         {event.end_date ? " - " + new Date(event.end_date).toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}) : ""}
