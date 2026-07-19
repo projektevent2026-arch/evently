@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5',
-      max_tokens: 2048,
+      max_tokens: 4096,
       messages: [
         {
           role: 'user',
@@ -63,42 +63,78 @@ export async function POST(req: NextRequest) {
 Przeanalizuj ten plakat wydarzenia i wyciągnij informacje. Odpowiedz TYLKO w formacie JSON bez żadnego tekstu przed ani po:
 {
   "title": "nazwa wydarzenia",
-  "city": "miasto",
-  "address": "adres lub miejsce",
-  "venue_name": "nazwa miejsca",
+  "city": "miasto, wieś lub gmina",
+  "venue_name": "nazwa konkretnego miejsca lub null",
+  "address": "ulica z numerem lub null",
   "start_date": "YYYY-MM-DD lub null",
   "start_time": "HH:MM lub null",
   "end_date": "YYYY-MM-DD lub null",
   "end_time": "HH:MM lub null",
-  "description": "krótki opis",
+  "description": "opis wydarzenia",
   "organizer_name": "organizator lub null",
-  "category": "jedna z: culture, music, food, sport, family, technology",
+  "category": "jedna z: festyny, kultura, muzyka, sport",
   "is_free": true lub false,
   "price_from": liczba lub null,
   "schedule": [
-    { "time": "HH:MM", "title": "nazwa punktu programu", "description": "opcjonalny opis" }
+    { "time": "HH:MM lub null", "title": "nazwa punktu programu", "description": "opcjonalny opis", "day": 1 }
   ]
 }
 
-WAŻNE — rok wydarzenia:
+═══ MIASTO vs NAZWA MIEJSCA — częsty błąd ═══
+To są DWA RÓŻNE pola, nie wpisuj tego samego w oba:
+- "city" = miejscowość na mapie Polski: Suwałki, Radziłów, Filipów, Przerośl.
+- "venue_name" = nazwa konkretnego obiektu: "Zalew Arkadia", "Targowisko Wiejskie", "Park Konstytucji 3 Maja", "Dom Kultury", "Amfiteatr".
+- "address" = TYLKO ulica z numerem, np. "Chłodna 2". Jeśli plakat nie podaje ulicy, wpisz null — NIE powtarzaj tam nazwy miejsca.
+Przykład: plakat "Zalew Arkadia, Suwałki" -> city: "Suwałki", venue_name: "Zalew Arkadia", address: null.
+Jeśli plakat podaje tylko nazwę obiektu bez miejscowości, ustal miejscowość z kontekstu (np. z logotypu gminy w stopce).
+
+═══ ORGANIZATOR — szukaj w STOPCE ═══
+Organizator prawie nigdy nie jest napisany na środku plakatu. Jest NA DOLE, często jako:
+- pasek z logotypami (herb gminy, logo domu kultury, logo sponsora),
+- napis małą czcionką "Organizator:", "Zapraszają:", "Patronat:".
+Przeczytaj DOKŁADNIE dolną część plakatu, także drobny druk.
+Wpisz nazwę głównego organizatora, np. "Gmina Radziłów", "Suwalski Ośrodek Kultury".
+Jeśli w stopce jest kilka podmiotów, wybierz ten najbardziej wyeksponowany (największy herb/logo).
+
+═══ PROGRAM — wypełnij CAŁY, punkty BEZ godzin też ═══
+- Przepisz WSZYSTKIE punkty programu z plakatu, od pierwszego do ostatniego. Nie zatrzymuj się po kilku.
+- Bardzo dużo festynów ma program BEZ godzin — samą listę atrakcji ("dmuchańce", "wata cukrowa", "malowanie twarzy", "pokaz baniek"). TAKIE PUNKTY TEŻ MUSZĄ TRAFIĆ DO "schedule", z "time": null.
+- NIE POMIJAJ punktu tylko dlatego, że nie ma przy nim godziny. Ustaw "time": null i zachowaj punkt.
+- Jeśli plakat ma sekcję typu "ATRAKCJE DLA KAŻDEGO" albo listę z ikonkami — każda pozycja z tej listy to osobny punkt programu z "time": null.
+- Każdy punkt z godziną ma DOKŁADNIE JEDNĄ godzinę (zwykle napisaną przed nim).
+- Jeśli tytuł punktu zawija się na dwie linie (np. "16:45 – Szkoła dziecięca\\npod opieką Pani X"), to JEDEN punkt, nie dwa. Połącz w jeden "title".
+- NIGDY nie zwracaj "00:00" jako zgadywanej godziny. "00:00" tylko jeśli plakat dosłownie pokazuje punkt o północy.
+
+═══ WYDARZENIA WIELODNIOWE — wypełnij WSZYSTKIE dni ═══
+- Jeśli plakat pokazuje kilka dat (np. "25 LIPCA 2026" i niżej "26 LIPCA 2026"), to wydarzenie DWUDNIOWE.
+- Ustaw start_date na pierwszy dzień, end_date na ostatni dzień.
+- Program drugiego dnia jest zwykle NIŻEJ na plakacie, pod osobnym nagłówkiem z datą. Przewiń plakat do samego dołu i przepisz TAKŻE ten program.
+- Punktom pierwszego dnia nadaj "day": 1, punktom drugiego "day": 2, itd.
+- Nie kończ pracy po pierwszym dniu — to najczęstszy błąd.
+- Jeśli wydarzenie trwa 1 dzień, wszystkie punkty mają "day": 1, a end_date = null.
+
+═══ OPIS — napisz od razu dobry, gotowy do publikacji ═══
+- 2-4 pełne zdania, płynną polszczyzną, w trzeciej osobie.
+- Napisz CO to za wydarzenie, DLA KOGO jest i CO konkretnie czeka na uczestników.
+- Wymień najciekawsze atrakcje z plakatu (gwiazda wieczoru, konkursy, atrakcje dla dzieci, jedzenie).
+- Jeśli jest gwiazda/główny wykonawca, wymień z nazwy — ludzie tego szukają.
+- Nie pisz "wydarzenie odbędzie się dnia..." — data i miejsce są w osobnych polach, nie powtarzaj ich.
+- Nie używaj marketingowego bełkotu ani wykrzykników.
+
+═══ POLSKA ORTOGRAFIA — czytaj uważnie ═══
+Plakaty często mają ozdobne, stylizowane czcionki, w których łatwo pomylić litery. Zanim zwrócisz tekst, sprawdź, czy każde słowo jest poprawnym polskim wyrazem:
+- "Kiermasz" (nie "Kiermaż"), "jadła" (nie "jadia"), "Sąsiedzi" (nie "Zasiedzi").
+- Uważaj na pary: rz/ż, ch/h, u/ó, ą/a, ę/e, ł/l, ś/s, ź/ż.
+- Jeśli odczytane słowo nie istnieje w języku polskim, to znaczy że źle odczytałeś literę — popraw na najbliższy sensowny wyraz.
+- Zachowaj oryginalną pisownię nazw własnych i wielkich liter (np. "PRZEROŚLIAKI", "INESS").
+
+═══ ROK WYDARZENIA ═══
 - Wydarzenia z plakatów są ZAWSZE w przyszłości lub dziś, NIGDY w przeszłości.
 - Jeśli plakat podaje rok, użyj go.
-- Jeśli plakat NIE podaje roku (np. tylko "25 lipca"), wybierz NAJBLIŻSZĄ PRZYSZŁĄ datę względem ${todayISO}. Zwykle będzie to rok ${currentYear} lub ${currentYear + 1}.
+- Jeśli plakat NIE podaje roku (np. tylko "25 lipca"), wybierz NAJBLIŻSZĄ PRZYSZŁĄ datę względem ${todayISO}. Zwykle rok ${currentYear} lub ${currentYear + 1}.
 - start_date NIGDY nie może być wcześniejsze niż ${todayISO}.
 
-Jeśli na plakacie nie ma harmonogramu, zwróć "schedule": [].
-Jeśli wydarzenie trwa kilka dni, podziel harmonogram według dni i zwróć osobną tablicę dla każdego dnia w formacie:
-"schedule": [
-  { "time": "HH:MM", "title": "nazwa punktu", "description": "opcjonalny opis", "day": 1 },
-  { "time": "HH:MM", "title": "nazwa punktu", "description": "opcjonalny opis", "day": 2 }
-]
-gdzie "day" to numer dnia (1, 2, 3...). Jeśli impreza trwa 1 dzień, wszystkie punkty mają "day": 1.
-
-WAŻNE — harmonogram, częsty błąd do uniknięcia:
-- Każdy punkt programu na plakacie ma DOKŁADNIE JEDNĄ godzinę przypisaną (zwykle napisaną przed lub przy nim).
-- Jeśli tytuł punktu programu zawija się na dwie linie (np. "16:45 – Szkoła dziecięca\\npod opieką Pani X"), to jest to JEDEN punkt programu, nie dwa. Połącz tekst w jeden "title", nie twórz drugiego wpisu w schedule dla kontynuacji linii.
-- NIGDY nie zwracaj "00:00" jako zgadywanej/domyślnej godziny. "00:00" zwracaj tylko jeśli plakat dosłownie pokazuje punkt programu o północy.
-- Jeśli naprawdę nie możesz ustalić godziny konkretnego punktu (np. plakat jej nie pokazuje), pomiń ten punkt — nie dodawaj go do schedule z wymyśloną godziną.`,
+Jeśli na plakacie nie ma żadnego programu ani listy atrakcji, zwróć "schedule": [].`,
             },
           ],
         },
