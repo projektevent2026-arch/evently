@@ -82,6 +82,17 @@ function dayISO(eventDate: string | undefined, offset: number): string | null {
   return d.toISOString().slice(0, 10)
 }
 
+const WEEKDAYS_PL = ['nd', 'pon', 'wt', 'śr', 'czw', 'pt', 'so']
+
+/** "2026-07-25" -> "so 25.07". Bez daty wraca do etykiety z bazy ("Dzień 1"). */
+function formatDayTab(iso: string | null, fallback: string): string {
+  if (!iso) return fallback
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return fallback
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))
+  return `${WEEKDAYS_PL[d.getUTCDay()]} ${m[3]}.${m[2]}`
+}
+
 function todayISO(): string {
   const n = new Date()
   return `${n.getFullYear()}-${(n.getMonth() + 1).toString().padStart(2, '0')}-${n
@@ -170,8 +181,8 @@ export default function EventSchedule({ schedule, eventDate, variant = 'light' }
                 color: activeDay === i ? '#ffffff' : t.tabText,
               }}
             >
-              {d.label}
-            </button>
+{formatDayTab(dayISO(eventDate, i), d.label)}
+</button>
           ))}
         </div>
       )}
