@@ -334,7 +334,6 @@ export default function AdminPage() {
                     start_date: d.start_date || prev.start_date,
                     start_time: d.start_time || prev.start_time,
                     end_date: d.end_date || prev.end_date,
-                    end_time: d.end_time || prev.end_time,
                     description: d.description || prev.description,
                     organizer_name: d.organizer_name || prev.organizer_name,
                     category: d.category || prev.category,
