@@ -314,6 +314,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     .admin-sidebar, .admin-preview { display: none !important; }
     .admin-main { margin-left: 0 !important; margin-right: 0 !important; }
         .admin-pills { display: flex !important; }
+        .admin-main [style*="grid"] { grid-template-columns: 1fr !important; }
   }
 `}</style>
 
