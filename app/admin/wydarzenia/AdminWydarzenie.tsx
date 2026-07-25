@@ -308,6 +308,12 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
 
   return (
     <div style={{ display:"flex", minHeight:"100vh", background:"#f8fafc", fontFamily:"system-ui, sans-serif" }}>
+<style>{`
+  @media (max-width: 1100px) {
+    .admin-sidebar, .admin-preview { display: none !important; }
+    .admin-main { margin-left: 0 !important; margin-right: 0 !important; }
+  }
+`}</style>
 
       {/* LEWE MENU */}
       <aside className="admin-sidebar" style={{ width:sidebarW, background:"white", borderRight:"1px solid #e5e7eb", display:"flex", flexDirection:"column", position:"fixed", top:0, left:0, bottom:0, zIndex:10 }}>
