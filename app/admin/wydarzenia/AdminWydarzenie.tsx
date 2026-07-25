@@ -313,6 +313,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
   @media (max-width: 1100px) {
     .admin-sidebar, .admin-preview { display: none !important; }
     .admin-main { margin-left: 0 !important; margin-right: 0 !important; }
+        .admin-pills { display: flex !important; }
   }
 `}</style>
 
@@ -359,6 +360,22 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
 
       {/* ŚRODEK: FORMULARZ */}
       <main className="admin-main" style={{ marginLeft:sidebarW, marginRight:previewW, flex:1, minHeight:"100vh" }}>
+        {/* PIGUŁKI SEKCJI — tylko mobile */}
+        <div className="admin-pills" style={{ display:"none", gap:8, overflowX:"auto", padding:"12px 16px", borderBottom:"1px solid #e5e7eb", background:"white", position:"sticky", top:0, zIndex:6, WebkitOverflowScrolling:"touch" }}>
+          {SECTIONS.map(s => (
+            <button key={s.id} onClick={() => setSection(s.id)} style={{
+              display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:999,
+              border:"1px solid", whiteSpace:"nowrap", fontSize:13, cursor:"pointer", flexShrink:0,
+              background: section === s.id ? "#16a34a" : "white",
+              color: section === s.id ? "white" : "#374151",
+              borderColor: section === s.id ? "#16a34a" : "#e5e7eb",
+              fontWeight: section === s.id ? 600 : 400,
+            }}>
+              <span>{s.icon}</span>
+              <span>{s.label}</span>
+            </button>
+          ))}
+        </div>
         
         {/* Header */}
         <div style={{ padding:"20px 32px 16px", borderBottom:"1px solid #e5e7eb", background:"white", position:"sticky", top:0, zIndex:5, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
