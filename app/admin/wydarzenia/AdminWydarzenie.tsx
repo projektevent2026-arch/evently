@@ -211,6 +211,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
           end_date: data.end_date || prev.end_date,
           end_time: data.end_time || prev.end_time,
           description: data.description || prev.description,
+          short_description: data.short_description || prev.short_description,
           organizer_name: data.organizer_name || prev.organizer_name,
           category: data.category ? normalizeCategory(data.category) : prev.category,
           is_free: data.is_free ?? prev.is_free,
