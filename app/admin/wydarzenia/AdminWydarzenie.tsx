@@ -304,12 +304,16 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
 
   const sidebarW = 200
   const previewW = 320
+  // Na wąskim ekranie chowamy panele boczne i rozciągamy formularz na całość.
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches
+  const sbW = isMobile ? 0 : sidebarW
+  const pvW = isMobile ? 0 : previewW
 
   return (
     <div style={{ display:"flex", minHeight:"100vh", background:"#f8fafc", fontFamily:"system-ui, sans-serif" }}>
 
       {/* LEWE MENU */}
-      <aside style={{ width:sidebarW, background:"white", borderRight:"1px solid #e5e7eb", display:"flex", flexDirection:"column", position:"fixed", top:0, left:0, bottom:0, zIndex:10 }}>
+      <aside style={{ width:sbW, background:"white", borderRight:"1px solid #e5e7eb", display:"flex", flexDirection:"column", position:"fixed", top:0, left:0, bottom:0, zIndex:10 }}>
         
         {/* Logo */}
         <div style={{ padding:"20px 16px", borderBottom:"1px solid #f3f4f6", display:"flex", alignItems:"center", gap:10 }}>
@@ -350,7 +354,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       </aside>
 
       {/* ŚRODEK: FORMULARZ */}
-      <main style={{ marginLeft:sidebarW, marginRight:previewW, flex:1, minHeight:"100vh" }}>
+      <main style={{ marginLeft:sbW, marginRight:pvW, flex:1, minHeight:"100vh" }}>
         
         {/* Header */}
         <div style={{ padding:"20px 32px 16px", borderBottom:"1px solid #e5e7eb", background:"white", position:"sticky", top:0, zIndex:5, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -584,7 +588,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       </main>
 
       {/* PRAWA: PODGLĄD NA ŻYWO */}
-      <aside style={{ width:previewW, position:"fixed", top:0, right:0, bottom:0, background:"#f1f5f9", borderLeft:"1px solid #e5e7eb", overflow:"auto" }}>
+      <aside style={{ width:pvW, position:"fixed", top:0, right:0, bottom:0, background:"#f1f5f9", borderLeft:"1px solid #e5e7eb", overflow:"auto" }}>
         <div style={{ padding:"16px 16px 12px", borderBottom:"1px solid #e5e7eb", background:"white", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Podgląd na żywo</span>
           <span style={{ width:8, height:8, borderRadius:"50%", background:"#16a34a", display:"inline-block" }} />
