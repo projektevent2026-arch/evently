@@ -360,7 +360,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       </aside>
 
       {/* ŚRODEK: FORMULARZ */}
-      <main className="admin-main" style={{ marginLeft:sidebarW, marginRight:previewW, flex:1, minHeight:"100vh" }}>
+      <main className="admin-main" style={{ marginLeft:sidebarW, marginRight:previewW, flex:1, minHeight:"100vh", background:"#f8fafc" }}>
         {/* PIGUŁKI SEKCJI — tylko mobile */}
         <div className="admin-pills" style={{ display:"none", gap:8, overflowX:"auto", padding:"12px 16px", borderBottom:"1px solid #e5e7eb", background:"white", position:"sticky", top:0, zIndex:6, WebkitOverflowScrolling:"touch" }}>
           {SECTIONS.map(s => (
