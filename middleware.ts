@@ -24,34 +24,34 @@ export async function middleware(req: NextRequest) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user } } = await supabase.auth.getUser()
 
   // /dodaj-wydarzenie: publiczne dla wszystkich, ale admin leci do panelu.
   if (isAddPath) {
-    if (!session) return res
+    if (!user) return res
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single()
 
     if (profile?.role === "admin" || profile?.role === "moderator") {
-      return NextResponse.redirect(new URL("/admin", req.url))
+      return NextResponse.redirect(new URL("/admin/wydarzenia", req.url))
     }
 
     return res
   }
 
   // /admin: bez zmian — wymaga sesji i roli.
-  if (!session) {
+  if (!user) {
     return NextResponse.redirect(new URL("/login", req.url))
   }
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single()
 
   if (!profile || (profile.role !== "admin" && profile.role !== "moderator")) {
