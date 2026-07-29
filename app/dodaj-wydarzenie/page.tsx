@@ -199,6 +199,7 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
           <div style={{display:"flex",borderBottom:"1px solid #e5e7eb",padding:"0 1.5rem",overflowX:"auto"}}>
             {[
               ["basic","📋 Podstawowe"],
+              ["schedule","📅 Program"],
               ["location","📍 Lokalizacja"],
               ["media","🖼️ Zdjęcia i linki"],
             ].map(([tab, label]) => (
@@ -321,14 +322,6 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
                 <div style={counter}>{form.description.length}/2000</div>
               </div>
 
-              <div>
-                <label style={lbl}>Program wydarzenia <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie — godziny i punkty programu)</span></label>
-                <ScheduleEditor
-                  value={form.schedule}
-                  onChange={(days) => setForm(prev => ({ ...prev, schedule: days }))}
-                />
-              </div>
-
               <div style={{display:"flex",alignItems:"center",gap:"1.5rem",flexWrap:"wrap"}}>
                 <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:"0.9rem",fontWeight:500}}>
                   <input name="is_free" type="checkbox" checked={form.is_free} onChange={handleChange} style={{width:16,height:16}} />
@@ -344,6 +337,23 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
               </div>
 
               <div style={{display:"flex",justifyContent:"flex-end"}}>
+                <button type="button" onClick={() => setActiveTab("schedule")} style={nextBtn}>
+                  Dalej: Program <ChevronRight size={16} />
+                </button>
+              </div>
+            </>}
+
+            {activeTab === "schedule" && <>
+              <div>
+                <label style={lbl}>Program wydarzenia <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie — godziny i punkty programu)</span></label>
+                <ScheduleEditor
+                  value={form.schedule}
+                  onChange={(days) => setForm(prev => ({ ...prev, schedule: days }))}
+                />
+              </div>
+
+              <div style={{display:"flex",justifyContent:"space-between"}}>
+                <button type="button" onClick={() => setActiveTab("basic")} style={backBtn}>← Wstecz</button>
                 <button type="button" onClick={() => setActiveTab("location")} style={nextBtn}>
                   Dalej: Lokalizacja <ChevronRight size={16} />
                 </button>
@@ -383,7 +393,7 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
               />
 
               <div style={{display:"flex",justifyContent:"space-between"}}>
-                <button type="button" onClick={() => setActiveTab("basic")} style={backBtn}>← Wstecz</button>
+                <button type="button" onClick={() => setActiveTab("schedule")} style={backBtn}>← Wstecz</button>
                 <button type="button" onClick={() => setActiveTab("media")} style={nextBtn}>
                   Dalej: Zdjęcia <ChevronRight size={16} />
                 </button>
