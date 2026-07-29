@@ -7,7 +7,7 @@ const LocationPicker = dynamic(() => import('@/components/admin/LocationPicker')
 import ImageUpload from "@/components/admin/ImageUpload"
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
-import { Plus, MapPin, Trash2, X, ChevronRight, Edit } from "lucide-react"
+import { Plus, MapPin, Trash2, X, ChevronRight, Edit, Copy } from "lucide-react"
 
 const CATEGORIES = ["culture","music","food","sport","family","technology"]
 const CATEGORY_LABELS: Record<string,string> = {
@@ -138,6 +138,19 @@ export default function AdminPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Usunac wydarzenie?")) return
     await supabase.from("events").delete().eq("id", id)
+    fetchEvents()
+  }
+
+  const handleDuplicate = async (event: any) => {
+    const { id, created_at, ...rest } = event
+    const copy = {
+      ...rest,
+      title: (event.title || "") + " (kopia)",
+      slug: (event.slug || "") + "-kopia-" + Date.now(),
+      status: "draft",
+    }
+    const { error } = await supabase.from("events").insert([copy])
+    if (error) { alert("Blad kopiowania: " + error.message); return }
     fetchEvents()
   }
 
@@ -285,6 +298,9 @@ export default function AdminPage() {
                             Odrzuc
                           </button>
                         </>}
+                        <button onClick={() => handleDuplicate(event)} title="Duplikuj" style={{background:"none",border:"none",color:"#6b7280",cursor:"pointer"}}>
+                          <Copy size={16} />
+                        </button>
                         <button onClick={() => handleEdit(event)} style={{background:"none",border:"none",color:"#6b7280",cursor:"pointer"}}>
                           <Edit size={16} />
                         </button>
