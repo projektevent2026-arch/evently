@@ -47,9 +47,9 @@ const emptyForm = {
 
 const SECTIONS = [
   { id:"basic", label:"Podstawowe", icon:"📋" },
-  { id:"media", label:"Zdjęcia i plakat", icon:"🖼️" },
-  { id:"location", label:"Lokalizacja", icon:"📍" },
   { id:"schedule", label:"Program", icon:"📅" },
+  { id:"location", label:"Lokalizacja", icon:"📍" },
+  { id:"media", label:"Zdjęcia i plakat", icon:"🖼️" },
   { id:"summary", label:"Podsumowanie", icon:"✅" },
 ]
 
@@ -312,9 +312,11 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
 <style>{`
   @media (max-width: 1100px) {
     .admin-sidebar, .admin-preview { display: none !important; }
-    .admin-main { margin-left: 0 !important; margin-right: 0 !important; }
+    .admin-main { margin-left: 0 !important; margin-right: 0 !important; padding-bottom: 84px !important; }
         .admin-pills { display: flex !important; }
         .admin-main [style*="grid"] { grid-template-columns: 1fr !important; }
+        .admin-header-actions { display: none !important; }
+        .admin-actionbar { display: flex !important; }
   }
 `}</style>
 
@@ -386,7 +388,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
             </h1>
             {msg && <p style={{ margin:"4px 0 0", fontSize:13, color: msg.includes("Błąd") ? "#ef4444" : "#16a34a" }}>{msg}</p>}
           </div>
-          <div style={{ display:"flex", gap:10 }}>
+          <div className="admin-header-actions" style={{ display:"flex", gap:10 }}>
             <button onClick={() => handleSave("draft")} disabled={saving} style={{ padding:"9px 18px", border:"1px solid #e5e7eb", borderRadius:8, background:"white", fontSize:13, color:"#374151", cursor:"pointer", fontWeight:500 }}>
               💾 Zapisz szkic
             </button>
@@ -606,6 +608,20 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
               </div>
             </div>
           )}
+        </div>
+
+        {/* MOBILNY PASEK AKCJI — tylko telefon */}
+        <div className="admin-actionbar" style={{ display:"none", position:"fixed", bottom:0, left:0, right:0, zIndex:40, gap:10, padding:"12px 16px", background:"white", borderTop:"1px solid #e5e7eb" }}>
+          <button onClick={() => handleSave("draft")} disabled={saving} style={{ flex:1, padding:"13px", border:"1px solid #e5e7eb", borderRadius:10, background:"white", fontSize:14, color:"#374151", fontWeight:500, cursor:"pointer" }}>
+            Zapisz szkic
+          </button>
+          <button onClick={() => handleSave("published")} disabled={saving || !form.title || !form.start_date} style={{
+            flex:1.6, padding:"13px", border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:"pointer",
+            background: (!form.title || !form.start_date) ? "#d1fae5" : "#16a34a",
+            color: (!form.title || !form.start_date) ? "#6b7280" : "white",
+          }}>
+            Opublikuj
+          </button>
         </div>
       </main>
 
