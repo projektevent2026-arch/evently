@@ -2,6 +2,7 @@
 
 import PosterScanner from "@/components/admin/PosterScanner"
 import ImageUpload from "@/components/admin/ImageUpload"
+import ScheduleEditor from "@/components/admin/ScheduleEditor"
 import dynamic from "next/dynamic"
 import { useState } from "react"
 import { supabase } from "@/lib/supabase"
@@ -34,6 +35,7 @@ const emptyForm = {
   organizer_name: "", organizer_email: "",
   price_from: "0", is_free: true,
   latitude: "", longitude: "",
+  schedule: [] as any[],
 }
 
 export default function DodajWydarzenie() {
@@ -129,6 +131,7 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
         price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
         latitude: form.latitude ? parseFloat(form.latitude) : null,
         longitude: form.longitude ? parseFloat(form.longitude) : null,
+        schedule: form.schedule && form.schedule.length ? form.schedule : null,
         status: "pending",
       }])
 
@@ -316,6 +319,14 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
                 <textarea name="description" value={form.description} onChange={handleChange}
                   placeholder="Opisz szczegóły, atrakcje, program..." style={{...inp,height:140,resize:"vertical"}} maxLength={2000} />
                 <div style={counter}>{form.description.length}/2000</div>
+              </div>
+
+              <div>
+                <label style={lbl}>Program wydarzenia <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie — godziny i punkty programu)</span></label>
+                <ScheduleEditor
+                  value={form.schedule}
+                  onChange={(days) => setForm(prev => ({ ...prev, schedule: days }))}
+                />
               </div>
 
               <div style={{display:"flex",alignItems:"center",gap:"1.5rem",flexWrap:"wrap"}}>
