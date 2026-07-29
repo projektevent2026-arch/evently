@@ -454,7 +454,11 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
         </div>
 
         <p style={{textAlign:"center",color:"#9ca3af",fontSize:"0.8rem",marginTop:"1.5rem"}}>
-          Zgłaszając wydarzenie akceptujesz regulamin serwisu. Evently zastrzega sobie prawo do odmowy publikacji.
+          Zgłaszając wydarzenie akceptujesz{" "}
+          <Link href="/regulamin" style={{color:"#16a34a",textDecoration:"underline"}}>regulamin serwisu</Link>{" "}
+          oraz{" "}
+          <Link href="/polityka-prywatnosci" style={{color:"#16a34a",textDecoration:"underline"}}>politykę prywatności</Link>.
+          {" "}Evently zastrzega sobie prawo do odmowy publikacji.
         </p>
       </div>
     </div>
