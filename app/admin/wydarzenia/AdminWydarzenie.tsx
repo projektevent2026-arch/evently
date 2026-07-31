@@ -394,7 +394,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
 <style>{`
   @media (max-width: 1100px) {
     .admin-sidebar, .admin-preview { display: none !important; }
-    .admin-main { margin-left: 0 !important; margin-right: 0 !important; padding-bottom: 84px !important; }
+    .admin-main { margin-left: 0 !important; margin-right: 0 !important; padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important; }
         .admin-pills { display: flex !important; }
         .admin-main [style*="grid"] { grid-template-columns: 1fr !important; }
         .admin-header-actions { display: none !important; }
@@ -742,7 +742,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
         </div>
 
         {/* MOBILNY PASEK AKCJI — tylko telefon */}
-        <div className="admin-actionbar" style={{ display:"none", position:"fixed", bottom:0, left:0, right:0, zIndex:40, gap:10, padding:"12px 16px", background:"white", borderTop:"1px solid #e5e7eb" }}>
+        <div className="admin-actionbar" style={{ display:"none", position:"fixed", bottom:"calc(64px + env(safe-area-inset-bottom))", left:0, right:0, zIndex:40, gap:10, padding:"12px 16px", background:"white", borderTop:"1px solid #e5e7eb", boxShadow:"0 -2px 10px rgba(0,0,0,0.06)" }}>
           <button onClick={() => handleSave("draft")} disabled={saving} style={{ flex:1, padding:"13px", border:"1px solid #e5e7eb", borderRadius:10, background:"white", fontSize:14, color:"#374151", fontWeight:500, cursor:"pointer" }}>
             Zapisz szkic
           </button>
