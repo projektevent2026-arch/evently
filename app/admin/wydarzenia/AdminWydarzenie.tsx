@@ -34,6 +34,26 @@ function todayStr(): string {
   return d.toISOString().split("T")[0]
 }
 
+// "2026-08-08" -> "8 sierpnia" (do opisu terminów)
+const MONTHS_PL = ["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"]
+function isoToPl(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "")
+  if (!m) return iso
+  return `${+m[3]} ${MONTHS_PL[+m[2]-1]}`
+}
+
+// Krótki opis (na kartę/listę) generowany z pełnego opisu — ucięty do ~160 znaków na całym słowie
+function makeShort(desc: string, existing: string): string | null {
+  const d = (desc || "").replace(/\s+/g, " ").trim()
+  if (!d) return existing || null
+  if (d.length <= 160) return d
+  const cut = d.slice(0, 160)
+  const sp = cut.lastIndexOf(" ")
+  return (sp > 100 ? cut.slice(0, sp) : cut).trim() + "…"
+}
+
+type DateEntry = { date: string; from: string; to: string }
+
 const emptyForm = {
   title:"", slug:"", description:"", short_description:"",
   start_date:"", start_time:"", end_date:"", end_time:"",
@@ -56,12 +76,15 @@ const SECTIONS = [
 export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     const [posterPreviewUrl, setPosterPreviewUrl] = useState("")
   const [form, setForm] = useState(emptyForm)
+  const [dates, setDates] = useState<DateEntry[]>([{ date:"", from:"", to:"" }])
   const [section, setSection] = useState("basic")
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState("")
   const [geocoding, setGeocoding] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [scanStatus, setScanStatus] = useState("")
+  const [showPreview, setShowPreview] = useState(false)
+  const [scanReviewed, setScanReviewed] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
 
@@ -69,20 +92,51 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     if (eventId) loadEvent(eventId)
   }, [eventId])
 
+  // Terminy są źródłem prawdy dla dat; start_date/end_date wyliczamy z nich,
+  // żeby reszta apki (karty, filtry, podgląd) czytała jak dotąd — bez migracji.
+  function applyDates(next: DateEntry[]) {
+    setDates(next.length ? next : [{ date:"", from:"", to:"" }])
+    const valid = next.filter(d => d.date).sort((a,b) => a.date.localeCompare(b.date))
+    if (!valid.length) {
+      setForm(p => ({ ...p, start_date:"", start_time:"", end_date:"", end_time:"" }))
+      return
+    }
+    const first = valid[0]
+    const last = valid[valid.length - 1]
+    setForm(p => ({
+      ...p,
+      start_date: first.date,
+      start_time: first.from || "",
+      end_date: last.date,
+      end_time: last.to || first.to || "",
+    }))
+  }
+
+  // Odtwarza karty Terminów z zapisanych start_date/end_date (edycja + skan)
+  function datesFromStartEnd(sd: string, st: string, ed: string, et: string): DateEntry[] {
+    if (!sd) return [{ date:"", from:"", to:"" }]
+    if (ed && ed !== sd) return [{ date: sd, from: st, to: "" }, { date: ed, from: "", to: et }]
+    return [{ date: sd, from: st, to: et }]
+  }
+
   async function loadEvent(id: string) {
     const { data } = await supabase.from("events").select("*").eq("id", id).single()
     if (!data) return
     const startDate = data.start_date ? new Date(data.start_date) : null
     const endDate = data.end_date ? new Date(data.end_date) : null
+    const sd = startDate ? startDate.toISOString().split("T")[0] : ""
+    const st = startDate ? startDate.toTimeString().slice(0,5) : ""
+    const ed = endDate ? endDate.toISOString().split("T")[0] : ""
+    const et = endDate ? endDate.toTimeString().slice(0,5) : ""
     setForm({
       title: data.title || "",
       slug: data.slug || "",
       description: data.description || "",
       short_description: data.short_description || "",
-      start_date: startDate ? startDate.toISOString().split("T")[0] : "",
-      start_time: startDate ? startDate.toTimeString().slice(0,5) : "",
-      end_date: endDate ? endDate.toISOString().split("T")[0] : "",
-      end_time: endDate ? endDate.toTimeString().slice(0,5) : "",
+      start_date: sd,
+      start_time: st,
+      end_date: ed,
+      end_time: et,
       city: data.city || "",
       address: data.address || "",
       venue_name: data.venue_name || "",
@@ -99,6 +153,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       status: data.status || "published",
       schedule: data.schedule || [],
     })
+    setDates(datesFromStartEnd(sd, st, ed, et))
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>) => {
@@ -164,6 +219,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     setPosterPreviewUrl(localPreview)
     setScanning(true)
     setScanStatus("Analizuję plakat...")
+    setScanReviewed(false)
 
     // Wgraj oryginalny plik do Supabase Storage równolegle ze skanowaniem AI —
     // żeby zeskanowany plakat automatycznie stał się plakatem/zdjęciem eventu
@@ -232,6 +288,10 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
               })()
             : prev.schedule,
         }))
+        // Zasil karty Terminów z tego, co odczytał skaner
+        if (data.start_date) {
+          setDates(datesFromStartEnd(data.start_date, data.start_time || "", data.end_date || "", data.end_time || ""))
+        }
         setScanStatus(uploadedUrl
           ? "✅ Formularz wypełniony automatycznie, plakat zapisany"
           : "✅ Formularz wypełniony (plakat nie zapisał się — wgraj go ręcznie w zakładce Zdjęcia)")
@@ -264,10 +324,11 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     setMsg("Zapisywanie...")
     const start = form.start_date && form.start_time ? form.start_date + "T" + form.start_time : form.start_date
     const end = form.end_date && form.end_time ? form.end_date + "T" + form.end_time : (form.end_date || null)
+    const shortDesc = makeShort(form.description, form.short_description)
     const payload = {
       title: form.title, slug: form.slug,
       description: form.description || null,
-      short_description: form.short_description || null,
+      short_description: shortDesc,
       start_date: start, end_date: end,
       city: form.city, address: form.address || null,
       venue_name: form.venue_name || null,
@@ -303,8 +364,29 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     } catch { return date }
   }
 
+  // Opis pod kartami Terminów: jednodniowe / kilkudniowe / rozrzucone (z ostrzeżeniem)
+  const renderDetect = () => {
+    const valid = dates.filter(d => d.date).map(d => d.date).sort((a,b) => a.localeCompare(b))
+    if (valid.length < 1) return null
+    const box = (kind: string, what: string, warn?: boolean) => (
+      <div style={{ marginTop:14, padding:"13px 15px", borderRadius:10, background: warn ? "#fffbeb" : "#f0fdf4", border:`1px solid ${warn ? "#fde68a" : "#bbf7d0"}`, fontSize:13, lineHeight:1.5 }}>
+        <span style={{ fontWeight:700, color: warn ? "#b45309" : "#16a34a", display:"block", marginBottom:3 }}>{kind}</span>
+        <span style={{ color: warn ? "#92400e" : "#15803d" }}>{what}</span>
+      </div>
+    )
+    if (valid.length === 1) return box("Wydarzenie jednodniowe", `Na karcie: ${isoToPl(valid[0])}`)
+    let consecutive = true
+    for (let i = 1; i < valid.length; i++) {
+      const a = new Date(valid[i-1]); const b = new Date(valid[i])
+      if (Math.round((+b - +a) / 86400000) !== 1) { consecutive = false; break }
+    }
+    if (consecutive) return box(`Impreza ${valid.length}-dniowa`, `Na karcie: ${isoToPl(valid[0])} – ${isoToPl(valid[valid.length-1])}`)
+    return box("Rozrzucone terminy", `Zapiszą się jako zakres ${isoToPl(valid[0])} – ${isoToPl(valid[valid.length-1])}. Pełna obsługa cykliczna (najbliższy termin na karcie) pojawi się w kolejnym kroku.`, true)
+  }
+
   const sidebarW = 200
   const previewW = 320
+  const stepIndex = Math.max(0, SECTIONS.findIndex(s => s.id === section))
   // Na wąskim ekranie chowamy panele boczne i rozciągamy formularz na całość.
 
   return (
@@ -317,6 +399,13 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
         .admin-main [style*="grid"] { grid-template-columns: 1fr !important; }
         .admin-header-actions { display: none !important; }
         .admin-actionbar { display: flex !important; }
+        .admin-scanner { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; margin: 16px !important; }
+        .admin-scanner > button { width: 100% !important; }
+        .admin-main .admin-terminy { grid-template-columns: 1fr 1fr !important; }
+        .admin-preview-btn { display: flex !important; }
+        .admin-preview.show { display: block !important; width: 100% !important; z-index: 50 !important; }
+        .admin-preview-close { display: flex !important; }
+        .admin-progress { display: block !important; }
   }
 `}</style>
 
@@ -379,7 +468,18 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
             </button>
           ))}
         </div>
-        
+
+        {/* Pasek postępu — tylko mobile */}
+        <div className="admin-progress" style={{ display:"none", padding:"12px 16px 0", background:"white" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+            <span style={{ fontSize:12, color:"#374151", fontWeight:600 }}>Krok {stepIndex+1} z {SECTIONS.length}</span>
+            <span style={{ fontSize:12, color:"#9ca3af" }}>{SECTIONS[stepIndex].label}</span>
+          </div>
+          <div style={{ height:4, background:"#e5e7eb", borderRadius:999 }}>
+            <div style={{ height:4, width:`${(stepIndex+1)/SECTIONS.length*100}%`, background:"#16a34a", borderRadius:999, transition:"width .2s" }} />
+          </div>
+        </div>
+
         {/* Header */}
         <div style={{ padding:"20px 32px 16px", borderBottom:"1px solid #e5e7eb", background:"white", position:"sticky", top:0, zIndex:5, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div>
@@ -400,10 +500,13 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
               🚀 Opublikuj wydarzenie
             </button>
           </div>
+          <button className="admin-preview-btn" onClick={() => setShowPreview(true)} style={{ display:"none", alignItems:"center", gap:6, padding:"8px 14px", border:"1px solid #e5e7eb", borderRadius:999, background:"white", fontSize:13, fontWeight:500, color:"#374151", cursor:"pointer" }}>
+            👁 Podgląd
+          </button>
         </div>
 
         {/* Skaner AI */}
-        <div style={{ margin:"20px 32px", background:"#f0fdf4", border:"1.5px dashed #16a34a", borderRadius:12, padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <div className="admin-scanner" style={{ margin:"20px 32px", background:"#f0fdf4", border:"1.5px dashed #16a34a", borderRadius:12, padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div>
             <div style={{ fontWeight:600, fontSize:14, color:"#16a34a", marginBottom:2 }}>🤖 Skanuj plakat AI</div>
             <div style={{ fontSize:12, color:"#6b7280" }}>Prześlij plakat, a AI automatycznie wypełni pola</div>
@@ -435,6 +538,16 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
           {/* PODSTAWOWE */}
           {section === "basic" && (
             <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+              {scanStatus.startsWith("✅") && !scanReviewed && (
+                <div style={{ display:"flex", gap:12, alignItems:"flex-start", background:"#fffbeb", border:"1px solid #fde68a", borderRadius:10, padding:"12px 14px" }}>
+                  <span style={{ fontSize:18, lineHeight:1 }}>🔍</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:"#b45309", marginBottom:2 }}>AI wypełniło formularz — sprawdź i popraw</div>
+                    <div style={{ fontSize:12, color:"#92400e", lineHeight:1.5 }}>Przejrzyj pola, zwłaszcza daty, godziny i pisownię — AI mogło coś przeczytać źle.</div>
+                    <button type="button" onClick={() => setScanReviewed(true)} style={{ marginTop:8, padding:"6px 12px", border:"1px solid #f59e0b", borderRadius:8, background:"white", color:"#b45309", fontSize:12, fontWeight:600, cursor:"pointer" }}>OK, sprawdziłem</button>
+                  </div>
+                </div>
+              )}
               <SectionTitle>Podstawowe informacje</SectionTitle>
 
               <Field label="Nazwa wydarzenia *">
@@ -454,28 +567,46 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                 </Field>
               </div>
 
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:12 }}>
-              <Field label="Data rozpoczęcia *">
-                  <input name="start_date" type="date" min={todayStr()} value={form.start_date} onChange={handleChange} required style={inp} />
-                </Field>
-                <Field label="Godzina">
-                  <input name="start_time" type="time" value={form.start_time} onChange={handleChange} style={inp} />
-                </Field>
-                <Field label="Data zakończenia">
-                  <input name="end_date" type="date" value={form.end_date} onChange={handleChange} style={inp} />
-                </Field>
-                <Field label="Godzina">
-                  <input name="end_time" type="time" value={form.end_time} onChange={handleChange} style={inp} />
-                </Field>
-              </div>
-
-              <Field label="Krótki opis *">
-                <textarea name="short_description" value={form.short_description} onChange={handleChange} placeholder="Napisz krótki opis wydarzenia (widoczny na liście)..." style={{ ...inp, height:80, resize:"vertical" }} maxLength={200} />
-                <Counter cur={form.short_description.length} max={200} />
+              {/* TERMINY — źródło prawdy dla dat */}
+              <Field label="Terminy *">
+                <div style={{ fontSize:12, color:"#9ca3af", lineHeight:1.5, margin:"0 0 12px" }}>
+                  Jeden termin albo kilka dni — każdy dzień jako osobny termin. Apka rozpozna, czy to impreza jedno- czy kilkudniowa.
+                </div>
+                {dates.map((en, i) => (
+                  <div key={i} style={{ background:"white", border:"1px solid #e5e7eb", borderRadius:10, padding:12, marginBottom:10 }}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                      <span style={{ fontSize:11, fontWeight:700, color:"#9ca3af", letterSpacing:"0.04em", textTransform:"uppercase" }}>Termin {i+1}</span>
+                      <button type="button" disabled={dates.length === 1}
+                        onClick={() => applyDates(dates.filter((_, j) => j !== i))}
+                        style={{ border:"none", background:"none", color: dates.length === 1 ? "#e5e7eb" : "#ef4444", fontSize:16, cursor: dates.length === 1 ? "default" : "pointer", padding:"2px 4px", lineHeight:1 }}>✕</button>
+                    </div>
+                    <div style={{ fontSize:11, color:"#9ca3af", marginBottom:4 }}>Data</div>
+                    <input type="date" min={todayStr()} value={en.date}
+                      onChange={e => applyDates(dates.map((d, j) => j === i ? { ...d, date: e.target.value } : d))} style={inp} />
+                    <div className="admin-terminy" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:8 }}>
+                      <div>
+                        <div style={{ fontSize:11, color:"#9ca3af", marginBottom:4 }}>Od godziny</div>
+                        <input type="time" value={en.from}
+                          onChange={e => applyDates(dates.map((d, j) => j === i ? { ...d, from: e.target.value } : d))} style={inp} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize:11, color:"#9ca3af", marginBottom:4 }}>Do godziny</div>
+                        <input type="time" value={en.to}
+                          onChange={e => applyDates(dates.map((d, j) => j === i ? { ...d, to: e.target.value } : d))} style={inp} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button type="button"
+                  onClick={() => applyDates([...dates, { date:"", from: dates[dates.length-1]?.from || "", to: dates[dates.length-1]?.to || "" }])}
+                  style={{ width:"100%", padding:13, border:"1.5px dashed #cbd5e1", borderRadius:10, background:"white", color:"#6b7280", fontSize:14, cursor:"pointer" }}>
+                  + Dodaj termin
+                </button>
+                {renderDetect()}
               </Field>
 
-              <Field label="Pełny opis">
-                <textarea name="description" value={form.description} onChange={handleChange} placeholder="Opisz szczegóły wydarzenia..." style={{ ...inp, height:140, resize:"vertical" }} maxLength={2000} />
+              <Field label="Opis wydarzenia">
+                <textarea name="description" value={form.description} onChange={handleChange} placeholder="Opisz wydarzenie — pierwsze zdania pokażą się na liście i mapie..." style={{ ...inp, height:160, resize:"vertical" }} maxLength={2000} />
                 <Counter cur={form.description.length} max={2000} />
               </Field>
 
@@ -591,7 +722,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                   { label:"Nazwa", value: form.title, ok: !!form.title },
                   { label:"Data", value: formatDate(form.start_date, form.start_time), ok: !!form.start_date },
                   { label:"Miasto", value: form.city, ok: !!form.city },
-                  { label:"Opis", value: form.short_description ? "✓ Wypełniony" : null, ok: !!form.short_description },
+                  { label:"Opis", value: form.description ? "✓ Wypełniony" : null, ok: !!form.description },
                   { label:"Zdjęcie", value: form.cover_image_url ? "✓ Dodane" : null, ok: !!form.cover_image_url },
                   { label:"Lokalizacja GPS", value: form.latitude ? `${form.latitude}, ${form.longitude}` : null, ok: !!form.latitude },
                 ].map(({ label, value, ok }) => (
@@ -626,7 +757,10 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       </main>
 
       {/* PRAWA: PODGLĄD NA ŻYWO */}
-      <aside className="admin-preview" style={{ width:previewW, position:"fixed", top:0, right:0, bottom:0, background:"#f1f5f9", borderLeft:"1px solid #e5e7eb", overflow:"auto" }}>
+      <aside className={"admin-preview" + (showPreview ? " show" : "")} style={{ width:previewW, position:"fixed", top:0, right:0, bottom:0, background:"#f1f5f9", borderLeft:"1px solid #e5e7eb", overflow:"auto" }}>
+        <button className="admin-preview-close" onClick={() => setShowPreview(false)} style={{ display:"none", width:"100%", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", border:"none", borderBottom:"1px solid #e5e7eb", background:"#16a34a", color:"white", fontSize:14, fontWeight:600, cursor:"pointer" }}>
+          ✕ Zamknij podgląd
+        </button>
         <div style={{ padding:"16px 16px 12px", borderBottom:"1px solid #e5e7eb", background:"white", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Podgląd na żywo</span>
           <span style={{ width:8, height:8, borderRadius:"50%", background:"#16a34a", display:"inline-block" }} />
