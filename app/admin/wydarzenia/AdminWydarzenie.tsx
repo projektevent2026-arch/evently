@@ -393,12 +393,12 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     <div style={{ display:"flex", minHeight:"100vh", background:"#f8fafc", fontFamily:"system-ui, sans-serif" }}>
 <style>{`
   @media (max-width: 1100px) {
+    html, body { overflow-x: hidden !important; }
     .admin-sidebar, .admin-preview { display: none !important; }
-    .admin-main { margin-left: 0 !important; margin-right: 0 !important; padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important; }
+    .admin-main { margin-left: 0 !important; margin-right: 0 !important; padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important; overflow-x: hidden !important; max-width: 100vw !important; }
         .admin-pills { display: flex !important; }
         .admin-main [style*="grid"] { grid-template-columns: 1fr !important; }
         .admin-header-actions { display: none !important; }
-        .admin-actionbar { display: flex !important; }
         .admin-scanner { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; margin: 16px !important; }
         .admin-scanner > button { width: 100% !important; }
         .admin-main .admin-terminy { grid-template-columns: 1fr 1fr !important; }
@@ -741,19 +741,6 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
           )}
         </div>
 
-        {/* MOBILNY PASEK AKCJI — tylko telefon */}
-        <div className="admin-actionbar" style={{ display:"none", position:"fixed", bottom:"calc(64px + env(safe-area-inset-bottom))", left:0, right:0, zIndex:40, gap:10, padding:"12px 16px", background:"white", borderTop:"1px solid #e5e7eb", boxShadow:"0 -2px 10px rgba(0,0,0,0.06)" }}>
-          <button onClick={() => handleSave("draft")} disabled={saving} style={{ flex:1, padding:"13px", border:"1px solid #e5e7eb", borderRadius:10, background:"white", fontSize:14, color:"#374151", fontWeight:500, cursor:"pointer" }}>
-            Zapisz szkic
-          </button>
-          <button onClick={() => handleSave("published")} disabled={saving || !form.title || !form.start_date} style={{
-            flex:1.6, padding:"13px", border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:"pointer",
-            background: (!form.title || !form.start_date) ? "#d1fae5" : "#16a34a",
-            color: (!form.title || !form.start_date) ? "#6b7280" : "white",
-          }}>
-            Opublikuj
-          </button>
-        </div>
       </main>
 
       {/* PRAWA: PODGLĄD NA ŻYWO */}
