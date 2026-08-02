@@ -9,7 +9,7 @@ import ScheduleEditor from "@/components/admin/ScheduleEditor"
 
 const CATEGORIES = ["festyny","kultura","muzyka","sport"]
 const CATEGORY_LABELS: Record<string,string> = {
-  festyny:"Festyny", kultura:"Kultura", muzyka:"Muzyka", sport:"Sport"
+  festyny:"🎪 Festyny", kultura:"🎭 Kultura", muzyka:"🎵 Muzyka", sport:"⚽ Sport"
 }
 const CATEGORY_COLORS: Record<string,string> = {
   festyny:"#f59e0b", kultura:"#7c3aed", muzyka:"#16a34a", sport:"#2563eb"
@@ -632,6 +632,10 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                   <input name="website_url" value={form.website_url} onChange={handleChange} placeholder="https://..." style={inp} />
                 </Field>
               </div>
+
+              <div style={navRow}>
+                <button type="button" onClick={() => setSection("schedule")} style={navNext}>Dalej: Program →</button>
+              </div>
             </div>
           )}
 
@@ -663,6 +667,11 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                   <img src={form.image_url} alt="podgląd plakatu" style={{ width:"100%", maxHeight:280, objectFit:"contain", borderRadius:10, marginTop:10, background:"#f3f4f6" }} />
                 )}
               </Field>
+
+              <div style={navRow}>
+                <button type="button" onClick={() => setSection("location")} style={navBack}>← Wstecz</button>
+                <button type="button" onClick={() => setSection("summary")} style={navNext}>Dalej: Podsumowanie →</button>
+              </div>
             </div>
           )}
 
@@ -699,6 +708,11 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                 longitude={form.longitude}
                 onChange={(lat, lng) => setForm(prev => ({ ...prev, latitude: lat, longitude: lng }))}
               />
+
+              <div style={navRow}>
+                <button type="button" onClick={() => setSection("schedule")} style={navBack}>← Wstecz</button>
+                <button type="button" onClick={() => setSection("media")} style={navNext}>Dalej: Zdjęcia →</button>
+              </div>
             </div>
           )}
 
@@ -710,6 +724,11 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                 value={form.schedule}
                 onChange={(items) => setForm(prev => ({ ...prev, schedule: items }))}
               />
+
+              <div style={navRow}>
+                <button type="button" onClick={() => setSection("basic")} style={navBack}>← Wstecz</button>
+                <button type="button" onClick={() => setSection("location")} style={navNext}>Dalej: Lokalizacja →</button>
+              </div>
             </div>
           )}
 
@@ -861,3 +880,7 @@ const inp: React.CSSProperties = {
   fontSize:14, width:"100%", boxSizing:"border-box", outline:"none",
   background:"white", color:"#111827",
 }
+
+const navRow: React.CSSProperties = { display:"flex", justifyContent:"space-between", gap:12, marginTop:8, paddingTop:16, borderTop:"1px solid #f3f4f6" }
+const navNext: React.CSSProperties = { marginLeft:"auto", display:"flex", alignItems:"center", gap:6, padding:"12px 22px", background:"#16a34a", color:"white", border:"none", borderRadius:10, cursor:"pointer", fontWeight:600, fontSize:15 }
+const navBack: React.CSSProperties = { display:"flex", alignItems:"center", gap:6, padding:"12px 18px", background:"white", border:"1px solid #e5e7eb", borderRadius:10, cursor:"pointer", fontSize:15, color:"#374151" }
