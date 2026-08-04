@@ -27,7 +27,7 @@ function todayStr(): string {
 }
 
 const emptyForm = {
-  title: "", description: "", short_description: "",
+  title: "", description: "",
   start_date: "", start_time: "", end_date: "", end_time: "",
   city: "", address: "", venue_name: "",
   category: "", cover_image_url: "", image_url: "",
@@ -82,6 +82,16 @@ export default function DodajWydarzenie() {
       .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"")
       + "-" + Date.now().toString(36)
 
+  // Generuje krótki opis z pełnego opisu przy zapisie — bez osobnego pola w formularzu
+  const generateShortDescription = (text: string, maxLen = 160) => {
+    const trimmed = (text || "").trim()
+    if (!trimmed) return ""
+    if (trimmed.length <= maxLen) return trimmed
+    const cut = trimmed.slice(0, maxLen)
+    const lastSpace = cut.lastIndexOf(" ")
+    return (lastSpace > 40 ? cut.slice(0, lastSpace) : cut).trim() + "…"
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -114,7 +124,7 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
         title: form.title,
         slug: generateSlug(form.title),
         description: form.description || null,
-        short_description: form.short_description || null,
+        short_description: generateShortDescription(form.description) || null,
         start_date: start,
         end_date: end,
         city: form.city,
@@ -187,7 +197,7 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
         <span style={{fontSize:"0.85rem",color:"#6b7280"}}>Formularz zgłoszenia wydarzenia</span>
       </header>
 
-      <div style={{maxWidth:760,margin:"2rem auto",padding:"0 1rem"}}>
+      <div style={{maxWidth:760,margin:"2rem auto",padding:"0 1rem",paddingBottom:"calc(6rem + env(safe-area-inset-bottom))"}}>
 
         <div style={{marginBottom:"1.5rem"}}>
           <h1 style={{fontSize:"1.75rem",fontWeight:800,color:"#111827",margin:"0 0 6px"}}>Dodaj wydarzenie</h1>
@@ -306,13 +316,6 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
                     <input name="end_time" type="time" value={form.end_time} onChange={handleChange} style={inp} />
                   </div>
                 </div>
-              </div>
-
-              <div>
-                <label style={lbl}>Krótki opis * <span style={{fontWeight:400,color:"#9ca3af"}}>(widoczny na liście)</span></label>
-                <textarea name="short_description" value={form.short_description} onChange={handleChange}
-                  placeholder="Napisz 1-2 zdania o wydarzeniu..." style={{...inp,height:80,resize:"vertical"}} maxLength={200} />
-                <div style={counter}>{form.short_description.length}/200</div>
               </div>
 
               <div>
