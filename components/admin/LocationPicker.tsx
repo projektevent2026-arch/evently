@@ -160,7 +160,8 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
               onClick={() => closeFullscreen(false)}
               style={{
                 width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'white',
-                fontSize: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', cursor: 'pointer', pointerEvents: 'auto',
+                fontSize: 18, fontWeight: 700, color: '#111827',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)', cursor: 'pointer', pointerEvents: 'auto',
               }}
             >
               ✕
