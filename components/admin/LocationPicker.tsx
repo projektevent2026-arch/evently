@@ -90,13 +90,22 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
 
   // Leaflet nie widzi zmiany rozmiaru kontenera samoistnie — po przełączeniu
   // na pełny ekran (i z powrotem) trzeba mu o tym powiedzieć, inaczej mapa
-  // renderuje się jako szara/porwana siatka kafelków.
+  // renderuje się jako szara/pusta siatka kafelków. Przy dużym skoku rozmiaru
+  // (mała mapa -> pełny ekran) jedno wywołanie na klatkę animacji czasem nie
+  // wystarcza, więc dokładamy drugie, opóźnione, jako zabezpieczenie.
   useEffect(() => {
     if (!mapInstanceRef.current) return
+    const map = mapInstanceRef.current
     const raf = requestAnimationFrame(() => {
-      mapInstanceRef.current?.invalidateSize()
+      map.invalidateSize()
     })
-    return () => cancelAnimationFrame(raf)
+    const t = setTimeout(() => {
+      map.invalidateSize()
+    }, 250)
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(t)
+    }
   }, [isFullscreen])
 
   const openFullscreen = () => {
@@ -135,7 +144,7 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
       <style>{`
         .lp-map-box { height: 280px; }
         @media (min-width: 1100px) {
-          .lp-map-box { height: 460px; }
+          .lp-map-box { height: 400px; }
         }
       `}</style>
       <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0 0 8px' }}>
