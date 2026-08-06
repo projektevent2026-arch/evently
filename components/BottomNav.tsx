@@ -27,7 +27,7 @@ export default function BottomNav() {
       className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#161616] border-t border-[#222]"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="flex items-center justify-around h-16 px-2">
+      <div className="flex items-center justify-around h-14 px-2">
 
         {/* Odkrywaj */}
         <Link href="/" className={linkClass('/')}>
