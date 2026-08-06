@@ -132,6 +132,12 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
 
   return (
     <div>
+      <style>{`
+        .lp-map-box { height: 280px; }
+        @media (min-width: 1100px) {
+          .lp-map-box { height: 460px; }
+        }
+      `}</style>
       <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0 0 8px' }}>
         Kliknij na mapie aby ustawić lokalizację
       </p>
@@ -171,10 +177,11 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
 
         <div
           ref={mapRef}
+          className={isFullscreen ? undefined : 'lp-map-box'}
           style={
             isFullscreen
               ? { flex: 1, width: '100%', zIndex: 0 }
-              : { width: '100%', height: 280, borderRadius: 8, border: '1px solid #e5e7eb', overflow: 'hidden', zIndex: 0 }
+              : { width: '100%', borderRadius: 8, border: '1px solid #e5e7eb', overflow: 'hidden', zIndex: 0 }
           }
         />
 
