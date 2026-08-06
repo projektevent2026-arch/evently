@@ -172,8 +172,8 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
           ref={mapRef}
           style={
             isFullscreen
-              ? { flex: 1, width: '100%' }
-              : { width: '100%', height: 280, borderRadius: 8, border: '1px solid #e5e7eb', overflow: 'hidden' }
+              ? { flex: 1, width: '100%', zIndex: 0 }
+              : { width: '100%', height: 280, borderRadius: 8, border: '1px solid #e5e7eb', overflow: 'hidden', zIndex: 0 }
           }
         />
 
