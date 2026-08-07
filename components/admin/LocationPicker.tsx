@@ -88,25 +88,33 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
     mapInstanceRef.current.setView([lat, lng], 15)
   }, [latitude, longitude])
 
-  // Leaflet nie widzi zmiany rozmiaru kontenera samoistnie — po przełączeniu
-  // na pełny ekran (i z powrotem) trzeba mu o tym powiedzieć, inaczej mapa
-  // renderuje się jako szara/pusta siatka kafelków. Przy dużym skoku rozmiaru
-  // (mała mapa -> pełny ekran) jedno wywołanie na klatkę animacji czasem nie
-  // wystarcza, więc dokładamy drugie, opóźnione, jako zabezpieczenie.
+  // Leaflet nie widzi zmiany rozmiaru kontenera samoistnie. Zamiast zgadywać
+  // czas (RAF / setTimeout — to podejście powodowało wyścig z cleanupem effectu
+  // i realnie psuło też małą mapę), obserwujemy FAKTYCZNĄ zmianę rozmiaru
+  // kontenera przez ResizeObserver i wtedy dopiero wołamy invalidateSize().
+  // Działa identycznie dla przejścia w pełny ekran, powrotu, i dowolnej innej
+  // zmiany rozmiaru (np. resize okna) — nie zależy już od isFullscreen.
   useEffect(() => {
-    if (!mapInstanceRef.current) return
     const map = mapInstanceRef.current
-    const raf = requestAnimationFrame(() => {
-      map.invalidateSize()
-    })
-    const t = setTimeout(() => {
-      map.invalidateSize()
-    }, 250)
+    const container = mapRef.current
+    if (!map || !container) return
+
+    let raf = 0
+    const invalidate = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        map.invalidateSize({ pan: false, debounceMoveend: true })
+      })
+    }
+
+    const observer = new ResizeObserver(invalidate)
+    observer.observe(container)
+
     return () => {
       cancelAnimationFrame(raf)
-      clearTimeout(t)
+      observer.disconnect()
     }
-  }, [isFullscreen])
+  }, [])
 
   const openFullscreen = () => {
     savedPositionRef.current = { lat: latitude, lng: longitude }
