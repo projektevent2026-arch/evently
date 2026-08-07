@@ -194,7 +194,7 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
 
         <div
           ref={mapRef}
-          className={isFullscreen ? undefined : 'lp-map-box'}
+          className="lp-map-box"
           style={
             isFullscreen
               ? { flex: 1, width: '100%', zIndex: 0 }
