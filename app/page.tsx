@@ -6,6 +6,8 @@ import { LocationSidebar } from "@/components/location-sidebar"
 import { Footer } from "@/components/footer"
 import { MobileHome } from "@/components/MobileHome"
 
+export const revalidate = 60
+
 export default function HomePage() {
   return (
     <>
