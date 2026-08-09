@@ -4,7 +4,6 @@ import { matchesQuery } from '@/lib/searchEvent'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 import { useFavorites } from '@/hooks/useFavorites'
 
 interface Event {
@@ -143,6 +142,11 @@ function isOnDate(d: string, target: string) {
 // FETCH z timeoutem + retry. To jest fix na P1 (nieskończone „Ładowanie").
 // Jak zapytanie zawiśnie -> po TIMEOUT_MS abort -> ponów. Po MAX_RETRIES
 // nieudanych prób -> rzuć błąd, żeby UI pokazało guzik „Spróbuj ponownie".
+//
+// ZMIANA: zamiast pytać Supabase bezpośrednio, pytamy współdzielony,
+// cache'owany endpoint /api/events (revalidate: 60) — ten sam co
+// EventsGrid i EventMap. Limit 100 zostaje zachowany, tylko przeniesiony
+// na klienta (endpoint zwraca wszystko, bo EventsGrid go potrzebuje bez limitu).
 // ─────────────────────────────────────────────────────────────
 const TIMEOUT_MS = 8000
 const MAX_RETRIES = 2
@@ -155,18 +159,12 @@ async function fetchEventsWithRetry(): Promise<Event[]> {
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
     try {
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .eq('status', 'published')
-        .order('start_date', { ascending: true })
-        .limit(100)
-        .abortSignal(controller.signal)
-
+      const res = await fetch('/api/events', { signal: controller.signal })
       clearTimeout(timeoutId)
 
-      if (error) throw error
-      return (data ?? []).filter((e: Event) => isUpcoming(e.start_date, e.end_date))
+      if (!res.ok) throw new Error('Błąd pobierania: ' + res.status)
+      const data: Event[] = await res.json()
+      return data.slice(0, 100).filter((e: Event) => isUpcoming(e.start_date, e.end_date))
     } catch (err) {
       clearTimeout(timeoutId)
       lastErr = err
