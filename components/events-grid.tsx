@@ -91,6 +91,9 @@ function normalizeCategory(cat: string | null): string {
 
 // ─────────────────────────────────────────────────────────────
 // FETCH z timeoutem + retry — ten sam wzorzec co w MobileHome.
+// ZMIANA: zamiast pytać Supabase bezpośrednio, pytamy współdzielony,
+// cache'owany endpoint /api/events (revalidate: 60) — ten sam co
+// MobileHome i EventMap.
 // ─────────────────────────────────────────────────────────────
 const TIMEOUT_MS = 8000
 const MAX_RETRIES = 2
@@ -103,17 +106,11 @@ async function fetchPublishedEvents(): Promise<any[]> {
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
     try {
-      const { data, error } = await supabase
-        .from("events")
-        .select("*")
-        .eq("status", "published")
-        .order("start_date", { ascending: true })
-        .abortSignal(controller.signal)
-
+      const res = await fetch('/api/events', { signal: controller.signal })
       clearTimeout(timeoutId)
 
-      if (error) throw error
-      return data ?? []
+      if (!res.ok) throw new Error('Błąd pobierania: ' + res.status)
+      return await res.json()
     } catch (err) {
       clearTimeout(timeoutId)
       lastErr = err
@@ -188,6 +185,8 @@ export function EventsGrid() {
       setEvents(mapped)
 
       // Pobranie sesji + RSVP jest DRUGORZĘDNE — jego błąd NIE ma pokazywać ekranu awarii.
+      // To zapytanie ZOSTAJE bezpośrednio do Supabase — zależy od sesji zalogowanego
+      // użytkownika, więc nie da się go cache'ować wspólnie przez /api/events.
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
