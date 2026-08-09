@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
@@ -195,19 +194,21 @@ export default function EventMap() {
   }, [])
 
   useEffect(() => {
-    supabase
-    .from('events')
-    .select('id, title, slug, category, start_date, end_date, venue_name, city, cover_image_url, image_url, is_free, latitude, longitude')
-    .not('latitude', 'is', null)
-    .not('longitude', 'is', null)
-    .order('start_date', { ascending: true })
-    .then(({ data, error }) => {
-      if (!error && data) {
-        // ODETNIJ PRZETERMINOWANE — event znika z mapy po zakończeniu
-        setEvents((data as Event[]).filter(e => isUpcoming(e.start_date, e.end_date)))
-      }
-      setLoading(false)
-    })
+    fetch('/api/events')
+      .then(res => res.json())
+      .then((data: Event[]) => {
+        // Endpoint zwraca WSZYSTKIE opublikowane eventy (bez wymogu lat/lng) —
+        // mapa potrzebuje tylko tych z lokalizacją, więc filtrujemy tu, tak jak
+        // wcześniej robiło to zapytanie .not('latitude','is',null) w Supabase.
+        // Przy okazji: to NAPRAWIA bug — poprzednie zapytanie mapy nie miało
+        // filtra status='published' w ogóle (MobileHome i EventsGrid go miały),
+        // więc mapa mogła pokazywać eventy pending/draft. Teraz endpoint
+        // filtruje status po stronie serwera dla wszystkich trzech miejsc jednakowo.
+        const withLocation = data.filter(e => e.latitude != null && e.longitude != null)
+        setEvents(withLocation.filter(e => isUpcoming(e.start_date, e.end_date)))
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
