@@ -102,6 +102,15 @@ if (form.start_date && form.start_date < todayStr()) {
   return
 }
 
+// Walidacja: godzina rozpoczęcia jest wymagana — sam atrybut required na polu
+// type="time" nie zawsze blokuje wysyłkę na wszystkich przeglądarkach/telefonach,
+// więc sprawdzamy to też jawnie w JS (ten sam bug, co naprawiony w panelu admina).
+if (form.start_date && !form.start_time) {
+  setError("Podaj godzinę rozpoczęcia.")
+  setActiveTab("basic")
+  return
+}
+
 // Walidacja: data końca nie może być wcześniejsza niż start
 if (form.end_date && form.start_date && form.end_date < form.start_date) {
   setError("Data zakończenia nie może być wcześniejsza niż rozpoczęcia.")
@@ -305,7 +314,7 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
                   </div>
                   <div>
                     <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Godzina od</div>
-                    <input name="start_time" type="time" value={form.start_time} onChange={handleChange} style={inp} />
+                    <input name="start_time" type="time" value={form.start_time} onChange={handleChange} required style={inp} />
                   </div>
                   <div>
                     <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Data do</div>
