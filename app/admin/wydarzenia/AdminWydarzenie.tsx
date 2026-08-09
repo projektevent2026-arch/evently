@@ -320,6 +320,18 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       setSection("basic")
       return
     }
+    // Walidacja: każdy termin z wypełnioną datą musi mieć też godzinę rozpoczęcia —
+    // bez tego zapisywało się po cichu jako północ (00:00), dając eventy z błędną
+    // godziną w panelu bez żadnego ostrzeżenia. To jest fix na przyszłość dla bugu
+    // "brakujące start_time" znalezionego 2026-08-09.
+    if (statusOverride !== "draft") {
+      const missingTime = dates.some(d => d.date && !d.from)
+      if (missingTime) {
+        setMsg("Błąd: Każdy termin z ustawioną datą musi mieć też godzinę \"Od\"")
+        setSection("basic")
+        return
+      }
+    }
     setSaving(true)
     setMsg("Zapisywanie...")
     const start = form.start_date && form.start_time ? form.start_date + "T" + form.start_time : form.start_date
@@ -570,7 +582,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
               {/* TERMINY — źródło prawdy dla dat */}
               <Field label="Terminy *">
                 <div style={{ fontSize:12, color:"#9ca3af", lineHeight:1.5, margin:"0 0 12px" }}>
-                  Jeden termin albo kilka dni — każdy dzień jako osobny termin. Apka rozpozna, czy to impreza jedno- czy kilkudniowa.
+                  Jeden termin albo kilka dni — każdy dzień jako osobny termin. Apka rozpozna, czy to impreza jedno- czy kilkudniowa. Godzina "Od" jest wymagana przy publikowaniu.
                 </div>
                 {dates.map((en, i) => (
                   <div key={i} style={{ background:"white", border:"1px solid #e5e7eb", borderRadius:10, padding:12, marginBottom:10 }}>
@@ -585,9 +597,10 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                       onChange={e => applyDates(dates.map((d, j) => j === i ? { ...d, date: e.target.value } : d))} style={inp} />
                     <div className="admin-terminy" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:8 }}>
                       <div>
-                        <div style={{ fontSize:11, color:"#9ca3af", marginBottom:4 }}>Od godziny</div>
+                        <div style={{ fontSize:11, color: en.date && !en.from ? "#ef4444" : "#9ca3af", marginBottom:4, fontWeight: en.date && !en.from ? 700 : 400 }}>Od godziny {en.date && !en.from ? "*" : ""}</div>
                         <input type="time" value={en.from}
-                          onChange={e => applyDates(dates.map((d, j) => j === i ? { ...d, from: e.target.value } : d))} style={inp} />
+                          onChange={e => applyDates(dates.map((d, j) => j === i ? { ...d, from: e.target.value } : d))}
+                          style={en.date && !en.from ? { ...inp, borderColor:"#ef4444" } : inp} />
                       </div>
                       <div>
                         <div style={{ fontSize:11, color:"#9ca3af", marginBottom:4 }}>Do godziny</div>
