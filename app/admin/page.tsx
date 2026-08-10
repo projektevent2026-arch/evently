@@ -53,6 +53,17 @@ export default function AdminPage() {
   const handleEdit = (event: any) => { window.location.href = `/admin/wydarzenia?id=${event.id}` }
 
   const handleApprove = async (id: string) => {
+    // Ta sama ochrona co w edytorze i formularzu publicznym — bez tego
+    // "Zatwierdź" tutaj omijało walidację godziny dodaną dziś w obu innych
+    // miejscach, bo robi surową zmianę statusu bez sprawdzania danych.
+    const event = events.find(e => e.id === id)
+    if (event?.start_date) {
+      const t = new Date(event.start_date)
+      if (t.getUTCHours() === 0 && t.getUTCMinutes() === 0) {
+        alert("To wydarzenie nie ma ustawionej godziny rozpoczęcia. Kliknij ✎ Edytuj, uzupełnij godzinę w sekcji Terminy, i opublikuj stamtąd.")
+        return
+      }
+    }
     await supabase.from("events").update({ status: "published" }).eq("id", id)
     fetchEvents()
   }
