@@ -3,7 +3,7 @@
 import PosterButton from '@/components/PosterButton'
 import EventHero from '@/components/EventHero'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
@@ -159,6 +159,8 @@ function downloadIcs(event: any) {
 
 export default function MobileEventDetail({ slug }: { slug: string }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isPreview = searchParams.get('preview') === '1'
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(0)
@@ -168,8 +170,13 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
   useEffect(() => {
     async function load() {
         const isUUID = /^[0-9a-f-]{36}$/i.test(slug)
-        const { data, error } = await supabase.from("events").select("*")
-          .eq(isUUID ? "id" : "slug", slug).single()
+        let query = supabase.from("events").select("*")
+          .eq(isUUID ? "id" : "slug", slug)
+        // Publicznie tylko opublikowane. Panel admina dokleja ?preview=1 do linku
+        // podglądu, żeby móc zobaczyć pending/draft przed zatwierdzeniem —
+        // to nie jest prawdziwe uwierzytelnianie, ale reszta /admin też go nie ma.
+        if (!isPreview) query = query.eq("status", "published")
+        const { data, error } = await query.single()
       if (!error && data) {
         setEvent(data)
         // Pobieranie RSVP (kto idzie) usunięte — RSVP wraca w tier D razem z kontami.
@@ -177,7 +184,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
       setLoading(false)
     }
     load()
-  }, [slug])
+  }, [slug, isPreview])
 
   const handleShare = async () => {
     if (navigator.share) await navigator.share({ title: event?.title, url: window.location.href })
@@ -213,6 +220,12 @@ const endClock = fmtClock(event.end_date)
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pb-28">
+
+      {isPreview && event.status !== 'published' && (
+        <div className="bg-amber-500 text-black text-[11px] font-bold text-center py-1.5">
+          🔍 Podgląd administratora — status: {event.status}, jeszcze niepubliczne
+        </div>
+      )}
 
       {/* ── HERO ── */}
       <div className={`relative h-52 overflow-hidden bg-gradient-to-br ${gradient}`}>

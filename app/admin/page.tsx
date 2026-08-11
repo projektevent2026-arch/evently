@@ -312,6 +312,15 @@ export default function AdminPage() {
                 <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 14px", lineHeight: 1.6 }}>{previewEvent.short_description}</p>
               )}
 
+              <a
+                href={`/events/${previewEvent.slug || previewEvent.id}?preview=1`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "block", textAlign: "center", width: "100%", padding: "9px", marginBottom: 8, background: "white", color: "#16a34a", border: "1px solid #bbf7d0", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none" }}
+              >
+                Zobacz pełną stronę →
+              </a>
+
               <button style={{ width: "100%", padding: "11px", background: "#16a34a", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                 Weź udział →
               </button>
