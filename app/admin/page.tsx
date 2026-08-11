@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
-import { Plus, MapPin, Trash2, Edit, Copy, Check, X } from "lucide-react"
+import { Plus, MapPin, Trash2, Edit, Copy, Check, X, Eye } from "lucide-react"
 
 // Sprowadza dowolną (także starą/legacy) kategorię z bazy do 4 docelowych
 function normalizeCategory(raw: string | null | undefined): string {
@@ -42,6 +42,7 @@ export default function AdminPage() {
   const [catFilter, setCatFilter] = useState("all")
   const [search, setSearch] = useState("")
   const [sortBy, setSortBy] = useState("date_desc")
+  const [previewEvent, setPreviewEvent] = useState<any>(null)
 
   useEffect(() => { fetchEvents() }, [])
 
@@ -248,6 +249,7 @@ export default function AdminPage() {
                         <X size={14} /> Odrzuć
                       </button>
                     </>}
+                    <button onClick={() => setPreviewEvent(event)} title="Podgląd" style={actBtn}><Eye size={16} /></button>
                     <button onClick={() => handleEdit(event)} title="Edytuj" style={actBtn}><Edit size={16} /></button>
                     <button onClick={() => handleDuplicate(event)} title="Duplikuj" style={actBtn}><Copy size={16} /></button>
                     <button onClick={() => handleDelete(event.id)} title="Usuń" style={{ ...actBtn, color: "#ef4444" }}><Trash2 size={16} /></button>
@@ -261,6 +263,73 @@ export default function AdminPage() {
           )}
         </div>
       </main>
+
+      {/* MODAL PODGLĄDU */}
+      {previewEvent && (
+        <div onClick={() => setPreviewEvent(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "white", borderRadius: 16, maxWidth: 360, width: "100%", overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ position: "relative" }}>
+              <button onClick={() => setPreviewEvent(null)} style={{ position: "absolute", top: 10, right: 10, width: 32, height: 32, borderRadius: "50%", background: "white", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 2, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+                <X size={16} />
+              </button>
+              <div style={{ height: 180, background: previewEvent.cover_image_url ? undefined : "#1e293b", position: "relative", overflow: "hidden" }}>
+                {previewEvent.cover_image_url ? (
+                  <img src={previewEvent.cover_image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "rgba(255,255,255,0.2)", fontSize: 32 }}>🖼️</div>
+                )}
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%)" }} />
+                {previewEvent.is_free && (
+                  <div style={{ position: "absolute", top: 10, left: 10, background: "#16a34a", color: "white", fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20 }}>Bezpłatne</div>
+                )}
+                {normalizeCategory(previewEvent.category) && (
+                  <div style={{ position: "absolute", bottom: 10, right: 10, background: CAT_COLOR[normalizeCategory(previewEvent.category)], color: "white", fontSize: 11, padding: "3px 10px", borderRadius: 20 }}>
+                    {CAT_LABEL[normalizeCategory(previewEvent.category)]}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div style={{ padding: "16px 18px" }}>
+              <h2 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 700, color: "#111827", lineHeight: 1.3 }}>{previewEvent.title}</h2>
+
+              {previewEvent.start_date && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                  <span style={{ fontSize: 14 }}>📅</span>
+                  <span style={{ fontSize: 13, color: "#374151" }}>{fmtDate(previewEvent.start_date)}</span>
+                </div>
+              )}
+
+              {(previewEvent.city || previewEvent.address) && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                  <span style={{ fontSize: 14 }}>📍</span>
+                  <span style={{ fontSize: 13, color: "#374151" }}>
+                    {[previewEvent.venue_name, previewEvent.address, previewEvent.city].filter(Boolean).join(", ")}
+                  </span>
+                </div>
+              )}
+
+              {previewEvent.short_description && (
+                <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 14px", lineHeight: 1.6 }}>{previewEvent.short_description}</p>
+              )}
+
+              <button style={{ width: "100%", padding: "11px", background: "#16a34a", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                Weź udział →
+              </button>
+
+              {previewEvent.status === "pending" && (
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <button onClick={() => { handleApprove(previewEvent.id); setPreviewEvent(null) }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: "#16a34a", color: "white", border: "none", borderRadius: 8, padding: "9px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    <Check size={14} /> Zatwierdź
+                  </button>
+                  <button onClick={() => { setPreviewEvent(null); handleReject(previewEvent.id) }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: 8, padding: "9px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    <X size={14} /> Odrzuć
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
