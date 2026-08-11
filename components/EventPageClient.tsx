@@ -142,7 +142,10 @@ export default function EventPageClient({ slug }: { slug: string }) {
       if (!error) {
         setEvent(data)
         // Pobieranie RSVP (licznik / kto idzie) usunięte — wraca w tier D razem z kontami.
-        const { data: similar } = await supabase.from("events").select("*").eq("status","published").neq("id",slug).limit(4)
+        // Wykluczamy po prawdziwym id eventu (data.id), nie po surowym slug z URL —
+        // slug nie jest UUID-em, więc .neq("id", slug) psuło zapytanie (błąd 400)
+        // i sekcja zawsze wychodziła pusta.
+        const { data: similar } = await supabase.from("events").select("*").eq("status","published").neq("id", data.id).limit(4)
         setSimilarEvents(similar || [])
       }
       setLoading(false)
