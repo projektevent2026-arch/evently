@@ -45,6 +45,7 @@ export default function DodajWydarzenie() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState("")
+  const [improvingDesc, setImprovingDesc] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -72,6 +73,23 @@ export default function DodajWydarzenie() {
       }
     } catch {}
     setGeocoding(false)
+  }
+
+  const handleImproveDescription = async () => {
+    if (!form.description.trim() || improvingDesc) return
+    setImprovingDesc(true)
+    try {
+      const res = await fetch("/api/improve-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: form.description }),
+      })
+      const data = await res.json()
+      if (data.description) {
+        setForm(prev => ({ ...prev, description: data.description }))
+      }
+    } catch {}
+    setImprovingDesc(false)
   }
 
   const generateSlug = (title: string) =>
@@ -328,7 +346,20 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
               </div>
 
               <div>
-                <label style={lbl}>Pełny opis</label>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                  <label style={{...lbl,marginBottom:0}}>Pełny opis</label>
+                  <button type="button" onClick={handleImproveDescription}
+                    disabled={improvingDesc || !form.description.trim()}
+                    style={{
+                      display:"flex",alignItems:"center",gap:4,padding:"4px 10px",
+                      border:"1px solid #bbf7d0",borderRadius:20,background:"#f0fdf4",
+                      color:"#16a34a",fontSize:"0.75rem",fontWeight:600,fontFamily:"inherit",
+                      cursor: improvingDesc || !form.description.trim() ? "default" : "pointer",
+                      opacity: improvingDesc || !form.description.trim() ? 0.5 : 1,
+                    }}>
+                    {improvingDesc ? "Poprawiam..." : "✨ Ulepsz opis AI"}
+                  </button>
+                </div>
                 <textarea name="description" value={form.description} onChange={handleChange}
                   placeholder="Opisz szczegóły, atrakcje, program..." style={{...inp,height:140,resize:"vertical"}} maxLength={2000} />
                 <div style={counter}>{form.description.length}/2000</div>
