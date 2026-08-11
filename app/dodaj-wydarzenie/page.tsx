@@ -46,6 +46,7 @@ export default function DodajWydarzenie() {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState("")
   const [improvingDesc, setImprovingDesc] = useState(false)
+  const [improveError, setImproveError] = useState("")
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -78,6 +79,7 @@ export default function DodajWydarzenie() {
   const handleImproveDescription = async () => {
     if (!form.description.trim() || improvingDesc) return
     setImprovingDesc(true)
+    setImproveError("")
     try {
       const res = await fetch("/api/improve-description", {
         method: "POST",
@@ -85,10 +87,16 @@ export default function DodajWydarzenie() {
         body: JSON.stringify({ text: form.description }),
       })
       const data = await res.json()
-      if (data.description) {
+      if (!res.ok || data.error) {
+        setImproveError(data.error || `Błąd serwera (${res.status})`)
+      } else if (data.description) {
         setForm(prev => ({ ...prev, description: data.description }))
+      } else {
+        setImproveError("Pusta odpowiedź od AI")
       }
-    } catch {}
+    } catch (err) {
+      setImproveError("Błąd połączenia z serwerem")
+    }
     setImprovingDesc(false)
   }
 
@@ -362,6 +370,9 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
                 </div>
                 <textarea name="description" value={form.description} onChange={handleChange}
                   placeholder="Opisz szczegóły, atrakcje, program..." style={{...inp,height:140,resize:"vertical"}} maxLength={2000} />
+                {improveError && (
+                  <div style={{fontSize:"0.78rem",color:"#ef4444",marginTop:4}}>⚠️ {improveError}</div>
+                )}
                 <div style={counter}>{form.description.length}/2000</div>
               </div>
 
