@@ -47,6 +47,10 @@ export default function DodajWydarzenie() {
   const [error, setError] = useState("")
   const [improvingDesc, setImprovingDesc] = useState(false)
   const [improveError, setImproveError] = useState("")
+  const [originalDescription, setOriginalDescription] = useState<string | null>(null)
+  const [conciseVariant, setConciseVariant] = useState<string | null>(null)
+  const [richVariant, setRichVariant] = useState<string | null>(null)
+  const [currentVariant, setCurrentVariant] = useState<"concise" | "rich" | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -77,20 +81,58 @@ export default function DodajWydarzenie() {
   }
 
   const handleImproveDescription = async () => {
-    if (!form.description.trim() || improvingDesc) return
+    if (improvingDesc) return
+
+    // Jeśli tekst w polu nie pasuje ani do oryginału, ani do żadnego z
+    // wygenerowanych wariantów — user go ręcznie zmienił od ostatniego
+    // kliknięcia. Zaczynamy od nowa, żeby nie poprawiać już poprawionego
+    // tekstu (to gubiło fakty, jak przy godzinie w teście z koncertem).
+    const manuallyEdited =
+      originalDescription !== null &&
+      form.description !== originalDescription &&
+      form.description !== conciseVariant &&
+      form.description !== richVariant
+
+    const baseText = (originalDescription === null || manuallyEdited) ? form.description : originalDescription
+    if (!baseText.trim()) return
+
+    if (manuallyEdited) {
+      setConciseVariant(null)
+      setRichVariant(null)
+      setCurrentVariant(null)
+    }
+    if (originalDescription === null || manuallyEdited) {
+      setOriginalDescription(baseText)
+    }
+
+    // Która wersja jest następna w kolejce przełącznika (1 -> zwięzła, 2 -> bogata, 3 -> zwięzła, ...)
+    const nextVariant: "concise" | "rich" =
+      (currentVariant === null || currentVariant === "rich" || manuallyEdited) ? "concise" : "rich"
+
+    // Jeśli ten wariant już mamy wygenerowany — pokaż go od razu, bez pytania AI ponownie.
+    const cached = nextVariant === "concise" ? (manuallyEdited ? null : conciseVariant) : (manuallyEdited ? null : richVariant)
+    if (cached) {
+      setForm(prev => ({ ...prev, description: cached }))
+      setCurrentVariant(nextVariant)
+      return
+    }
+
     setImprovingDesc(true)
     setImproveError("")
     try {
       const res = await fetch("/api/improve-description", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: form.description }),
+        body: JSON.stringify({ text: baseText, style: nextVariant }),
       })
       const data = await res.json()
       if (!res.ok || data.error) {
         setImproveError(data.error || `Błąd serwera (${res.status})`)
       } else if (data.description) {
         setForm(prev => ({ ...prev, description: data.description }))
+        setCurrentVariant(nextVariant)
+        if (nextVariant === "concise") setConciseVariant(data.description)
+        else setRichVariant(data.description)
       } else {
         setImproveError("Pusta odpowiedź od AI")
       }
@@ -99,6 +141,14 @@ export default function DodajWydarzenie() {
     }
     setImprovingDesc(false)
   }
+
+  const improveButtonLabel = improvingDesc
+    ? "Poprawiam..."
+    : currentVariant === "concise"
+    ? "✨ Spróbuj bogatszy styl"
+    : currentVariant === "rich"
+    ? "✨ Wersja zwięzła"
+    : "✨ Ulepsz opis AI"
 
   const generateSlug = (title: string) =>
     title.toLowerCase()
@@ -365,7 +415,7 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
                       cursor: improvingDesc || !form.description.trim() ? "default" : "pointer",
                       opacity: improvingDesc || !form.description.trim() ? 0.5 : 1,
                     }}>
-                    {improvingDesc ? "Poprawiam..." : "✨ Ulepsz opis AI"}
+                    {improveButtonLabel}
                   </button>
                 </div>
                 <textarea name="description" value={form.description} onChange={handleChange}
