@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
 
 Zasady:
 - Popraw styl, gramatykę i interpunkcję, zachowując WSZYSTKIE fakty podane przez organizatora — nic nie dodawaj od siebie (żadnych wymyślonych atrakcji, godzin, nazwisk, gwiazd wieczoru, których nie ma w oryginale).
-- 2-4 zdania, płynną polszczyzną, w trzeciej osobie.
+- 2-4 zdania, płynną polszczyzną, w trzeciej osobie — zwarta proza, NIE lista punktów ani osobne sekcje.
+- Możesz użyć 1, maksymalnie 2 dobrze dobranych emoji, tylko jeśli naturalnie pasują do treści (np. przy nazwie muzyki/tańca/rodzaju wydarzenia) — nie przy każdym zdaniu, nie jako czysta ozdoba. Jeśli nie masz dobrego pomysłu na emoji, nie dodawaj żadnego — lepiej zero niż wciśnięte na siłę.
 - Nie pisz "wydarzenie odbędzie się dnia..." — data i miejsce są w osobnych polach formularza, nie powtarzaj ich w treści opisu.
 - Nie używaj marketingowego bełkotu ani nadmiaru wykrzykników.
 - Jeśli oryginalny tekst jest bardzo krótki albo chaotyczny (np. luźna lista słów kluczowych), rozwiń go w spójny opis, trzymając się wyłącznie podanych faktów — nie zmyślaj brakujących szczegółów.
