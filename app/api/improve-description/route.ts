@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 Zasady:
 - Popraw styl, gramatykę i interpunkcję, zachowując WSZYSTKIE fakty podane przez organizatora — nic nie dodawaj od siebie (żadnych wymyślonych atrakcji, godzin, nazwisk, gwiazd wieczoru, których nie ma w oryginale).
 ${styleRules}
-- Nie pisz "wydarzenie odbędzie się dnia..." — data i miejsce są w osobnych polach formularza, nie powtarzaj ich w treści opisu.
+- Nie pisz "wydarzenie odbędzie się dnia..." ani nie podawaj godziny rozpoczęcia w treści opisu — data, godzina i miejsce są w osobnych polach formularza, nie powtarzaj ich.
 - Nie używaj marketingowego bełkotu ani nadmiaru wykrzykników.
 - Jeśli oryginalny tekst jest bardzo krótki albo chaotyczny (np. luźna lista słów kluczowych), rozwiń go w spójny opis, trzymając się wyłącznie podanych faktów — nie zmyślaj brakujących szczegółów.
 - Popraw literówki i błędy ortograficzne (rz/ż, ch/h, u/ó, ą/a, ę/e).
