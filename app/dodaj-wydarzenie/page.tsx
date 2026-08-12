@@ -50,7 +50,7 @@ export default function DodajWydarzenie() {
   const [originalDescription, setOriginalDescription] = useState<string | null>(null)
   const [conciseVariant, setConciseVariant] = useState<string | null>(null)
   const [richVariant, setRichVariant] = useState<string | null>(null)
-  const [currentVariant, setCurrentVariant] = useState<"concise" | "rich" | null>(null)
+  const [currentVariant, setCurrentVariant] = useState<"concise" | "rich" | "original" | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -105,11 +105,19 @@ export default function DodajWydarzenie() {
       setOriginalDescription(baseText)
     }
 
-    // Która wersja jest następna w kolejce przełącznika (1 -> zwięzła, 2 -> bogata, 3 -> zwięzła, ...)
-    const nextVariant: "concise" | "rich" =
-      (currentVariant === null || currentVariant === "rich" || manuallyEdited) ? "concise" : "rich"
+    // Cykl: (nic/oryginał) -> zwięzła -> bogata -> oryginał -> zwięzła -> ...
+    const nextVariant: "concise" | "rich" | "original" =
+      (currentVariant === null || currentVariant === "original" || manuallyEdited) ? "concise"
+      : currentVariant === "concise" ? "rich"
+      : "original"
 
-    // Jeśli ten wariant już mamy wygenerowany — pokaż go od razu, bez pytania AI ponownie.
+    // Oryginał to zawsze darmowy, lokalny podgląd — nigdy nie pytamy o niego AI.
+    if (nextVariant === "original") {
+      setForm(prev => ({ ...prev, description: baseText }))
+      setCurrentVariant("original")
+      return
+    }
+
     const cached = nextVariant === "concise" ? (manuallyEdited ? null : conciseVariant) : (manuallyEdited ? null : richVariant)
     if (cached) {
       setForm(prev => ({ ...prev, description: cached }))
@@ -147,6 +155,8 @@ export default function DodajWydarzenie() {
     : currentVariant === "concise"
     ? "✨ Spróbuj bogatszy styl"
     : currentVariant === "rich"
+    ? "📝 Pokaż oryginał"
+    : currentVariant === "original"
     ? "✨ Wersja zwięzła"
     : "✨ Ulepsz opis AI"
 
