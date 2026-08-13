@@ -85,6 +85,12 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
   const [scanStatus, setScanStatus] = useState("")
   const [showPreview, setShowPreview] = useState(false)
   const [scanReviewed, setScanReviewed] = useState(false)
+  const [improvingDesc, setImprovingDesc] = useState(false)
+  const [improveError, setImproveError] = useState("")
+  const [originalDescription, setOriginalDescription] = useState<string | null>(null)
+  const [conciseVariant, setConciseVariant] = useState<string | null>(null)
+  const [richVariant, setRichVariant] = useState<string | null>(null)
+  const [currentVariant, setCurrentVariant] = useState<"concise" | "rich" | "original" | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
 
@@ -187,6 +193,81 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     } catch {}
     setGeocoding(false)
   }
+
+  const handleImproveDescription = async () => {
+    if (improvingDesc) return
+
+    const manuallyEdited =
+      originalDescription !== null &&
+      form.description !== originalDescription &&
+      form.description !== conciseVariant &&
+      form.description !== richVariant
+
+    const baseText = (originalDescription === null || manuallyEdited) ? form.description : originalDescription
+    if (!baseText.trim()) return
+
+    if (manuallyEdited) {
+      setConciseVariant(null)
+      setRichVariant(null)
+      setCurrentVariant(null)
+    }
+    if (originalDescription === null || manuallyEdited) {
+      setOriginalDescription(baseText)
+    }
+
+    // Cykl: (nic/oryginał) -> zwięzła -> bogata -> oryginał -> zwięzła -> ...
+    const nextVariant: "concise" | "rich" | "original" =
+      (currentVariant === null || currentVariant === "original" || manuallyEdited) ? "concise"
+      : currentVariant === "concise" ? "rich"
+      : "original"
+
+    if (nextVariant === "original") {
+      setForm(prev => ({ ...prev, description: baseText }))
+      setCurrentVariant("original")
+      return
+    }
+
+    const cached = nextVariant === "concise" ? (manuallyEdited ? null : conciseVariant) : (manuallyEdited ? null : richVariant)
+    if (cached) {
+      setForm(prev => ({ ...prev, description: cached }))
+      setCurrentVariant(nextVariant)
+      return
+    }
+
+    setImprovingDesc(true)
+    setImproveError("")
+    try {
+      const res = await fetch("/api/improve-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: baseText, style: nextVariant }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        setImproveError(data.error || `Błąd serwera (${res.status})`)
+      } else if (data.description) {
+        setForm(prev => ({ ...prev, description: data.description }))
+        setCurrentVariant(nextVariant)
+        if (nextVariant === "concise") setConciseVariant(data.description)
+        else setRichVariant(data.description)
+      } else {
+        setImproveError("Pusta odpowiedź od AI")
+      }
+    } catch {
+      setImproveError("Błąd połączenia z serwerem")
+    }
+    setImprovingDesc(false)
+  }
+
+  const improveButtonLabel = improvingDesc
+    ? "Poprawiam..."
+    : currentVariant === "concise"
+    ? "✨ Spróbuj bogatszy styl"
+    : currentVariant === "rich"
+    ? "📝 Pokaż oryginał"
+    : currentVariant === "original"
+    ? "✨ Wersja zwięzła"
+    : "✨ Ulepsz opis AI"
 
   const compressImage = (file: File): Promise<{base64:string;mediaType:string}> => {
     return new Promise((resolve) => {
@@ -618,10 +699,27 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                 {renderDetect()}
               </Field>
 
-              <Field label="Opis wydarzenia">
+              <div>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+                  <label style={{ fontSize:13, fontWeight:500, color:"#374151" }}>Opis wydarzenia</label>
+                  <button type="button" onClick={handleImproveDescription}
+                    disabled={improvingDesc || !form.description.trim()}
+                    style={{
+                      display:"flex", alignItems:"center", gap:4, padding:"4px 10px",
+                      border:"1px solid #bbf7d0", borderRadius:20, background:"#f0fdf4",
+                      color:"#16a34a", fontSize:12, fontWeight:600, fontFamily:"inherit",
+                      cursor: improvingDesc || !form.description.trim() ? "default" : "pointer",
+                      opacity: improvingDesc || !form.description.trim() ? 0.5 : 1,
+                    }}>
+                    {improveButtonLabel}
+                  </button>
+                </div>
                 <textarea name="description" value={form.description} onChange={handleChange} placeholder="Opisz wydarzenie — pierwsze zdania pokażą się na liście i mapie..." style={{ ...inp, height:160, resize:"vertical" }} maxLength={2000} />
+                {improveError && (
+                  <div style={{ fontSize:12, color:"#ef4444", marginTop:4 }}>⚠️ {improveError}</div>
+                )}
                 <Counter cur={form.description.length} max={2000} />
-              </Field>
+              </div>
 
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", fontSize:14 }}>

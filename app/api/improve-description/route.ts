@@ -53,6 +53,7 @@ ${styleRules}
 - Nie używaj marketingowego bełkotu ani nadmiaru wykrzykników.
 - Jeśli oryginalny tekst jest bardzo krótki albo chaotyczny (np. luźna lista słów kluczowych), rozwiń go w spójny opis, trzymając się wyłącznie podanych faktów — nie zmyślaj brakujących szczegółów.
 - Popraw literówki i błędy ortograficzne (rz/ż, ch/h, u/ó, ą/a, ę/e).
+- Zwróć szczególną uwagę na POPRAWNĄ ODMIANĘ polskich słów (przypadki, rodzaje, liczby) — np. "pchli targ" w dopełniaczu to "pchlego targu", NIE "pchiego targu". Jeśli nie masz pewności co do poprawnej formy jakiegoś słowa, przeformułuj zdanie tak, żeby tego uniknąć, zamiast zgadywać odmianę.
 
 Surowy tekst od organizatora:
 """
