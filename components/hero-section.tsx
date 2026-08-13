@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Search, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
-import { supabase } from "@/lib/supabase"
 import EventImage from "@/components/EventImage"
 
 interface HeroEvent {
@@ -42,16 +41,16 @@ export function HeroSection() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase
-      .from("events")
-      .select("*")
-      .eq("status", "published")
-      .order("start_date", { ascending: true })
-      .limit(5)
-      .then(({ data }) => {
-        if (data?.length) setEvents(data)
-        setLoading(false)
+    // Ten sam cache'owany endpoint co reszta apki (MobileHome/EventsGrid/mapa) —
+    // zamiast osobnego zapytania do Supabase za każdym razem, korzysta z 60-sekundowego
+    // cache'a po stronie serwera, więc "ciepłe" wejścia są niemal natychmiastowe.
+    fetch('/api/events')
+      .then(res => res.json())
+      .then((data: HeroEvent[]) => {
+        if (Array.isArray(data) && data.length) setEvents(data.slice(0, 5))
       })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   // Auto-rotate co 5 sekund
