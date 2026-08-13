@@ -36,6 +36,10 @@ export function HeroSection() {
   const router = useRouter()
   const [events, setEvents] = useState<HeroEvent[]>([])
   const [current, setCurrent] = useState(0)
+  // Dopóki dane z Supabase nie przyjdą, nie wiemy jeszcze czy będzie prawdziwe
+  // zdjęcie eventu — pokazujemy neutralny placeholder zamiast na chwilę
+  // mignąć stockową fotką z FALLBACK_IMAGE.
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     supabase
@@ -44,7 +48,10 @@ export function HeroSection() {
       .eq("status", "published")
       .order("start_date", { ascending: true })
       .limit(5)
-      .then(({ data }) => { if (data?.length) setEvents(data) })
+      .then(({ data }) => {
+        if (data?.length) setEvents(data)
+        setLoading(false)
+      })
   }, [])
 
   // Auto-rotate co 5 sekund
@@ -117,57 +124,63 @@ export function HeroSection() {
           {/* Carousel */}
           <div className="relative hidden lg:block">
             <div className="relative h-[420px] w-full overflow-hidden rounded-3xl">
-              <EventImage
-                key={current}
-                src={img}
-                alt={event?.title ?? "Wydarzenie"}
-                eager
-                className="h-full w-full"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent rounded-3xl" />
-
-              {/* Event info */}
-              {event && (
-                <div
-                  className="absolute bottom-6 left-6 right-6 rounded-2xl bg-background/90 backdrop-blur-sm p-4 border border-border/50 cursor-pointer hover:bg-background/95 transition-colors"
-                  onClick={() => router.push(`/events/${event.id}`)}
-                >
-                  <p className="text-xs font-medium text-primary mb-1">
-                    {formatHeroDate(event.start_date, event.start_time)}
-                  </p>
-                  <p className="text-sm font-semibold text-foreground line-clamp-1">{event.title}</p>
-                  {venue && <p className="text-xs text-muted-foreground mt-0.5">{venue}</p>}
-                </div>
-              )}
-
-              {/* Nawigacja */}
-              {events.length > 1 && (
+              {loading ? (
+                <div className="h-full w-full rounded-3xl bg-muted animate-pulse" />
+              ) : (
                 <>
-                  <button
-                    onClick={prev}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white transition-colors"
-                  >
-                    <ChevronLeft className="size-4" />
-                  </button>
-                  <button
-                    onClick={next}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white transition-colors"
-                  >
-                    <ChevronRight className="size-4" />
-                  </button>
+                  <EventImage
+                    key={current}
+                    src={img}
+                    alt={event?.title ?? "Wydarzenie"}
+                    eager
+                    className="h-full w-full"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent rounded-3xl" />
 
-                  {/* Dots */}
-                  <div className="absolute top-4 right-4 flex gap-1.5">
-                    {events.map((_, i) => (
+                  {/* Event info */}
+                  {event && (
+                    <div
+                      className="absolute bottom-6 left-6 right-6 rounded-2xl bg-background/90 backdrop-blur-sm p-4 border border-border/50 cursor-pointer hover:bg-background/95 transition-colors"
+                      onClick={() => router.push(`/events/${event.id}`)}
+                    >
+                      <p className="text-xs font-medium text-primary mb-1">
+                        {formatHeroDate(event.start_date, event.start_time)}
+                      </p>
+                      <p className="text-sm font-semibold text-foreground line-clamp-1">{event.title}</p>
+                      {venue && <p className="text-xs text-muted-foreground mt-0.5">{venue}</p>}
+                    </div>
+                  )}
+
+                  {/* Nawigacja */}
+                  {events.length > 1 && (
+                    <>
                       <button
-                        key={i}
-                        onClick={() => setCurrent(i)}
-                        className={`w-2 h-2 rounded-full transition-all ${
-                          i === current ? 'bg-white w-4' : 'bg-white/50'
-                        }`}
-                      />
-                    ))}
-                  </div>
+                        onClick={prev}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white transition-colors"
+                      >
+                        <ChevronLeft className="size-4" />
+                      </button>
+                      <button
+                        onClick={next}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white transition-colors"
+                      >
+                        <ChevronRight className="size-4" />
+                      </button>
+
+                      {/* Dots */}
+                      <div className="absolute top-4 right-4 flex gap-1.5">
+                        {events.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setCurrent(i)}
+                            className={`w-2 h-2 rounded-full transition-all ${
+                              i === current ? 'bg-white w-4' : 'bg-white/50'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </div>
