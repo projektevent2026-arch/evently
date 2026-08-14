@@ -154,12 +154,20 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
         @media (min-width: 1100px) {
           .lp-map-box { height: 400px; }
         }
+        /* Domyślna kontrolka powiększenia Leaflet ląduje w lewym górnym rogu —
+           w trybie pełnoekranowym koliduje tam z paskiem "Ustaw dokładny punkt",
+           przez co jest ledwo widoczna (biały na białym). Przesuwamy ją niżej,
+           na czystą mapę, poniżej tego paska. */
+        .lp-fullscreen .leaflet-top.leaflet-left {
+          margin-top: 68px;
+        }
       `}</style>
       <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0 0 8px' }}>
         Kliknij na mapie aby ustawić lokalizację
       </p>
 
       <div
+        className={isFullscreen ? 'lp-fullscreen' : undefined}
         style={
           isFullscreen
             ? { position: 'fixed', inset: 0, zIndex: 1000, background: 'white', display: 'flex', flexDirection: 'column' }
