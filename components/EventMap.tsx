@@ -158,6 +158,7 @@ export default function EventMap() {
   const locationBoxRef = useRef<HTMLDivElement>(null)
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const radiusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const filterBarRef   = useRef<HTMLDivElement>(null)
 
   const [events,       setEvents]       = useState<Event[]>([])
   const [loading,      setLoading]      = useState(true)
@@ -287,6 +288,11 @@ export default function EventMap() {
     const refPos = urlCenter ?? userPosition
     import('leaflet').then(({ default: L }) => {
       mcg.clearLayers()
+      // Pasek filtrów nachodzi na górę mapy, ale Leaflet o tym nie wie —
+      // jego autoPan liczy tylko granice własnego kontenera. Mierzymy
+      // rzeczywistą, bieżącą wysokość paska i mówimy Leafletowi, żeby
+      // zostawiał tyle miejsca od góry przy przesuwaniu mapy pod popup.
+      const topPadding = (filterBarRef.current?.offsetHeight ?? 60) + 12
       filtered.forEach(ev => {
         const color = getCategoryColor(ev.category)
         const icon = L.divIcon({
@@ -313,12 +319,12 @@ export default function EventMap() {
             ${dist !== null ? `<div style="font-size:11px;font-weight:600;color:#16a34a;margin-bottom:8px">${formatDist(dist)}</div>` : '<div style="margin-bottom:8px"></div>'}
             <a href="/events/${escapeHtml(ev.slug)}" style="display:block;text-align:center;background:#22C55E;color:black;font-weight:700;font-size:11px;padding:7px;border-radius:8px;text-decoration:none">Zobacz wydarzenie</a>
           </div>
-        `, { maxWidth: 260 })
+        `, { maxWidth: 260, autoPanPaddingTopLeft: L.point(12, topPadding), autoPanPaddingBottomRight: L.point(12, 12) })
 
         mcg.addLayer(marker)
       })
     })
-  }, [filtered, urlCenter, userPosition])
+  }, [filtered, urlCenter, userPosition, filtersOpen])
 
   useEffect(() => {
     const map = mapInstanceRef.current
@@ -447,7 +453,7 @@ export default function EventMap() {
 
   return (
     <div className="relative flex flex-col h-screen overflow-hidden">
-      <div className="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-gray-200 px-3 py-2">
+      <div ref={filterBarRef} className="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-gray-200 px-3 py-2">
 
         {filtersOpen ? (
           <div className="space-y-2">
