@@ -12,6 +12,7 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markerRef = useRef<any>(null)
+  const zoomControlRef = useRef<any>(null)
   const isFullscreenRef = useRef(false)
   const savedPositionRef = useRef<{ lat: string; lng: string } | null>(null)
 
@@ -37,8 +38,12 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
     const initLat = latitude ? parseFloat(latitude) : defaultLat
     const initLng = longitude ? parseFloat(longitude) : defaultLng
 
-    const map = L.map(mapRef.current).setView([initLat, initLng], 13)
+    // Własna kontrolka powiększenia zamiast domyślnej — żeby móc ją
+    // przełączać między rogami przez setPosition() (mała mapa: prawy górny,
+    // pełny ekran: prawy dolny — patrz openFullscreen/closeFullscreen).
+    const map = L.map(mapRef.current, { zoomControl: false }).setView([initLat, initLng], 13)
     mapInstanceRef.current = map
+    zoomControlRef.current = L.control.zoom({ position: 'topright' }).addTo(map)
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap'
@@ -121,6 +126,25 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
     setLiveCoords(latitude && longitude ? `${latitude}, ${longitude}` : '')
     isFullscreenRef.current = true
     setIsFullscreen(true)
+    // Pełny ekran ma pełnoszerokościowy pasek na dole (współrzędne + przycisk
+    // "Zatwierdź") — prawy górny róg jest tam wolny, więc kontrolka schodzi tam.
+    zoomControlRef.current?.setPosition('bottomright')
+
+    // Samo powiększenie kontenera NIE centruje mapy na pinezce — zachowuje
+    // ten sam środek geograficzny co mała mapa, więc pinezka blisko krawędzi
+    // zostaje przy krawędzi, tylko w większym oknie. Wymuszamy wycentrowanie
+    // na aktualnej pinezce, z podwójnym rAF, żeby zdążył się najpierw dokonać
+    // sam resize kontenera (ResizeObserver niżej reaguje na to asynchronicznie).
+    if (latitude && longitude) {
+      const lat = parseFloat(latitude)
+      const lng = parseFloat(longitude)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const map = mapInstanceRef.current
+          if (map) map.setView([lat, lng], map.getZoom())
+        })
+      })
+    }
   }
 
   const closeFullscreen = (confirmed: boolean) => {
@@ -145,6 +169,8 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
     }
     isFullscreenRef.current = false
     setIsFullscreen(false)
+    // Powrót do małej mapy — kontrolka wraca na swoje miejsce w prawym górnym rogu.
+    zoomControlRef.current?.setPosition('topright')
   }
 
   return (
@@ -154,12 +180,11 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
         @media (min-width: 1100px) {
           .lp-map-box { height: 400px; }
         }
-        /* Domyślna kontrolka powiększenia Leaflet ląduje w lewym górnym rogu —
-           w trybie pełnoekranowym koliduje tam z paskiem "Ustaw dokładny punkt",
-           przez co jest ledwo widoczna (biały na białym). Przesuwamy ją niżej,
-           na czystą mapę, poniżej tego paska. */
-        .lp-fullscreen .leaflet-top.leaflet-left {
-          margin-top: 68px;
+        /* W pełnym ekranie prawy dolny róg nachodzi na pasek "Zatwierdź
+           lokalizację" (pełna szerokość) — kontrolka potrzebuje odstępu,
+           żeby nie wylądować pod przyciskiem. */
+        .lp-fullscreen .leaflet-bottom.leaflet-right {
+          margin-bottom: 130px;
         }
       `}</style>
       <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0 0 8px' }}>
