@@ -132,19 +132,22 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
 
     // Samo powiększenie kontenera NIE centruje mapy na pinezce — zachowuje
     // ten sam środek geograficzny co mała mapa, więc pinezka blisko krawędzi
-    // zostaje przy krawędzi, tylko w większym oknie. Wymuszamy wycentrowanie
-    // na aktualnej pinezce, z podwójnym rAF, żeby zdążył się najpierw dokonać
-    // sam resize kontenera (ResizeObserver niżej reaguje na to asynchronicznie).
-    if (latitude && longitude) {
-      const lat = parseFloat(latitude)
-      const lng = parseFloat(longitude)
+    // zostaje przy krawędzi, tylko w większym oknie. Wymuszamy wycentrowanie,
+    // z podwójnym rAF, żeby zdążył się najpierw dokonać sam resize kontenera
+    // (ResizeObserver niżej reaguje na to asynchronicznie).
+    //
+    // WAŻNE: bierzemy pozycję z markerRef (prawdziwej pinezki na mapie), NIE
+    // z propsów latitude/longitude — te aktualizują się dopiero po przejściu
+    // przez Reacta z formularza, więc przy szybkim kliknięciu "Powiększ" zaraz
+    // po postawieniu pinezki propsy bywały jeszcze stare/puste, i centrowanie
+    // po cichu nic nie robiło. markerRef jest aktualny natychmiast, bez tego opóźnienia.
+    const currentMarkerPos = markerRef.current?.getLatLng()
+    requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const map = mapInstanceRef.current
-          if (map) map.setView([lat, lng], map.getZoom())
-        })
+        const map = mapInstanceRef.current
+        if (map && currentMarkerPos) map.setView(currentMarkerPos, map.getZoom())
       })
-    }
+    })
   }
 
   const closeFullscreen = (confirmed: boolean) => {
