@@ -43,6 +43,18 @@ function normalizeCategory(raw: string | null): string {
   return 'festyny'
 }
 
+// Polska odmiana: 1 wydarzenie / 2-4 wydarzenia / 5+ wydarzeń (i 12-14 zawsze "wydarzeń")
+function eventWord(n: number): string {
+  if (n === 1) return 'wydarzenie'
+  const lastDigit = n % 10
+  const lastTwo = n % 100
+  if (lastDigit >= 2 && lastDigit <= 4 && !(lastTwo >= 12 && lastTwo <= 14)) return 'wydarzenia'
+  return 'wydarzeń'
+}
+function upcomingWord(n: number): string {
+  return n === 1 ? 'nadchodzące' : 'nadchodzących'
+}
+
 function startOfToday(): Date {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
@@ -104,8 +116,9 @@ function EventTile({ event, onRemove }: { event: Event; onRemove: (id: string) =
   return (
     <div className="relative rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden transition-colors hover:border-green-500/40">
       <Link href={`/events/${event.slug || event.id}`} className="block">
-        {/* Obrazek */}
-        <div className="relative aspect-[16/10] overflow-hidden bg-zinc-800">
+        {/* Obrazek — zmniejszony o ~15% wysokości względem oryginału (16/10 -> 16/8.5),
+            żeby przy kilku ulubionych mieściło się więcej bez przewijania. */}
+        <div className="relative aspect-[16/8.5] overflow-hidden bg-zinc-800">
           {img && (
             <img src={img} alt={event.title} className="w-full h-full object-cover" loading="lazy" />
           )}
@@ -153,11 +166,11 @@ function EventTile({ event, onRemove }: { event: Event; onRemove: (id: string) =
         </div>
       </Link>
 
-      {/* Usuń z ulubionych */}
+      {/* Usuń z ulubionych — lekko mniejsze i mniej agresywne wizualnie (było w-8 h-8) */}
       <button
         onClick={() => onRemove(event.id)}
         aria-label="Usuń z ulubionych"
-        className="absolute right-3 top-3 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm shadow-lg hover:bg-red-600 transition-colors"
+        className="absolute right-3 top-3 w-7 h-7 rounded-full bg-red-500/90 text-white flex items-center justify-center text-[13px] shadow-md hover:bg-red-600 transition-colors"
       >
         ♥
       </button>
@@ -206,8 +219,8 @@ export default function UlubionePage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pb-28">
-      <div className="max-w-6xl mx-auto px-4 pt-6 pb-4">
-        <Link href="/" className="text-[13px] text-zinc-500 mb-3 inline-block hover:text-zinc-300 transition-colors">
+      <div className="max-w-6xl mx-auto px-4 pt-5 pb-2">
+        <Link href="/" className="text-[13px] text-zinc-500 mb-2 inline-block hover:text-zinc-300 transition-colors">
           ← Wróć
         </Link>
         <h1 className="text-[26px] md:text-[32px] font-black tracking-tight">
@@ -216,7 +229,7 @@ export default function UlubionePage() {
         <p className="text-[12px] text-zinc-500 mt-1">
           {loading ? 'Ładowanie...'
             : events.length === 0 ? 'Brak zapisanych wydarzeń'
-            : `${upcomingCount} ${upcomingCount === 1 ? 'nadchodzące' : 'nadchodzących'}${groups.past.length ? ` · ${groups.past.length} minione` : ''}`}
+            : `${upcomingCount} ${upcomingWord(upcomingCount)} ${eventWord(upcomingCount)}${groups.past.length ? ` · ${groups.past.length} minione` : ''}`}
         </p>
       </div>
 
@@ -249,11 +262,12 @@ export default function UlubionePage() {
 
             return (
               <section key={bucket} className={`mb-10 ${isPast ? 'opacity-50' : ''}`}>
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-2.5 mb-4">
                   <h2 className={`text-[15px] font-black tracking-tight ${isPast ? 'text-zinc-500' : 'text-white'}`}>
                     {BUCKET_LABELS[bucket]}
                   </h2>
-                  <span className="text-[11px] font-bold text-zinc-600 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-full">
+                  {/* Licznik sekcji — subtelniejszy niż nagłówek, ma informować, nie konkurować (było font-bold text-zinc-600) */}
+                  <span className="text-[10px] font-medium text-zinc-500 bg-zinc-900/60 px-1.5 py-0.5 rounded-full">
                     {list.length}
                   </span>
                   <div className="flex-1 h-px bg-zinc-800" />
