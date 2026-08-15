@@ -68,8 +68,13 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
 
       if (isFullscreenRef.current) {
         // W trybie pełnoekranowym nie zapisujemy od razu do formularza —
-        // czekamy na "Zatwierdź lokalizację" albo "✕" (patrz closeFullscreen)
+        // czekamy na "Zatwierdź lokalizację" albo "✕" (patrz closeFullscreen).
+        // Ale to oznacza, że onChange się tu nie woła, więc mechanizm centrujący
+        // mapę (osobny useEffect obserwujący propsy latitude/longitude) nigdy
+        // się w pełnym ekranie nie uruchamia — mała mapa centruje się na klik,
+        // duża nie. Centrujemy więc wprost, tutaj, na miejscu.
         setLiveCoords(`${latStr}, ${lngStr}`)
+        map.setView([lat, lng], map.getZoom())
       } else {
         onChange(latStr, lngStr)
       }
