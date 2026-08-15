@@ -106,8 +106,18 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
 
     let raf = 0
     const invalidate = () => {
+      const rect = container.getBoundingClientRect()
+      console.log('[LEAFLET ResizeObserver]', {
+        width: container.clientWidth, height: container.clientHeight,
+        rectWidth: rect.width, rectHeight: rect.height,
+        fullscreen: isFullscreenRef.current,
+      })
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(() => {
+        console.log('[LEAFLET ResizeObserver RAF]', {
+          containerWidth: container.clientWidth, containerHeight: container.clientHeight,
+          mapWidth: map.getSize().x, mapHeight: map.getSize().y,
+        })
         map.invalidateSize({ pan: false, debounceMoveend: true })
       })
     }
@@ -121,41 +131,55 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
     }
   }, [])
 
+  const logMapState = (label: string) => {
+    const map = mapInstanceRef.current
+    const container = mapRef.current
+    const marker = markerRef.current
+    if (!map || !container) { console.log(`[LEAFLET ${label}] map/container missing`); return }
+    const rect = container.getBoundingClientRect()
+    const size = map.getSize()
+    const center = map.getCenter()
+    const markerPos = marker?.getLatLng()
+    console.log(`[LEAFLET ${label}]`, {
+      container: { width: container.clientWidth, height: container.clientHeight, rectWidth: rect.width, rectHeight: rect.height, top: rect.top, left: rect.left },
+      mapSize: { x: size.x, y: size.y },
+      mapCenter: { lat: center.lat, lng: center.lng },
+      marker: markerPos ? { lat: markerPos.lat, lng: markerPos.lng } : null,
+      fullscreen: isFullscreenRef.current,
+    })
+  }
+
   const openFullscreen = () => {
+    const markerPos = markerRef.current?.getLatLng()
+    console.log('[LEAFLET] ===== OPEN FULLSCREEN =====')
+    logMapState('BEFORE setIsFullscreen')
+
     savedPositionRef.current = { lat: latitude, lng: longitude }
     setLiveCoords(latitude && longitude ? `${latitude}, ${longitude}` : '')
     isFullscreenRef.current = true
     setIsFullscreen(true)
-    // Pełny ekran ma pełnoszerokościowy pasek na dole (współrzędne + przycisk
-    // "Zatwierdź") — prawy górny róg jest tam wolny, więc kontrolka schodzi tam.
     zoomControlRef.current?.setPosition('bottomright')
 
-    // Samo powiększenie kontenera NIE centruje mapy na pinezce — zachowuje
-    // ten sam środek geograficzny co mała mapa, więc pinezka blisko krawędzi
-    // zostaje przy krawędzi, tylko w większym oknie. Wymuszamy wycentrowanie,
-    // z podwójnym rAF, żeby zdążył się najpierw dokonać sam resize kontenera
-    // (ResizeObserver niżej reaguje na to asynchronicznie).
-    //
-    // WAŻNE: bierzemy pozycję z markerRef (prawdziwej pinezki na mapie), NIE
-    // z propsów latitude/longitude — te aktualizują się dopiero po przejściu
-    // przez Reacta z formularza, więc przy szybkim kliknięciu "Powiększ" zaraz
-    // po postawieniu pinezki propsy bywały jeszcze stare/puste, i centrowanie
-    // po cichu nic nie robiło. markerRef jest aktualny natychmiast, bez tego opóźnienia.
-    const currentMarkerPos = markerRef.current?.getLatLng()
+    logMapState('IMMEDIATELY AFTER setIsFullscreen')
+
     requestAnimationFrame(() => {
+      logMapState('RAF 1')
       requestAnimationFrame(() => {
+        logMapState('RAF 2')
         const map = mapInstanceRef.current
         if (!map) return
-        // Kluczowa poprawka: wcześniej liczyłem na to, że osobny ResizeObserver
-        // (niżej w pliku) zdąży wywołać invalidateSize, zanim ten kod się wykona —
-        // ale te dwa mechanizmy działały niezależnie od siebie, bez gwarancji
-        // kolejności, więc czasem setView trafiał na mapę, która JESZCZE myślała,
-        // że ma stary, mały rozmiar. Teraz wołam invalidateSize SAM, w tym samym
-        // miejscu, tuż przed setView — gwarantowana kolejność, bez zgadywania.
-        map.invalidateSize({ pan: false })
-        if (currentMarkerPos) map.setView(currentMarkerPos, map.getZoom())
+        map.invalidateSize({ pan: false, debounceMoveend: false })
+        logMapState('AFTER invalidateSize')
+        if (markerPos) {
+          map.setView(markerPos, map.getZoom(), { animate: false })
+          logMapState('AFTER setView')
+        }
       })
     })
+
+    setTimeout(() => logMapState('TIMEOUT 100ms'), 100)
+    setTimeout(() => logMapState('TIMEOUT 300ms'), 300)
+    setTimeout(() => logMapState('TIMEOUT 1000ms'), 1000)
   }
 
   const closeFullscreen = (confirmed: boolean) => {
