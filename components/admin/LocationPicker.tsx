@@ -145,7 +145,15 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const map = mapInstanceRef.current
-        if (map && currentMarkerPos) map.setView(currentMarkerPos, map.getZoom())
+        if (!map) return
+        // Kluczowa poprawka: wcześniej liczyłem na to, że osobny ResizeObserver
+        // (niżej w pliku) zdąży wywołać invalidateSize, zanim ten kod się wykona —
+        // ale te dwa mechanizmy działały niezależnie od siebie, bez gwarancji
+        // kolejności, więc czasem setView trafiał na mapę, która JESZCZE myślała,
+        // że ma stary, mały rozmiar. Teraz wołam invalidateSize SAM, w tym samym
+        // miejscu, tuż przed setView — gwarantowana kolejność, bez zgadywania.
+        map.invalidateSize({ pan: false })
+        if (currentMarkerPos) map.setView(currentMarkerPos, map.getZoom())
       })
     })
   }
