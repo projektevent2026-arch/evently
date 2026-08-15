@@ -13,6 +13,8 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
   const mapInstanceRef = useRef<any>(null)
   const markerRef = useRef<any>(null)
   const zoomControlRef = useRef<any>(null)
+  const pendingCenterRef = useRef<any>(null)
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isFullscreenRef = useRef(false)
   const savedPositionRef = useRef<{ lat: string; lng: string } | null>(null)
 
@@ -106,19 +108,27 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
 
     let raf = 0
     const invalidate = () => {
-      const rect = container.getBoundingClientRect()
-      console.log('[LEAFLET ResizeObserver]', {
-        width: container.clientWidth, height: container.clientHeight,
-        rectWidth: rect.width, rectHeight: rect.height,
-        fullscreen: isFullscreenRef.current,
-      })
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(() => {
-        console.log('[LEAFLET ResizeObserver RAF]', {
-          containerWidth: container.clientWidth, containerHeight: container.clientHeight,
-          mapWidth: map.getSize().x, mapHeight: map.getSize().y,
-        })
         map.invalidateSize({ pan: false, debounceMoveend: true })
+
+        // Centrowanie na pinezce po wejściu w pełny ekran (patrz openFullscreen) —
+        // wykonywane TU, nie tam, bo to jest miejsce, które faktycznie widzi
+        // KAŻDĄ zmianę rozmiaru kontenera, łącznie z tym powolnym "osiadaniem".
+        // Debounce 200ms: dopiero gdy przez 200ms nie przyjdzie kolejne zdarzenie
+        // resize, uznajemy że się ustabilizowało i centrujemy — raz, na końcu.
+        if (pendingCenterRef.current) {
+          if (settleTimerRef.current) clearTimeout(settleTimerRef.current)
+          settleTimerRef.current = setTimeout(() => {
+            const pos = pendingCenterRef.current
+            const m = mapInstanceRef.current
+            if (pos && m) {
+              m.invalidateSize({ pan: false })
+              m.setView(pos, m.getZoom(), { animate: false })
+            }
+            pendingCenterRef.current = null
+          }, 200)
+        }
       })
     }
 
@@ -131,55 +141,22 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
     }
   }, [])
 
-  const logMapState = (label: string) => {
-    const map = mapInstanceRef.current
-    const container = mapRef.current
-    const marker = markerRef.current
-    if (!map || !container) { console.log(`[LEAFLET ${label}] map/container missing`); return }
-    const rect = container.getBoundingClientRect()
-    const size = map.getSize()
-    const center = map.getCenter()
-    const markerPos = marker?.getLatLng()
-    console.log(`[LEAFLET ${label}]`, {
-      container: { width: container.clientWidth, height: container.clientHeight, rectWidth: rect.width, rectHeight: rect.height, top: rect.top, left: rect.left },
-      mapSize: { x: size.x, y: size.y },
-      mapCenter: { lat: center.lat, lng: center.lng },
-      marker: markerPos ? { lat: markerPos.lat, lng: markerPos.lng } : null,
-      fullscreen: isFullscreenRef.current,
-    })
-  }
-
   const openFullscreen = () => {
+    // Nie centrujemy tu na sztywno ustalony czas (rAF/timeout) — logi pokazały,
+    // że po wejściu w pełny ekran kontener "drga" (kilkanaście kolejnych zdarzeń
+    // resize z rzędu, prawdopodobnie pasek adresu przeglądarki na telefonie
+    // jeszcze się chowa/pokazuje). Każde takie zdarzenie woła invalidateSize
+    // z pan:false, co cichutko przesuwało widok PO tym, jak już raz wycentrowałem.
+    // Zamiast zgadywać moment — zlecamy centrowanie ResizeObserverowi (niżej),
+    // który sam wykona je RAZ, dopiero gdy drganie faktycznie się uspokoi.
     const markerPos = markerRef.current?.getLatLng()
-    console.log('[LEAFLET] ===== OPEN FULLSCREEN =====')
-    logMapState('BEFORE setIsFullscreen')
+    pendingCenterRef.current = markerPos ?? null
 
     savedPositionRef.current = { lat: latitude, lng: longitude }
     setLiveCoords(latitude && longitude ? `${latitude}, ${longitude}` : '')
     isFullscreenRef.current = true
     setIsFullscreen(true)
     zoomControlRef.current?.setPosition('bottomright')
-
-    logMapState('IMMEDIATELY AFTER setIsFullscreen')
-
-    requestAnimationFrame(() => {
-      logMapState('RAF 1')
-      requestAnimationFrame(() => {
-        logMapState('RAF 2')
-        const map = mapInstanceRef.current
-        if (!map) return
-        map.invalidateSize({ pan: false, debounceMoveend: false })
-        logMapState('AFTER invalidateSize')
-        if (markerPos) {
-          map.setView(markerPos, map.getZoom(), { animate: false })
-          logMapState('AFTER setView')
-        }
-      })
-    })
-
-    setTimeout(() => logMapState('TIMEOUT 100ms'), 100)
-    setTimeout(() => logMapState('TIMEOUT 300ms'), 300)
-    setTimeout(() => logMapState('TIMEOUT 1000ms'), 1000)
   }
 
   const closeFullscreen = (confirmed: boolean) => {
