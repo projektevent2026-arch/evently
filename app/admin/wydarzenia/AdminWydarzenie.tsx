@@ -128,12 +128,29 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
   async function loadEvent(id: string) {
     const { data } = await supabase.from("events").select("*").eq("id", id).single()
     if (!data) return
+  
+    // Terminy czytamy z event_dates — to jest teraz źródło prawdy, nie start_date/end_date
+    const { data: dateRows } = await supabase
+      .from("event_dates")
+      .select("date, start_time, end_time")
+      .eq("event_id", id)
+      .order("date", { ascending: true })
+  
+    const loadedDates: DateEntry[] = (dateRows && dateRows.length > 0)
+      ? dateRows.map(r => ({
+          date: r.date,
+          from: r.start_time ? r.start_time.slice(0, 5) : "",
+          to: r.end_time ? r.end_time.slice(0, 5) : "",
+        }))
+      : [{ date: "", from: "", to: "" }]
+  
     const startDate = data.start_date ? new Date(data.start_date) : null
     const endDate = data.end_date ? new Date(data.end_date) : null
     const sd = startDate ? startDate.toISOString().split("T")[0] : ""
     const st = startDate ? startDate.toTimeString().slice(0,5) : ""
     const ed = endDate ? endDate.toISOString().split("T")[0] : ""
     const et = endDate ? endDate.toTimeString().slice(0,5) : ""
+  
     setForm({
       title: data.title || "",
       slug: data.slug || "",
@@ -159,8 +176,9 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       status: data.status || "published",
       schedule: data.schedule || [],
     })
-    setDates(datesFromStartEnd(sd, st, ed, et))
+    setDates(loadedDates)
   }
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -438,17 +456,55 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       status: statusOverride || form.status,
       schedule: form.schedule,
     }
-    const { error } = eventId
-      ? await supabase.from("events").update(payload).eq("id", eventId)
-      : await supabase.from("events").insert([payload])
-    if (error) { setMsg("Błąd: " + error.message) }
-    else {
-      setMsg(statusOverride === "published" ? "✅ Opublikowano!" : "✅ Zapisano szkic!")
-      setTimeout(() => { window.location.href = "/admin" }, 1500)
+    const scheduleType = classifySchedule(dates)
+    const payloadWithType = { ...payload, schedule_type: scheduleType }
+
+    const { data: savedEvent, error } = eventId
+      ? await supabase.from("events").update(payloadWithType).eq("id", eventId).select("id").single()
+      : await supabase.from("events").insert([payloadWithType]).select("id").single()
+
+    if (error) {
+      setMsg("Błąd: " + error.message)
+      setSaving(false)
+      return
     }
+
+    const savedEventId = savedEvent?.id || eventId
+    const validDates = dates.filter(d => d.date)
+
+    if (savedEventId && validDates.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("event_dates")
+        .delete()
+        .eq("event_id", savedEventId)
+
+      if (deleteError) {
+        setMsg("Błąd zapisu terminów: " + deleteError.message)
+        setSaving(false)
+        return
+      }
+
+      const rows = validDates.map(d => ({
+        event_id: savedEventId,
+        date: d.date,
+        start_time: d.from || null,
+        end_time: d.to || null,
+        starts_at: d.from ? `${d.date}T${d.from}:00` : `${d.date}T00:00:00`,
+      }))
+
+      const { error: insertError } = await supabase.from("event_dates").insert(rows)
+      if (insertError) {
+        setMsg("Błąd zapisu terminów: " + insertError.message)
+        setSaving(false)
+        return
+      }
+    }
+
+    setMsg(statusOverride === "published" ? "✅ Opublikowano!" : "✅ Zapisano szkic!")
+    setTimeout(() => { window.location.href = "/admin" }, 1500)
     setSaving(false)
   }
-
+  
   const formatDate = (date: string, time: string) => {
     if (!date) return null
     try {
@@ -457,25 +513,6 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     } catch { return date }
   }
 
-  // Opis pod kartami Terminów: jednodniowe / kilkudniowe / rozrzucone (z ostrzeżeniem)
-  const renderDetect = () => {
-    const valid = dates.filter(d => d.date).map(d => d.date).sort((a,b) => a.localeCompare(b))
-    if (valid.length < 1) return null
-    const box = (kind: string, what: string, warn?: boolean) => (
-      <div style={{ marginTop:14, padding:"13px 15px", borderRadius:10, background: warn ? "#fffbeb" : "#f0fdf4", border:`1px solid ${warn ? "#fde68a" : "#bbf7d0"}`, fontSize:13, lineHeight:1.5 }}>
-        <span style={{ fontWeight:700, color: warn ? "#b45309" : "#16a34a", display:"block", marginBottom:3 }}>{kind}</span>
-        <span style={{ color: warn ? "#92400e" : "#15803d" }}>{what}</span>
-      </div>
-    )
-    if (valid.length === 1) return box("Wydarzenie jednodniowe", `Na karcie: ${isoToPl(valid[0])}`)
-    let consecutive = true
-    for (let i = 1; i < valid.length; i++) {
-      const a = new Date(valid[i-1]); const b = new Date(valid[i])
-      if (Math.round((+b - +a) / 86400000) !== 1) { consecutive = false; break }
-    }
-    if (consecutive) return box(`Impreza ${valid.length}-dniowa`, `Na karcie: ${isoToPl(valid[0])} – ${isoToPl(valid[valid.length-1])}`)
-    return box("Rozrzucone terminy", `Zapiszą się jako zakres ${isoToPl(valid[0])} – ${isoToPl(valid[valid.length-1])}. Pełna obsługa cykliczna (najbliższy termin na karcie) pojawi się w kolejnym kroku.`, true)
-  }
 
   const sidebarW = 200
   const previewW = 320
@@ -696,7 +733,17 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                   style={{ width:"100%", padding:13, border:"1.5px dashed #cbd5e1", borderRadius:10, background:"white", color:"#6b7280", fontSize:14, cursor:"pointer" }}>
                   + Dodaj termin
                 </button>
-                {renderDetect()}
+                {(() => {
+  const info = describeSchedule(dates)
+  if (!info) return null
+  const warn = info.scheduleType === "recurring"
+  return (
+    <div style={{ marginTop:14, padding:"13px 15px", borderRadius:10, background: warn ? "#fffbeb" : "#f0fdf4", border:`1px solid ${warn ? "#fde68a" : "#bbf7d0"}`, fontSize:13, lineHeight:1.5 }}>
+      <span style={{ fontWeight:700, color: warn ? "#b45309" : "#16a34a", display:"block", marginBottom:3 }}>{info.kind}</span>
+      <span style={{ color: warn ? "#92400e" : "#15803d" }}>{info.what}</span>
+    </div>
+  )
+})()}
               </Field>
 
               <div>
