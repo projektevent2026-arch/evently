@@ -6,6 +6,7 @@ import dynamic from "next/dynamic"
 const LocationPicker = dynamic(() => import("@/components/admin/LocationPicker"), { ssr: false })
 import ImageUpload from "@/components/admin/ImageUpload"
 import ScheduleEditor from "@/components/admin/ScheduleEditor"
+import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/scheduleType"
 
 const CATEGORIES = ["festyny","kultura","muzyka","sport"]
 const CATEGORY_LABELS: Record<string,string> = {
@@ -52,7 +53,6 @@ function makeShort(desc: string, existing: string): string | null {
   return (sp > 100 ? cut.slice(0, sp) : cut).trim() + "…"
 }
 
-type DateEntry = { date: string; from: string; to: string }
 
 const emptyForm = {
   title:"", slug:"", description:"", short_description:"",
