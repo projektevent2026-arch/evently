@@ -9,6 +9,8 @@ import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 import EventSchedule from '@/components/EventSchedule'
 import { useFavorites } from '@/hooks/useFavorites'
+import { getEventWithDates } from '@/lib/getEventWithDates'
+import EventDatesList from '@/components/EventDatesList'
 
 const EventMap = dynamic(() => import('@/components/event-map').then(m => m.EventMap), { ssr: false })
 
@@ -169,15 +171,8 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
 
   useEffect(() => {
     async function load() {
-        const isUUID = /^[0-9a-f-]{36}$/i.test(slug)
-        let query = supabase.from("events").select("*")
-          .eq(isUUID ? "id" : "slug", slug)
-        // Publicznie tylko opublikowane. Panel admina dokleja ?preview=1 do linku
-        // podglądu, żeby móc zobaczyć pending/draft przed zatwierdzeniem —
-        // to nie jest prawdziwe uwierzytelnianie, ale reszta /admin też go nie ma.
-        if (!isPreview) query = query.eq("status", "published")
-        const { data, error } = await query.single()
-      if (!error && data) {
+      const data = await getEventWithDates(slug, isPreview)
+      if (data) {
         setEvent(data)
         // Pobieranie RSVP (kto idzie) usunięte — RSVP wraca w tier D razem z kontami.
       }
@@ -327,6 +322,7 @@ const endClock = fmtClock(event.end_date)
                 ? linkify(event.description || event.short_description)
                 : 'Brak opisu.'}
             </p>
+            <EventDatesList dates={event.event_dates} variant="dark" />
 
             {/* Schedule preview */}
             {hasTabs && event.schedule?.slice(0, 4).map((item: any, i: number) => (

@@ -6,6 +6,8 @@ import EventSchedule from '@/components/EventSchedule'
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { getEventWithDates } from "@/lib/getEventWithDates"
+import EventDatesList from "@/components/EventDatesList"
 import Link from "next/link"
 import dynamic from "next/dynamic"
 
@@ -106,45 +108,10 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
   useEffect(() => {
     async function fetchEvent() {
-        console.log('[EVENT DETAIL START]', {
-          version: 'published-filter-v2',
-          href: window.location.href,
-          slug,
-          isPreview,
-          isUUID: /^[0-9a-f-]{36}$/i.test(slug),
-        })
-
-        const isUUID = /^[0-9a-f-]{36}$/i.test(slug)
-        let query = supabase.from("events").select("*")
-          .eq(isUUID ? "id" : "slug", slug)
-        if (!isPreview) {
-          console.log('[EVENT DETAIL] ADDING PUBLISHED FILTER')
-          query = query.eq("status", "published")
-        }
-        console.log('[EVENT DETAIL] QUERY CONFIG', { slug, isPreview, filterApplied: !isPreview })
-
-        const { data, error } = await query.single()
-
-        console.log('[EVENT DETAIL] SUPABASE RESULT', {
-          id: data?.id, slug: data?.slug, status: data?.status, title: data?.title,
-          error: error?.message ?? null,
-        })
-
-        // Zabezpieczenie: nawet gdyby zapytanie z jakiegoś powodu zwróciło
-        // rekord niepublikowany mimo filtra, strona i tak go nie pokaże.
-        if (!isPreview && data && data.status !== 'published') {
-          console.error('[SECURITY BUG] Otrzymano niepublikowany event mimo filtra!', data)
-          setEvent(null)
-          setLoading(false)
-          return
-        }
-
-      if (!error) {
+      const data = await getEventWithDates(slug, isPreview)
+      if (data) {
         setEvent(data)
         // Pobieranie RSVP (licznik / kto idzie) usunięte — wraca w tier D razem z kontami.
-        // Wykluczamy po prawdziwym id eventu (data.id), nie po surowym slug z URL —
-        // slug nie jest UUID-em, więc .neq("id", slug) psuło zapytanie (błąd 400)
-        // i sekcja zawsze wychodziła pusta.
         const { data: similar } = await supabase.from("events").select("*").eq("status","published").neq("id", data.id).limit(4)
         setSimilarEvents(similar || [])
       }
@@ -353,6 +320,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
                         ? linkify(event.description||event.short_description)
                         : <span style={{color:"#9ca3af"}}>Brak opisu.</span>}
                     </p>
+                    <EventDatesList dates={event.event_dates} variant="light" />
                     {(event.is_free || !event.price_from) && (
                       <div style={{marginTop:24}}>
                         <div style={{fontSize:13,fontWeight:700,color:"#16a34a",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
