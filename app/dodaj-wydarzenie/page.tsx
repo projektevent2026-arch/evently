@@ -8,6 +8,7 @@ import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { MapPin, ChevronRight, CheckCircle } from "lucide-react"
 import Link from "next/link"
+import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/scheduleType"
 
 const LocationPicker = dynamic(
   () => import("@/components/admin/LocationPicker"),
@@ -28,7 +29,6 @@ function todayStr(): string {
 
 const emptyForm = {
   title: "", description: "",
-  start_date: "", start_time: "", end_date: "", end_time: "",
   city: "", address: "", venue_name: "",
   category: "", cover_image_url: "", image_url: "",
   ticket_url: "", website_url: "",
@@ -40,6 +40,7 @@ const emptyForm = {
 
 export default function DodajWydarzenie() {
   const [form, setForm] = useState(emptyForm)
+  const [dates, setDates] = useState<DateEntry[]>([{ date: "", from: "", to: "" }])
   const [activeTab, setActiveTab] = useState("basic")
   const [geocoding, setGeocoding] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -181,76 +182,98 @@ export default function DodajWydarzenie() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-// Walidacja: data startu nie może być z przeszłości
-if (form.start_date && form.start_date < todayStr()) {
-  setError("Data rozpoczęcia nie może być z przeszłości.")
+
+// Walidacja: przynajmniej jeden termin z datą
+const validDates = dates.filter(d => d.date)
+if (validDates.length === 0) {
+  setError("Podaj przynajmniej jeden termin wydarzenia.")
   setActiveTab("basic")
   return
 }
 
-// Walidacja: godzina rozpoczęcia jest wymagana — sam atrybut required na polu
-// type="time" nie zawsze blokuje wysyłkę na wszystkich przeglądarkach/telefonach,
-// więc sprawdzamy to też jawnie w JS (ten sam bug, co naprawiony w panelu admina).
-if (form.start_date && !form.start_time) {
-  setError("Podaj godzinę rozpoczęcia.")
+// Walidacja: żaden termin nie może być z przeszłości
+if (validDates.some(d => d.date < todayStr())) {
+  setError("Termin nie może być z przeszłości.")
   setActiveTab("basic")
   return
 }
 
-// Walidacja: data końca nie może być wcześniejsza niż start
-if (form.end_date && form.start_date && form.end_date < form.start_date) {
-  setError("Data zakończenia nie może być wcześniejsza niż rozpoczęcia.")
+// Walidacja: każdy termin musi mieć godzinę rozpoczęcia
+if (validDates.some(d => !d.from)) {
+  setError("Każdy termin musi mieć godzinę \"Od\".")
   setActiveTab("basic")
   return
 }
 
-    setSubmitting(true)
-    setError("")
+setSubmitting(true)
+setError("")
 
-    try {
-      const start = form.start_date && form.start_time
-        ? form.start_date + "T" + form.start_time
-        : form.start_date
-      const end = form.end_date && form.end_time
-        ? form.end_date + "T" + form.end_time
-        : (form.end_date || null)
+const sortedDates = [...validDates].sort((a, b) => a.date.localeCompare(b.date))
+const scheduleType = classifySchedule(dates)
 
-      const { error: supabaseError } = await supabase.from("events").insert([{
-        title: form.title,
-        slug: generateSlug(form.title),
-        description: form.description || null,
-        short_description: generateShortDescription(form.description) || null,
-        start_date: start,
-        end_date: end,
-        city: form.city,
-        address: form.address || null,
-        venue_name: form.venue_name || null,
-        category: form.category,
-        cover_image_url: form.cover_image_url || null,
-        image_url: form.image_url || null,
-        ticket_url: form.ticket_url || null,
-        website_url: form.website_url || null,
-        organizer_name: form.organizer_name || null,
-        organizer_email: form.organizer_email || null,
-        is_free: form.is_free,
-        price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
-        latitude: form.latitude ? parseFloat(form.latitude) : null,
-        longitude: form.longitude ? parseFloat(form.longitude) : null,
-        schedule: form.schedule && form.schedule.length ? form.schedule : null,
-        status: "pending",
-      }])
+try {
+  const first = sortedDates[0]
+  const last = sortedDates[sortedDates.length - 1]
+  const start = first.date + "T" + first.from
+  const end = last.date !== first.date
+    ? (last.from ? last.date + "T" + last.from : last.date)
+    : null
 
-      if (supabaseError) {
-        setError("Błąd zapisu: " + supabaseError.message)
-      } else {
-        setSubmitted(true)
-      }
-    } catch (err) {
-      setError("Błąd sieci. Sprawdź połączenie i spróbuj ponownie.")
-    } finally {
+    const { data: savedEvent, error: supabaseError } = await supabase.from("events").insert([{
+      title: form.title,
+      slug: generateSlug(form.title),
+      description: form.description || null,
+      short_description: generateShortDescription(form.description) || null,
+      start_date: start,
+      end_date: end,
+      schedule_type: scheduleType,
+      city: form.city,
+      address: form.address || null,
+      venue_name: form.venue_name || null,
+      category: form.category,
+      cover_image_url: form.cover_image_url || null,
+      image_url: form.image_url || null,
+      ticket_url: form.ticket_url || null,
+      website_url: form.website_url || null,
+      organizer_name: form.organizer_name || null,
+      organizer_email: form.organizer_email || null,
+      is_free: form.is_free,
+      price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
+      latitude: form.latitude ? parseFloat(form.latitude) : null,
+      longitude: form.longitude ? parseFloat(form.longitude) : null,
+      schedule: form.schedule && form.schedule.length ? form.schedule : null,
+      status: "pending",
+    }]).select("id").single()
+
+    if (supabaseError) {
+      setError("Błąd zapisu: " + supabaseError.message)
       setSubmitting(false)
+      return
     }
+
+    if (savedEvent?.id) {
+      const rows = sortedDates.map(d => ({
+        event_id: savedEvent.id,
+        date: d.date,
+        start_time: d.from || null,
+        end_time: d.to || null,
+        starts_at: d.from ? `${d.date}T${d.from}:00` : `${d.date}T00:00:00`,
+      }))
+      const { error: datesError } = await supabase.from("event_dates").insert(rows)
+      if (datesError) {
+        setError("Wydarzenie zapisane, ale wystąpił błąd zapisu terminów: " + datesError.message)
+        setSubmitting(false)
+        return
+      }
+    }
+
+    setSubmitted(true)
+  } catch (err) {
+    setError("Błąd sieci. Sprawdź połączenie i spróbuj ponownie.")
+  } finally {
+    setSubmitting(false)
   }
+}
 
   if (submitted) {
     return (
@@ -392,25 +415,52 @@ if (form.end_date && form.start_date && form.end_date < form.start_date) {
               </div>
 
               <div>
-                <label style={lbl}>Data i godzina *</label>
-                <div className="date-grid">
-                  <div>
-                    <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Data od</div>
-                    <input name="start_date" type="date" min={todayStr()} value={form.start_date} onChange={handleChange} required style={inp} />
-                  </div>
-                  <div>
-                    <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Godzina od</div>
-                    <input name="start_time" type="time" value={form.start_time} onChange={handleChange} required style={inp} />
-                  </div>
-                  <div>
-                    <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Data do</div>
-                    <input name="end_date" type="date" min={form.start_date || todayStr()} value={form.end_date} onChange={handleChange} style={inp} />
-                  </div>
-                  <div>
-                    <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Godzina do</div>
-                    <input name="end_time" type="time" value={form.end_time} onChange={handleChange} style={inp} />
-                  </div>
+                <label style={lbl}>Terminy *</label>
+                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:10,lineHeight:1.5}}>
+                  Jeden termin albo kilka dni — każdy dzień jako osobny termin. Rozpoznamy, czy to impreza jedno- czy kilkudniowa.
                 </div>
+                {dates.map((en, i) => (
+                  <div key={i} style={{background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:10,padding:12,marginBottom:10}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                      <span style={{fontSize:11,fontWeight:700,color:"#9ca3af",letterSpacing:"0.04em",textTransform:"uppercase"}}>Termin {i+1}</span>
+                      <button type="button" disabled={dates.length === 1}
+                        onClick={() => setDates(dates.filter((_, j) => j !== i))}
+                        style={{border:"none",background:"none",color: dates.length === 1 ? "#e5e7eb" : "#ef4444",fontSize:16,cursor: dates.length === 1 ? "default" : "pointer",padding:"2px 4px",lineHeight:1}}>✕</button>
+                    </div>
+                    <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Data</div>
+                    <input type="date" min={todayStr()} value={en.date}
+                      onChange={e => setDates(dates.map((d, j) => j === i ? { ...d, date: e.target.value } : d))} style={inp} />
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:8}}>
+                      <div>
+                        <div style={{fontSize:"0.75rem",color: en.date && !en.from ? "#ef4444" : "#9ca3af",marginBottom:4,fontWeight: en.date && !en.from ? 700 : 400}}>Od godziny {en.date && !en.from ? "*" : ""}</div>
+                        <input type="time" value={en.from}
+                          onChange={e => setDates(dates.map((d, j) => j === i ? { ...d, from: e.target.value } : d))}
+                          style={en.date && !en.from ? { ...inp, borderColor:"#ef4444" } : inp} />
+                      </div>
+                      <div>
+                        <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Do godziny</div>
+                        <input type="time" value={en.to}
+                          onChange={e => setDates(dates.map((d, j) => j === i ? { ...d, to: e.target.value } : d))} style={inp} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button type="button"
+                  onClick={() => setDates([...dates, { date:"", from: dates[dates.length-1]?.from || "", to: dates[dates.length-1]?.to || "" }])}
+                  style={{width:"100%",padding:13,border:"1.5px dashed #cbd5e1",borderRadius:10,background:"white",color:"#6b7280",fontSize:"0.9rem",cursor:"pointer"}}>
+                  + Dodaj termin
+                </button>
+                {(() => {
+                  const info = describeSchedule(dates)
+                  if (!info) return null
+                  const warn = info.scheduleType === "recurring"
+                  return (
+                    <div style={{marginTop:14,padding:"13px 15px",borderRadius:10,background: warn ? "#fffbeb" : "#f0fdf4",border:`1px solid ${warn ? "#fde68a" : "#bbf7d0"}`,fontSize:13,lineHeight:1.5}}>
+                      <span style={{fontWeight:700,color: warn ? "#b45309" : "#16a34a",display:"block",marginBottom:3}}>{info.kind}</span>
+                      <span style={{color: warn ? "#92400e" : "#15803d"}}>{info.what}</span>
+                    </div>
+                  )
+                })()}
               </div>
 
               <div>
