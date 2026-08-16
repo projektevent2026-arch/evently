@@ -356,16 +356,19 @@ try {
                         city: data.city || prev.city,
                         address: data.address || prev.address,
                         venue_name: data.venue_name || prev.venue_name,
-                        start_date: data.start_date || prev.start_date,
-                        start_time: data.start_time || prev.start_time,
-                        end_date: data.end_date || prev.end_date,
-                        end_time: data.end_time || prev.end_time,
                         description: data.description || prev.description,
                         organizer_name: data.organizer_name || prev.organizer_name,
                         category: data.category || prev.category,
                         is_free: data.is_free ?? prev.is_free,
                         price_from: data.price_from?.toString() || prev.price_from,
                       }))
+                      if (data.start_date) {
+                        setDates([{
+                          date: data.start_date,
+                          from: data.start_time || "",
+                          to: data.end_time || "",
+                        }])
+                      }
                       if (data.address || data.city) {
                         const query = [data.address, data.city].filter(Boolean).join(", ")
                         try {
