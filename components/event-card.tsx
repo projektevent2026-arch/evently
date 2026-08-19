@@ -40,6 +40,7 @@ export interface EventData {
   date: string
   start_date?: string
   start_time?: string | null
+  schedule_type?: string
   city: string
   image: string
   image_url?: string | null
@@ -49,7 +50,8 @@ export interface EventData {
   initialGoing?: boolean
 }
 
-function getDayBadge(start_date?: string): { label: string; color: string } | null {
+function getDayBadge(start_date?: string, schedule_type?: string): { label: string; color: string } | null {
+  if (schedule_type === 'recurring') return { label: "CYKLICZNE", color: "bg-purple-500" }
   if (!start_date) return null
   const now = new Date()
   const event = new Date(start_date)
@@ -94,7 +96,7 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
   const { isFavorite, toggleFavorite } = useFavorites()
   const liked = isFavorite(event.id)
 
-  const dayBadge = getDayBadge(event.start_date)
+  const dayBadge = getDayBadge(event.start_date, event.schedule_type)
   const time = getTime(event.start_time)
   const cat = normalizeCategory(event.category)
   // Plakat ma odwrotny priorytet niż zdjęcie na karcie — najpierw właściwy plakat, potem zdjęcie jako fallback
