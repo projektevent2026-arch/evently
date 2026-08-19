@@ -151,7 +151,6 @@ export function EventsGrid() {
       const data = await fetchPublishedEvents()
 
       const mapped = data
-        .filter((e) => isUpcoming(e.start_date, e.end_date))
         .filter((e) => {
           if (q) return true
           if (!hasLocationFilter) return true
@@ -162,11 +161,12 @@ export function EventsGrid() {
           id: e.id,
           slug: e.slug,
           title: e.title,
-          date: e.start_date ? new Date(e.start_date).toLocaleDateString("pl-PL", {
+          date: e.next_date ? new Date(e.next_date).toLocaleDateString("pl-PL", {
             day: "numeric", month: "long", year: "numeric",
           }) : "",
-          start_date: e.start_date,
-          start_time: e.start_time ?? null,
+          start_date: e.next_date,
+          start_time: e.next_start_time ?? null,
+          schedule_type: e.schedule_type,
           city: e.city,
           image: e.cover_image_url || "/images/event-concert.jpg",
           image_url: e.image_url || null,
