@@ -18,10 +18,9 @@ export async function GET() {
   )
 
   const { data, error } = await supabase
-    .from('events')
+    .from('published_events_with_next_date')
     .select('*')
-    .eq('status', 'published')
-    .order('start_date', { ascending: true })
+    .order('next_date', { ascending: true })
 
   if (error) {
     // NIGDY nie cache'uj błędu — inaczej jedna awaria Supabase daje

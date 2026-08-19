@@ -13,6 +13,10 @@ interface Event {
   end_date: string | null
   start_time: string | null
   end_time: string | null
+  next_date: string
+  next_start_time: string | null
+  next_end_time: string | null
+  schedule_type: string
   location_name: string | null
   venue_name: string | null
   address: string | null
@@ -163,8 +167,8 @@ async function fetchEventsWithRetry(): Promise<Event[]> {
       clearTimeout(timeoutId)
 
       if (!res.ok) throw new Error('Błąd pobierania: ' + res.status)
-      const data: Event[] = await res.json()
-      return data.slice(0, 100).filter((e: Event) => isUpcoming(e.start_date, e.end_date))
+        const data: Event[] = await res.json()
+        return data.slice(0, 100)
     } catch (err) {
       clearTimeout(timeoutId)
       lastErr = err
@@ -308,8 +312,8 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
   const normCat = normalizeCategory(event.category)
   const tagColor = CAT_COLORS[normCat] ?? 'bg-zinc-600 text-white'
   const tagLabel = CAT_LABELS[normCat] ?? normCat
-  const { day, month, isToday: today, isTomorrow: tomorrow } = getDateParts(event.start_date)
-  const time = event.start_time?.slice(0, 5)
+  const { day, month, isToday: today, isTomorrow: tomorrow } = getDateParts(event.next_date)
+  const time = event.next_start_time?.slice(0, 5)
   const img = event.cover_image_url || event.image_url
   const posterImg = event.image_url || event.cover_image_url
 
@@ -557,10 +561,10 @@ export function MobileHome() {
 // Przy aktywnym wyszukiwaniu promień nie odcina — szukasz konkretnej rzeczy,
       // masz ją znaleźć niezależnie od odległości. Dystans dalej liczy się na karcie.
       if (!search.trim() && e.distance !== null && e.distance > radius) return false
-      if (activeDate === 'today' && !isToday(e.start_date)) return false
-      if (activeDate === 'tomorrow' && !isTomorrow(e.start_date)) return false
-      if (activeDate === 'weekend' && !isThisWeekend(e.start_date)) return false
-      if (activeDate === 'custom' && customDate && !isOnDate(e.start_date, customDate)) return false
+      if (activeDate === 'today' && !isToday(e.next_date)) return false
+      if (activeDate === 'tomorrow' && !isTomorrow(e.next_date)) return false
+      if (activeDate === 'weekend' && !isThisWeekend(e.next_date)) return false
+      if (activeDate === 'custom' && customDate && !isOnDate(e.next_date, customDate)) return false
       if (activeCategory !== 'all') {
         if (normalizeCategory(e.category) !== activeCategory) return false
       }
@@ -571,7 +575,7 @@ export function MobileHome() {
     })
     .sort((a, b) => {
       if (a.distance !== null && b.distance !== null) return a.distance - b.distance
-      return new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+      return new Date(a.next_date).getTime() - new Date(b.next_date).getTime()
     })
 
   return (
