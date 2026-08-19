@@ -337,16 +337,23 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
                 >
                   {liked ? '♥' : '♡'}
                 </button>
-                <div className={`flex flex-col items-center px-2.5 py-1 rounded-xl min-w-[42px] ${
-                  today ? 'bg-green-500' : tomorrow ? 'bg-yellow-400' : 'bg-zinc-800'
-                }`}>
-                  <span className={`text-[16px] font-black leading-none ${
-                    today || tomorrow ? 'text-black' : 'text-white'
-                  }`}>{today ? 'DZIŚ' : tomorrow ? 'JUTRO' : day}</span>
-                  {!today && !tomorrow && (
-                    <span className="text-[9px] font-bold text-zinc-400 leading-none mt-0.5">{month}</span>
-                  )}
-                </div>
+                {event.schedule_type === 'recurring' ? (
+                  <div className="flex flex-col items-center px-2.5 py-1 rounded-xl min-w-[42px] bg-purple-500">
+                    <span className="text-[9px] font-black leading-none text-white text-center">CYKL.</span>
+                    <span className="text-[8px] font-bold text-white/80 leading-none mt-0.5">{day} {month}</span>
+                  </div>
+                ) : (
+                  <div className={`flex flex-col items-center px-2.5 py-1 rounded-xl min-w-[42px] ${
+                    today ? 'bg-green-500' : tomorrow ? 'bg-yellow-400' : 'bg-zinc-800'
+                  }`}>
+                    <span className={`text-[16px] font-black leading-none ${
+                      today || tomorrow ? 'text-black' : 'text-white'
+                    }`}>{today ? 'DZIŚ' : tomorrow ? 'JUTRO' : day}</span>
+                    {!today && !tomorrow && (
+                      <span className="text-[9px] font-bold text-zinc-400 leading-none mt-0.5">{month}</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
