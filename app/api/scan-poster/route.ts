@@ -25,6 +25,20 @@ function fixPastDate(dateStr: string | null): string | null {
   }
   return `${year}-${monthDay}`
 }
+// Wylicza start_date/end_date (dla reszty apki, która jeszcze ich używa)
+// z tablicy dates zwróconej przez AI. Pierwszy/ostatni po posortowaniu.
+function deriveStartEnd(dates: any[]): { start_date: string | null; start_time: string | null; end_date: string | null; end_time: string | null } {
+  const valid = (dates || []).filter(d => d && d.date).sort((a, b) => String(a.date).localeCompare(String(b.date)))
+  if (valid.length === 0) return { start_date: null, start_time: null, end_date: null, end_time: null }
+  const first = valid[0]
+  const last = valid[valid.length - 1]
+  return {
+    start_date: first.date,
+    start_time: first.start_time || null,
+    end_date: valid.length > 1 ? last.date : null,
+    end_time: valid.length > 1 ? (last.end_time || null) : (first.end_time || null),
+  }
+}
 
 export async function POST(req: NextRequest) {
   const { imageBase64, mediaType } = await req.json()
@@ -66,10 +80,9 @@ Przeanalizuj ten plakat wydarzenia i wyciągnij informacje. Odpowiedz TYLKO w fo
   "city": "miasto, wieś lub gmina",
   "venue_name": "nazwa konkretnego miejsca lub null",
   "address": "ulica z numerem lub null",
-  "start_date": "YYYY-MM-DD lub null",
-  "start_time": "HH:MM lub null",
-  "end_date": "YYYY-MM-DD lub null",
-  "end_time": "HH:MM lub null",
+  "dates": [
+    { "date": "YYYY-MM-DD", "start_time": "HH:MM lub null", "end_time": "HH:MM lub null" }
+  ],
   "description": "opis wydarzenia",
   "organizer_name": "organizator lub null",
   "category": "jedna z: festyny, kultura, muzyka, sport",
@@ -105,13 +118,13 @@ Jeśli w stopce jest kilka podmiotów, wybierz ten najbardziej wyeksponowany (na
 - Jeśli tytuł punktu zawija się na dwie linie (np. "16:45 – Szkoła dziecięca\\npod opieką Pani X"), to JEDEN punkt, nie dwa. Połącz w jeden "title".
 - NIGDY nie zwracaj "00:00" jako zgadywanej godziny. "00:00" tylko jeśli plakat dosłownie pokazuje punkt o północy.
 
-═══ WYDARZENIA WIELODNIOWE — wypełnij WSZYSTKIE dni ═══
-- Jeśli plakat pokazuje kilka dat (np. "25 LIPCA 2026" i niżej "26 LIPCA 2026"), to wydarzenie DWUDNIOWE.
-- Ustaw start_date na pierwszy dzień, end_date na ostatni dzień.
-- Program drugiego dnia jest zwykle NIŻEJ na plakacie, pod osobnym nagłówkiem z datą. Przewiń plakat do samego dołu i przepisz TAKŻE ten program.
-- Punktom pierwszego dnia nadaj "day": 1, punktom drugiego "day": 2, itd.
-- Nie kończ pracy po pierwszym dniu — to najczęstszy błąd.
-- Jeśli wydarzenie trwa 1 dzień, wszystkie punkty mają "day": 1, a end_date = null.
+═══ TERMINY — znajdź WSZYSTKIE daty na plakacie ═══
+- Pole "dates" to LISTA wszystkich terminów wydarzenia. Wpisz KAŻDĄ datę, którą widzisz na plakacie — jedną, dwie, albo osiem.
+- Jeśli wydarzenie ma JEDEN dzień: "dates" ma jeden wpis.
+- Jeśli plakat pokazuje KOLEJNE dni pod rząd (np. "25 LIPCA 2026" i niżej "26 LIPCA 2026") — to wydarzenie WIELODNIOWE, ciągłe. Wpisz każdy dzień jako osobny wpis w "dates", z jego własną godziną. Program drugiego dnia jest zwykle NIŻEJ na plakacie, pod osobnym nagłówkiem z datą — przewiń do samego dołu i przepisz TAKŻE ten program. Punktom pierwszego dnia nadaj "day": 1, punktom drugiego "day": 2, itd.
+- Jeśli plakat pokazuje ROZRZUCONE daty z przerwami (np. lista "5 LIPCA / 12 LIPCA / 19 LIPCA / 26 LIPCA" — cykliczne, np. cotygodniowe spotkania, warsztaty, targi) — to wydarzenie CYKLICZNE. Wpisz KAŻDĄ z tych dat jako osobny wpis w "dates". Program (schedule) zwykle jest ten sam dla każdego terminu — wpisz go RAZ, wszystkie punkty z "day": 1, nie próbuj dublować programu dla każdej daty.
+- Nie kończ pracy po pierwszej dacie — sprawdź plakat od góry do dołu, licząc WSZYSTKIE wystąpienia dat, nie tylko pierwszą.
+- Każdy wpis w "dates" może mieć inną godzinę "start_time"/"end_time", jeśli plakat tak podaje (np. sobota od 11:00, niedziela od 14:00). Jeśli plakat podaje jedną godzinę dla wszystkich dat, powtórz ją w każdym wpisie.
 
 ═══ OPIS — napisz od razu dobry, gotowy do publikacji ═══
 - 2-4 pełne zdania, płynną polszczyzną, w trzeciej osobie.
@@ -155,9 +168,24 @@ Jeśli na plakacie nie ma żadnego programu ani listy atrakcji, zwróć "schedul
     const clean = text.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(clean)
 
-    // Pas bezpieczeństwa: podbij rok, jeśli AI mimo wszystko zwróciło przeszłość.
-    if (parsed.start_date) parsed.start_date = fixPastDate(parsed.start_date)
-    if (parsed.end_date) parsed.end_date = fixPastDate(parsed.end_date)
+    // Pas bezpieczeństwa: podbij rok każdej daty, jeśli AI mimo wszystko
+    // zwróciło przeszłość (może się zdarzyć osobno dla każdego wpisu).
+    if (Array.isArray(parsed.dates)) {
+      parsed.dates = parsed.dates
+        .filter((d: any) => d && d.date)
+        .map((d: any) => ({ ...d, date: fixPastDate(d.date) }))
+    } else {
+      parsed.dates = []
+    }
+
+    // Wyliczamy start_date/end_date dla wstecznej zgodności — reszta
+    // formularza (podgląd, itd.) może jeszcze na nie liczyć, dopóki
+    // wszystkie miejsca nie przejdą w pełni na tablicę dates.
+    const derived = deriveStartEnd(parsed.dates)
+    parsed.start_date = derived.start_date
+    parsed.start_time = derived.start_time
+    parsed.end_date = derived.end_date
+    parsed.end_time = derived.end_time
 
     return NextResponse.json(parsed)
   } catch {
