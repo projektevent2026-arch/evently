@@ -25,7 +25,7 @@ interface Event {
   id: string
   slug: string
   title: string
-  start_date: string
+  next_date: string
   city: string
   latitude: number
   longitude: number
@@ -55,9 +55,8 @@ export default function MiniMap({ center: externalCenter }: MiniMapProps) {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       )
       const { data } = await supabase
-        .from("events")
-        .select("id, slug, title, start_date, city, latitude, longitude")
-        .eq("status", "published")
+        .from("published_events_with_next_date")
+        .select("id, slug, title, next_date, city, latitude, longitude")
         .not("latitude", "is", null)
         .not("longitude", "is", null)
         .limit(20)
@@ -98,7 +97,7 @@ export default function MiniMap({ center: externalCenter }: MiniMapProps) {
                 <div style={{ fontSize: 12, minWidth: 140 }}>
                   <div style={{ fontWeight: 700, marginBottom: 4 }}>{ev.title}</div>
                   <div style={{ color: "#6b7280", marginBottom: 6 }}>
-                    {fmtDate(ev.start_date)} · {ev.city}
+                  {fmtDate(ev.next_date)} · {ev.city}
                   </div>
                   <a href={`/events/${ev.slug}`} style={{ color: "#16a34a", fontWeight: 600, textDecoration: "none" }}>
                     Zobacz
