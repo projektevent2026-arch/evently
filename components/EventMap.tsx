@@ -13,6 +13,10 @@ interface Event {
   category: string | null
   start_date: string
   end_date: string | null
+  next_date: string
+  next_start_time: string | null
+  next_end_time: string | null
+  schedule_type: string
   venue_name: string | null
   city: string | null
   cover_image_url: string | null
@@ -206,7 +210,7 @@ export default function EventMap() {
         // więc mapa mogła pokazywać eventy pending/draft. Teraz endpoint
         // filtruje status po stronie serwera dla wszystkich trzech miejsc jednakowo.
         const withLocation = data.filter(e => e.latitude != null && e.longitude != null)
-        setEvents(withLocation.filter(e => isUpcoming(e.start_date, e.end_date)))
+        setEvents(withLocation)
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -266,10 +270,10 @@ export default function EventMap() {
 
   const filtered = useMemo(() => {
     return events.filter(ev => {
-      if (urlTime === 'dzis'    && !isToday(ev.start_date))       return false
-      if (urlTime === 'jutro'   && !isTomorrow(ev.start_date))    return false
-      if (urlTime === 'weekend' && !isThisWeekend(ev.start_date)) return false
-      if (urlTime === 'custom' && customDate && !isOnDate(ev.start_date, customDate)) return false
+      if (urlTime === 'dzis'    && !isToday(ev.next_date))       return false
+      if (urlTime === 'jutro'   && !isTomorrow(ev.next_date))    return false
+      if (urlTime === 'weekend' && !isThisWeekend(ev.next_date)) return false
+      if (urlTime === 'custom' && customDate && !isOnDate(ev.next_date, customDate)) return false
       if (activeCategories.size > 0 && !activeCategories.has(ev.category ?? 'Inne')) return false
       if (urlQ) {
         const hay = `${ev.title} ${ev.venue_name ?? ''}`.toLowerCase()
@@ -314,7 +318,7 @@ export default function EventMap() {
               ${ev.is_free ? `<span style="background:#dcfce7;color:#15803d;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">Wstęp wolny</span>` : ''}
             </div>
             <div style="font-weight:700;font-size:14px;line-height:1.3;margin-bottom:5px;color:#111">${escapeHtml(ev.title)}</div>
-            <div style="font-size:11px;color:#666;margin-bottom:3px">${formatDate(ev.start_date)}</div>
+            <div style="font-size:11px;color:#666;margin-bottom:3px">${formatDate(ev.next_date)}</div>
             ${place ? `<div style="font-size:11px;color:#888;margin-bottom:3px">${escapeHtml(place)}</div>` : ''}
             ${dist !== null ? `<div style="font-size:11px;font-weight:600;color:#16a34a;margin-bottom:8px">${formatDist(dist)}</div>` : '<div style="margin-bottom:8px"></div>'}
             <a href="/events/${escapeHtml(ev.slug)}" style="display:block;text-align:center;background:#22C55E;color:black;font-weight:700;font-size:11px;padding:7px;border-radius:8px;text-decoration:none">Zobacz wydarzenie</a>
