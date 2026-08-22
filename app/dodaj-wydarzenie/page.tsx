@@ -362,7 +362,14 @@ try {
                         is_free: data.is_free ?? prev.is_free,
                         price_from: data.price_from?.toString() || prev.price_from,
                       }))
-                      if (data.start_date) {
+                      if (Array.isArray(data.dates) && data.dates.length > 0) {
+                        setDates(data.dates.map((d: any) => ({
+                          date: d.date || "",
+                          from: d.start_time || "",
+                          to: d.end_time || "",
+                        })))
+                      } else if (data.start_date) {
+                        // fallback dla starszych odpowiedzi API bez pola dates
                         setDates([{
                           date: data.start_date,
                           from: data.start_time || "",

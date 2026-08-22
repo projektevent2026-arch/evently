@@ -387,8 +387,16 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
               })()
             : prev.schedule,
         }))
-        // Zasil karty Terminów z tego, co odczytał skaner
-        if (data.start_date) {
+        // Zasil karty Terminów z tego, co odczytał skaner — pełna lista
+        // wykrytych dat, nie tylko pierwsza/ostatnia
+        if (Array.isArray(data.dates) && data.dates.length > 0) {
+          setDates(data.dates.map((d: any) => ({
+            date: d.date || "",
+            from: d.start_time || "",
+            to: d.end_time || "",
+          })))
+        } else if (data.start_date) {
+          // fallback dla starszych odpowiedzi API bez pola dates
           setDates(datesFromStartEnd(data.start_date, data.start_time || "", data.end_date || "", data.end_time || ""))
         }
         setScanStatus(uploadedUrl
