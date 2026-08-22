@@ -1,15 +1,24 @@
 'use client'
 
+import { createPortal } from 'react-dom'
+import { useEffect, useState } from 'react'
+
 interface PosterModalProps {
   src: string
   onClose: () => void
 }
 
-/** Pełnoekranowy podgląd plakatu. Klik w tło albo ✕ zamyka. */
+/** Pełnoekranowy podgląd plakatu, renderowany przez portal do document.body —
+ * omija stacking context stron ze strony szczegółów (hero z transform/sticky
+ * potrafi "przebić się" nad zwykłym z-index, portal to trwale rozwiązuje). */
 export default function PosterModal({ src, onClose }: PosterModalProps) {
-  return (
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  if (!mounted) return null
+
+  return createPortal(
     <div
-      className="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black z-[9999] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <img
@@ -25,6 +34,7 @@ export default function PosterModal({ src, onClose }: PosterModalProps) {
       >
         ✕
       </button>
-    </div>
+    </div>,
+    document.body
   )
 }

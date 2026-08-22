@@ -5,6 +5,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useFavorites } from '@/hooks/useFavorites'
+import PosterModal from '@/components/PosterModal'
 
 interface Event {
   id: string
@@ -206,19 +207,6 @@ async function geocodeCity(query: string): Promise<[number, number] | null> {
   }
 }
 
-function PosterModal({ src, onClose }: { src: string; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center p-4" onClick={onClose}>
-      <img src={src} alt="Plakat"
-        className="max-h-[88vh] max-w-full object-contain rounded-xl"
-        onClick={e => e.stopPropagation()} />
-      <button onClick={onClose}
-        className="absolute top-5 right-5 w-9 h-9 bg-zinc-800 rounded-full flex items-center justify-center text-white">
-        ✕
-      </button>
-    </div>
-  )
-}
 
 function CityDropdown({ city, onClose, onSelectGPS, onSelectCity, radius, onSetRadius }: {
   city: string; onClose: () => void

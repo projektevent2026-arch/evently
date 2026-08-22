@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MapPin, Users, Heart, Eye } from "lucide-react"
 import EventImage from "@/components/EventImage"
+import PosterModal from "@/components/PosterModal"
 import { useFavorites } from "@/hooks/useFavorites"
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -68,27 +69,6 @@ function getTime(start_time?: string | null): string | null {
   return start_time.slice(0, 5)
 }
 
-function PosterModal({ src, onClose }: { src: string; onClose: () => void }) {
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose() }}
-    >
-      <img
-        src={src}
-        alt="Plakat"
-        className="max-h-[88vh] max-w-full rounded-xl object-contain"
-        onClick={(e) => e.stopPropagation()}
-      />
-      <button
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose() }}
-        className="absolute right-5 top-5 flex size-9 items-center justify-center rounded-full bg-zinc-800 text-white"
-      >
-        ✕
-      </button>
-    </div>
-  )
-}
 
 export function EventCard({ event, initialGoing = false }: { event: EventData; initialGoing?: boolean }) {
   const [posterSrc, setPosterSrc] = useState<string | null>(null)
