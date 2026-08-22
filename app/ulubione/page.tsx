@@ -179,7 +179,7 @@ function EventTile({ event, onRemove }: { event: Event; onRemove: (id: string) =
 }
 
 export default function UlubionePage() {
-  const { favorites, loaded, toggleFavorite } = useFavorites()
+  const { favorites, loaded, toggleFavorite, pruneFavorites } = useFavorites()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -201,6 +201,9 @@ export default function UlubionePage() {
           .order('start_date', { ascending: true })
         if (error) throw error
         setEvents(data ?? [])
+        // Wyczyść localStorage z ID eventów, które już nie istnieją w bazie —
+        // żeby licznik w BottomNav zgadzał się z tym, co strona faktycznie pokazuje.
+        pruneFavorites((data ?? []).map(e => e.id))
       } catch (err) {
         console.error('[Evently] Nie udało się pobrać ulubionych:', err)
         setEvents([])
