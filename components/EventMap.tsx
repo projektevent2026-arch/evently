@@ -268,6 +268,8 @@ export default function EventMap() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const effectiveCenter = urlCenter ?? userPosition
+
   const filtered = useMemo(() => {
     return events.filter(ev => {
       if (urlTime === 'dzis'    && !isToday(ev.next_date))       return false
@@ -279,12 +281,12 @@ export default function EventMap() {
         const hay = `${ev.title} ${ev.venue_name ?? ''}`.toLowerCase()
         if (!hay.includes(urlQ)) return false
       }
-      if (!isNaN(urlRadius) && urlRadius > 0 && hasLocation) {
-        if (haversineKm(urlLat, urlLng, ev.latitude, ev.longitude) > urlRadius) return false
+      if (!isNaN(urlRadius) && urlRadius > 0 && effectiveCenter) {
+        if (haversineKm(effectiveCenter[0], effectiveCenter[1], ev.latitude, ev.longitude) > urlRadius) return false
       }
       return true
     })
-  }, [events, urlTime, activeCategories, urlQ, urlRadius, urlLat, urlLng, hasLocation, customDate])
+  }, [events, urlTime, activeCategories, urlQ, urlRadius, effectiveCenter, customDate])
 
   useEffect(() => {
     const mcg = markerGroupRef.current
