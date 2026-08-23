@@ -65,5 +65,19 @@ export function useFavorites() {
     setFavorites(next)
   }, [])
 
-  return { favorites, isFavorite, toggleFavorite, loaded, count: favorites.length }
+  // Czyści localStorage z ID, które nie odpowiadają już żadnemu istniejącemu
+  // eventowi (np. event fizycznie usunięty z bazy) — używane przez /ulubione
+  // po pobraniu danych, żeby licznik w BottomNav zgadzał się z tym, co strona
+  // faktycznie pokazuje.
+  const pruneFavorites = useCallback((validIds: (string | number)[]) => {
+    const validSet = new Set(validIds.map(String))
+    const current = readFavorites()
+    const next = current.filter(id => validSet.has(id))
+    if (next.length !== current.length) {
+      writeFavorites(next)
+      setFavorites(next)
+    }
+  }, [])
+
+  return { favorites, isFavorite, toggleFavorite, pruneFavorites, loaded, count: favorites.length }
 }
