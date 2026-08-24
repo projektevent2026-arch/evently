@@ -137,14 +137,14 @@ function isOnDate(d: string, target: string) {
 export default function EventMap() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const [userPosition, setUserPosition] = useState<[number, number] | null>(null)
 
   const urlLat    = parseFloat(searchParams.get('lat')    ?? '')
   const urlLng    = parseFloat(searchParams.get('lng')    ?? '')
   const urlRadius = parseFloat(searchParams.get('radius') ?? '')
   const urlTime   = (searchParams.get('time') ?? 'wszystkie') as TimeFilter
   const urlQ      = (searchParams.get('q') ?? '').toLowerCase().trim()
-  const hasLocation = !isNaN(urlLat) && !isNaN(urlLng)
-
+  const hasLocation = (!isNaN(urlLat) && !isNaN(urlLng)) || userPosition !== null
   const urlCenter = useMemo<[number, number] | null>(() => {
     return hasLocation ? [urlLat, urlLng] : null
   }, [urlLat, urlLng, hasLocation])
@@ -166,7 +166,6 @@ export default function EventMap() {
 
   const [events,       setEvents]       = useState<Event[]>([])
   const [loading,      setLoading]      = useState(true)
-  const [userPosition, setUserPosition] = useState<[number, number] | null>(null)
   const [locInput,     setLocInput]     = useState('')
   const [locResults,   setLocResults]   = useState<GeoResult[]>([])
   const [locLoading,   setLocLoading]   = useState(false)
