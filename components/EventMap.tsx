@@ -281,12 +281,13 @@ export default function EventMap() {
         const hay = `${ev.title} ${ev.venue_name ?? ''}`.toLowerCase()
         if (!hay.includes(urlQ)) return false
       }
-      if (!isNaN(urlRadius) && urlRadius > 0 && effectiveCenter) {
-        if (haversineKm(effectiveCenter[0], effectiveCenter[1], ev.latitude, ev.longitude) > urlRadius) return false
+      const effectiveRadius = !isNaN(urlRadius) && urlRadius > 0 ? urlRadius : radiusValue
+      if (effectiveRadius > 0 && effectiveCenter) {
+        if (haversineKm(effectiveCenter[0], effectiveCenter[1], ev.latitude, ev.longitude) > effectiveRadius) return false
       }
       return true
     })
-  }, [events, urlTime, activeCategories, urlQ, urlRadius, effectiveCenter, customDate])
+  }, [events, urlTime, activeCategories, urlQ, urlRadius, effectiveCenter, customDate, radiusValue])
 
   useEffect(() => {
     const mcg = markerGroupRef.current
