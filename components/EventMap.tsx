@@ -270,6 +270,7 @@ export default function EventMap() {
   const effectiveCenter = urlCenter ?? userPosition
 
   const filtered = useMemo(() => {
+    console.log('[DEBUG-FILTER]', { urlRadius, hasLocation, effectiveCenter, radiusValue, eventsCount: events.length })
     return events.filter(ev => {
       if (urlTime === 'dzis'    && !isToday(ev.next_date))       return false
       if (urlTime === 'jutro'   && !isTomorrow(ev.next_date))    return false
