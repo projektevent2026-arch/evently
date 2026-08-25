@@ -470,6 +470,7 @@ export default function EventMap() {
                     type="text"
                     value={locInput}
                     onChange={e => { setLocInput(e.target.value); setLocResults([]) }}
+                    onFocus={() => { if (locInput === 'Moja lokalizacja') setLocInput('') }}
                     onKeyDown={handleLocKeyDown}
                     placeholder="Wpisz miasto i naciśnij Enter..."
                     className="w-full pl-8 pr-8 py-1.5 rounded-full text-sm border border-gray-200 bg-white
