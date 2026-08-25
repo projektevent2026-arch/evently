@@ -213,17 +213,10 @@ export default function EventMap() {
         setLoading(false)
       })
       .catch(() => setLoading(false))
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => setUserPosition([pos.coords.latitude, pos.coords.longitude]),
-        () => {},
-        { maximumAge: 0, enableHighAccuracy: true, timeout: 10000 }
-      )
-    }
   }, [])
 
   useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return
     if (!mapRef.current || mapInstanceRef.current) return
 
     async function initMap() {
