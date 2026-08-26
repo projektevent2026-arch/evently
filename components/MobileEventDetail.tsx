@@ -398,8 +398,8 @@ const endClock = fmtClock(event.end_date)
                   <div className="text-[11px] text-zinc-500 mt-0.5">{event.city}</div>
                 )}
               </div>
-              <a
-                href={mapsUrl}
+              
+              <a  href={mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[11px] font-bold text-black bg-green-500 px-3 py-2 rounded-lg flex items-center gap-1.5"
@@ -407,6 +407,15 @@ const endClock = fmtClock(event.end_date)
                 Nawiguj
               </a>
             </div>
+
+            {event.location_notes && (
+              <div className="mt-3 bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex gap-2.5">
+                <span className="text-[13px] flex-shrink-0">ℹ️</span>
+                <p className="text-[12px] text-zinc-300 leading-relaxed whitespace-pre-line">
+                  {event.location_notes}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

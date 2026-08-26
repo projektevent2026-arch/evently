@@ -35,6 +35,7 @@ const emptyForm = {
   organizer_name: "", organizer_email: "",
   price_from: "0", is_free: true,
   latitude: "", longitude: "",
+  location_notes: "",
   schedule: [] as any[],
 }
 
@@ -241,6 +242,7 @@ try {
       price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
       latitude: form.latitude ? parseFloat(form.latitude) : null,
       longitude: form.longitude ? parseFloat(form.longitude) : null,
+      location_notes: form.location_notes.trim() || null,
       schedule: form.schedule && form.schedule.length ? form.schedule : null,
       status: "pending",
     }]).select("id").single()
@@ -565,6 +567,13 @@ try {
                 longitude={form.longitude}
                 onChange={(lat, lng) => setForm(prev => ({...prev, latitude: lat, longitude: lng}))}
               />
+
+              <div>
+                <label style={lbl}>Ważne informacje o dojeździe <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie)</span></label>
+                <textarea name="location_notes" value={form.location_notes} onChange={handleChange}
+                  placeholder="np. Parking płatny, wjazd od ul. Kościuszki" style={{...inp,height:70,resize:"vertical"}} maxLength={300} />
+                <div style={counter}>{form.location_notes.length}/300</div>
+              </div>
 
               <div style={{display:"flex",justifyContent:"space-between"}}>
                 <button type="button" onClick={() => setActiveTab("schedule")} style={backBtn}>← Wstecz</button>
