@@ -359,7 +359,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </div>
 
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
-            <div style={{background:"white",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
+          <div style={{background:"white",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
               <div style={{height:220,overflow:"hidden"}}>
                 <EventMap city={event.city} location={event.address} latitude={event.latitude} longitude={event.longitude} />
               </div>
@@ -372,6 +372,14 @@ export default function EventPageClient({ slug }: { slug: string }) {
                   <Navigation size={13} /> Jak dojechac
                 </a>
               </div>
+              {event.location_notes && (
+                <div style={{padding:"14px 20px",borderTop:"1px solid #f3f4f6",display:"flex",gap:10}}>
+                  <span style={{fontSize:14,flexShrink:0}}>ℹ️</span>
+                  <p style={{fontSize:13,color:"#4b5563",lineHeight:1.6,margin:0,whiteSpace:"pre-line"}}>
+                    {event.location_notes}
+                  </p>
+                </div>
+              )}
             </div>
 
             {event.organizer_name && (
