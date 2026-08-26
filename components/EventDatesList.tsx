@@ -70,6 +70,9 @@ export default function EventDatesList({
 
   return (
     <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 10, color: "#888", padding: "2px 4px" }}>
+  build: 2026-08-25-v2
+</div>
       <button
         type="button"
         onClick={() => setSectionExpanded(e => !e)}
