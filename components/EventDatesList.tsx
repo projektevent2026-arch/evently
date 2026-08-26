@@ -21,7 +21,6 @@
 import { useState } from "react"
 import type { EventDateRow } from "@/lib/getEventWithDates"
 
-const BUILD_PROBE_2026_08_25 = true
 const MONTHS_PL_SHORT = ["STY","LUT","MAR","KWI","MAJ","CZE","LIP","SIE","WRZ","PAŹ","LIS","GRU"]
 const INITIAL_VISIBLE = 5
 
@@ -71,9 +70,6 @@ export default function EventDatesList({
 
   return (
     <div style={{ marginBottom: 20 }}>
-      <div style={{ background: "red", color: "white", padding: 8, fontWeight: 700 }}>
-  PROBE-847291
-</div>
       <button
         type="button"
         onClick={() => setSectionExpanded(e => !e)}
