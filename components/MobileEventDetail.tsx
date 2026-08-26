@@ -263,10 +263,6 @@ const endClock = fmtClock(event.end_date)
           <h1 className="text-[22px] font-black leading-tight tracking-tight mb-1.5">
             {event.title}
           </h1>
-          <p className="text-[11px] text-zinc-300 mb-2.5 whitespace-pre-line">
-            📅 {fmt(event.start_date)}{timeLabel ? ` • ${timeLabel}` : ''}
-            {event.city ? `\n📍 ${event.venue_name || event.address || event.city}` : ''}
-          </p>
 
           {/* RSVP („Idę" + licznik + awatary) UKRYTE — wymaga kont/logowania (tier D). */}
         </div>
