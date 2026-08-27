@@ -195,7 +195,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
         .detail-item:last-child { border-bottom:none; padding-bottom:0; }
         .detail-icon-wrap { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:17px; }
         .info-bar { display:flex; align-items:center; gap:0; background:white; border-bottom:1px solid #e5e7eb; overflow-x:auto; }
-        .info-bar-item { display:flex; align-items:center; gap:10px; padding:16px 24px; border-right:1px solid #f3f4f6; flex-shrink:0; }
+        .info-bar-item { display:flex; align-items:center; gap:8px; padding:10px 20px; border-right:1px solid #f3f4f6; flex-shrink:0; }
         .info-bar-item:last-child { border-right:none; margin-left:auto; }
         .event-layout { display:grid; grid-template-columns:1fr 360px; gap:28px; align-items:start; }
         .similar-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
@@ -263,8 +263,8 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
       <div className="info-bar">
         <div className="info-bar-item">
-          <div style={{width:36,height:36,borderRadius:10,background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-            <Calendar size={16} color="#3b82f6" />
+          <div style={{width:30,height:30,borderRadius:10,background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <Calendar size={14} color="#3b82f6" />
           </div>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{dateRange(event.start_date, event.end_date)}</div>
@@ -274,8 +274,8 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </div>
         </div>
         <div className="info-bar-item">
-          <div style={{width:36,height:36,borderRadius:10,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-            <Clock size={16} color="#16a34a" />
+          <div style={{width:30,height:30,borderRadius:10,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <Clock size={14} color="#16a34a" />
           </div>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{timeLabel || "—"}</div>
@@ -285,8 +285,8 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </div>
         </div>
         <div className="info-bar-item">
-          <div style={{width:36,height:36,borderRadius:10,background:"#fff7ed",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-            <MapPin size={16} color="#f97316" />
+          <div style={{width:30,height:30,borderRadius:10,background:"#fff7ed",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <MapPin size={14} color="#f97316" />
           </div>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{event.venue_name||event.address||event.city}</div>
@@ -294,8 +294,8 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </div>
         </div>
         <div className="info-bar-item">
-          <div style={{width:36,height:36,borderRadius:10,background:"#fef9f0",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-            <Ticket size={16} color="#f59e0b" />
+          <div style={{width:30,height:30,borderRadius:10,background:"#fef9f0",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <Ticket size={14} color="#f59e0b" />
           </div>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:event.is_free?"#16a34a":"#111827"}}>
