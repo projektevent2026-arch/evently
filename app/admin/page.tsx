@@ -38,6 +38,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
 
 export default function AdminPage() {
   const [events, setEvents] = useState<any[]>([])
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
   const [catFilter, setCatFilter] = useState("all")
   const [search, setSearch] = useState("")
@@ -47,7 +49,7 @@ export default function AdminPage() {
   useEffect(() => { fetchEvents() }, [])
 
   async function fetchEvents() {
-    const { data } = await supabase.from("events").select("*").order("start_date", { ascending: false })
+    const { data } = await supabase.from("events").select("*, event_dates(date)").order("start_date", { ascending: false })
     setEvents(data || [])
   }
 
@@ -79,7 +81,7 @@ export default function AdminPage() {
     fetchEvents()
   }
   const handleDuplicate = async (event: any) => {
-    const { id, created_at, ...rest } = event
+    const { id, created_at, event_dates, ...rest } = event
     const copy = {
       ...rest,
       title: (event.title || "") + " (kopia)",
@@ -97,6 +99,13 @@ export default function AdminPage() {
   const filtered = events
     .filter(e => filterStatus === "all" || e.status === filterStatus)
     .filter(e => catFilter === "all" || normalizeCategory(e.category) === catFilter)
+    .filter(e => {
+      if (!dateFrom && !dateTo) return true
+      const dates: string[] = (e.event_dates && e.event_dates.length > 0)
+        ? e.event_dates.map((d: any) => d.date)
+        : (e.start_date ? [e.start_date.slice(0, 10)] : [])
+      return dates.some(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo))
+    })
     .filter(e => {
       const q = norm(search.trim())
       if (!q) return true
@@ -204,6 +213,11 @@ export default function AdminPage() {
                 <button onClick={() => setSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 18, lineHeight: 1 }}>×</button>
               )}
             </div>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              style={{ padding: "0.7rem 0.6rem", borderRadius: 10, border: "1px solid #e5e7eb", fontSize: "0.85rem", background: "white", color: "#111827" }} />
+            <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>–</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              style={{ padding: "0.7rem 0.6rem", borderRadius: 10, border: "1px solid #e5e7eb", fontSize: "0.85rem", background: "white", color: "#111827" }} />
             <select value={sortBy} onChange={e => setSortBy(e.target.value)}
               style={{ padding: "0.7rem 0.85rem", borderRadius: 10, border: "1px solid #e5e7eb", fontSize: "0.9rem", background: "white", color: "#111827", cursor: "pointer" }}>
               <option value="date_desc">Data: od najnowszych</option>
