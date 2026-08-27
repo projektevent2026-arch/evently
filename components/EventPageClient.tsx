@@ -422,7 +422,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
                 <div>
                   <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,marginBottom:2,textTransform:"uppercase",letterSpacing:0.5}}>Data</div>
                   <div style={{fontSize:14,fontWeight:600,color:"#111827"}}>{fmt(event.start_date)}</div>
-                  {event.end_date && event.end_date!==event.start_date && <div style={{fontSize:13,color:"#6b7280",marginTop:1}}>do {fmt(event.end_date)}</div>}
+                  {isMultiDay(event.start_date, event.end_date) && <div style={{fontSize:13,color:"#6b7280",marginTop:1}}>do {fmt(event.end_date)}</div>}
                 </div>
               </div>
               <div className="detail-item">
