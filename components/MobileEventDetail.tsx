@@ -77,6 +77,22 @@ function weekdayName(d?: string): string {
   const dt = new Date(d.slice(0, 10) + 'T12:00:00')
   return dt.toLocaleDateString('pl-PL', { weekday: 'long' })
 }
+// Czas trwania jednodniowego eventu na podstawie godzin start/end. "1 h 30 min",
+// samo "2 h" gdy pełne godziny, puste gdy brak jednej z godzin.
+function durationLabel(startTs?: string | null, endTs?: string | null): string {
+  const s = fmtClock(startTs)
+  const e = fmtClock(endTs)
+  if (!s || !e) return ''
+  const [sh, sm] = s.split(':').map(Number)
+  const [eh, em] = e.split(':').map(Number)
+  let mins = (eh * 60 + em) - (sh * 60 + sm)
+  if (mins <= 0) return ''
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  if (h === 0) return `${m} min`
+  if (m === 0) return `${h} h`
+  return `${h} h ${m} min`
+}
 
 // Godzina wyciągana ze stringa timestamptz (start_date/end_date), BEZ new Date,
 // żeby nie przeliczać stref. "2026-07-25 16:00:00+00" -> "16:00".
@@ -283,18 +299,17 @@ const endClock = fmtClock(event.end_date)
 
       {/* ── INFO BAR ── */}
       <div className="flex bg-zinc-950 border-b border-zinc-800 overflow-x-auto scrollbar-hide">
-        {[
-          { icon: '📅', label: 'Data', value: dateRange(event.start_date, event.end_date) || '—', subtext: !isMultiDay(event.start_date, event.end_date) ? weekdayName(event.start_date) : '' },
-          { icon: '⏰', label: 'Godzina', value: timeLabel || '—' },
-          { icon: '📍', label: 'Lokalizacja', value: event.city || event.address || '—' },
-          { icon: '🎟️', label: 'Wstęp', value: event.is_free ? 'Wolny' : event.price_from ? `Od ${event.price_from} PLN` : '—', green: event.is_free },
+      {[
+          { icon: '📅', value: dateRange(event.start_date, event.end_date) || '—', subtext: !isMultiDay(event.start_date, event.end_date) ? weekdayName(event.start_date) : '' },
+          { icon: '⏰', value: timeLabel || '—', subtext: !isMultiDay(event.start_date, event.end_date) ? durationLabel(event.start_date, event.end_date) : '' },
+          { icon: '📍', value: event.city || event.address || '—' },
+          { icon: '🎟️', value: event.is_free ? 'Wolny' : event.price_from ? `Od ${event.price_from} PLN` : '—', green: event.is_free },
         ].map((item, i) => (
           <div key={i} className="flex items-center gap-2 px-3 py-2.5 border-r border-zinc-800 flex-shrink-0 last:border-r-0">
             <div className="w-7 h-7 rounded-lg bg-zinc-800 flex items-center justify-center text-[11px] flex-shrink-0">
               {item.icon}
             </div>
             <div>
-              <div className="text-[8px] text-zinc-500 uppercase tracking-wide">{item.label}</div>
               <div className={`text-[11px] font-bold ${item.green ? 'text-green-400' : 'text-white'}`}>
                 {item.value}
               </div>
