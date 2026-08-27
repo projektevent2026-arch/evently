@@ -65,6 +65,19 @@ function dateRange(start?: string, end?: string): string {
   return `${fmt(start)} – ${fmt(e)}`
 }
 
+// Sprawdza czy event trwa więcej niż jeden dzień (porównanie samych dat, bez godzin).
+function isMultiDay(start?: string, end?: string): boolean {
+  if (!start || !end) return false
+  return start.slice(0, 10) !== end.slice(0, 10)
+}
+
+// Nazwa dnia tygodnia — tylko dla eventów jednodniowych (patrz isMultiDay powyżej).
+function weekdayName(d?: string): string {
+  if (!d) return ''
+  const dt = new Date(d.slice(0, 10) + 'T12:00:00')
+  return dt.toLocaleDateString('pl-PL', { weekday: 'long' })
+}
+
 // Godzina wyciągana ze stringa timestamptz (start_date/end_date), BEZ new Date,
 // żeby nie przeliczać stref. "2026-07-25 16:00:00+00" -> "16:00".
 // (Kolumny start_time/end_time nie istnieją — godzina siedzi w start_date.)
@@ -271,7 +284,7 @@ const endClock = fmtClock(event.end_date)
       {/* ── INFO BAR ── */}
       <div className="flex bg-zinc-950 border-b border-zinc-800 overflow-x-auto scrollbar-hide">
         {[
-          { icon: '📅', label: 'Data', value: dateRange(event.start_date, event.end_date) || '—' },
+          { icon: '📅', label: 'Data', value: dateRange(event.start_date, event.end_date) || '—', subtext: !isMultiDay(event.start_date, event.end_date) ? weekdayName(event.start_date) : '' },
           { icon: '⏰', label: 'Godzina', value: timeLabel || '—' },
           { icon: '📍', label: 'Lokalizacja', value: event.city || event.address || '—' },
           { icon: '🎟️', label: 'Wstęp', value: event.is_free ? 'Wolny' : event.price_from ? `Od ${event.price_from} PLN` : '—', green: event.is_free },
@@ -285,6 +298,9 @@ const endClock = fmtClock(event.end_date)
               <div className={`text-[11px] font-bold ${item.green ? 'text-green-400' : 'text-white'}`}>
                 {item.value}
               </div>
+              {item.subtext && (
+                <div className="text-[9px] text-zinc-500 mt-0.5">{item.subtext}</div>
+              )}
             </div>
           </div>
         ))}
