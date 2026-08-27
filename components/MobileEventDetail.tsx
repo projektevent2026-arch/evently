@@ -305,8 +305,8 @@ const endClock = fmtClock(event.end_date)
           { icon: '📍', value: event.city || event.address || '—' },
           { icon: '🎟️', value: event.is_free ? 'Wolny' : event.price_from ? `Od ${event.price_from} PLN` : '—', green: event.is_free },
         ].map((item, i) => (
-          <div key={i} className="flex items-center gap-2 px-3 py-2 border-r border-zinc-800 flex-shrink-0 last:border-r-0">
-            <div className="w-7 h-7 rounded-lg bg-zinc-800 flex items-center justify-center text-[11px] flex-shrink-0">
+          <div key={i} className="flex items-center gap-1.5 px-2 py-1.5 border-r border-zinc-800 flex-shrink-0 last:border-r-0">
+            <div className="w-6 h-6 rounded-lg bg-zinc-800 flex items-center justify-center text-[10px] flex-shrink-0">
               {item.icon}
             </div>
             <div>
