@@ -18,7 +18,6 @@ const CATEGORY_LABELS: Record<string,string> = {
   sport:"Sport", family:"Rodzinne", technology:"Technologia", festiwal:"Festiwal"
 }
 
-// Zamienia URL-e w opisie na klikalne linki (parytet z wersją mobilną).
 function linkify(text: string) {
   const parts = text.split(/(https?:\/\/[^\s]+|www\.[^\s]+)/g)
   return parts.map((part, i) => {
@@ -37,7 +36,6 @@ function linkify(text: string) {
   })
 }
 
-// Escapowanie tekstu do formatu .ics (przecinki, średniki, nowe linie).
 function icsEscape(s: string) {
   return String(s || "")
     .replace(/\\/g, "\\\\")
@@ -46,9 +44,6 @@ function icsEscape(s: string) {
     .replace(/\r?\n/g, "\\n")
 }
 
-// Generuje i pobiera plik .ics dla wydarzenia. Godzina bierze się ze start_time/end_time
-// jako czas LOKALNY (bez Z) -> 20:00 zostaje 20:00 w kalendarzu usera.
-// To działa w Google/Apple/Outlook Calendar i daje darmowe przypomnienie (bez push).
 function downloadIcs(event: any) {
   const startDate = (event.start_date || "").slice(0, 10).replace(/-/g, "")
   if (!startDate) return
@@ -62,9 +57,9 @@ function downloadIcs(event: any) {
   if (startT) {
     timeLines = [`DTSTART:${startDate}T${startT}00`]
     if (endT) timeLines.push(`DTEND:${endDate}T${endT}00`)
-    else timeLines.push("DURATION:PT2H") // brak końca -> domyślnie 2h
+    else timeLines.push("DURATION:PT2H")
   } else {
-    timeLines = [`DTSTART;VALUE=DATE:${startDate}`, "DURATION:P1D"] // całodniowe
+    timeLines = [`DTSTART;VALUE=DATE:${startDate}`, "DURATION:P1D"]
   }
 
   const loc = [event.venue_name, event.address, event.city].filter(Boolean).join(", ")
@@ -111,7 +106,6 @@ export default function EventPageClient({ slug }: { slug: string }) {
       const data = await getEventWithDates(slug, isPreview)
       if (data) {
         setEvent(data)
-        // Pobieranie RSVP (licznik / kto idzie) usunięte — wraca w tier D razem z kontami.
         const { data: similar } = await supabase.from("events").select("*").eq("status","published").neq("id", data.id).limit(4)
         setSimilarEvents(similar || [])
       }
@@ -127,8 +121,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
   const fmt = (d:string) => d ? new Date(d).toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long",year:"numeric"}) : ""
   const fmtDate = (d:string) => d ? new Date(d).toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"}) : ""
-  
-  // Zakres dat dla wielodniowych: "25–26 lipca 2026" gdy ten sam miesiąc.
+
   const dateRange = (start?: string, end?: string): string => {
     if (!start) return ""
     const s = start.slice(0, 10)
@@ -139,9 +132,33 @@ export default function EventPageClient({ slug }: { slug: string }) {
     }
     return `${fmtDate(s)} – ${fmtDate(e)}`
   }
-// Godzina wyciągana ze start_date / end_date (timestamp "2026-07-25T16:00:00+00").
-  // Bierzemy część po "T", pierwsze 5 znaków (HH:MM) — BEZ new Date, żeby strefa
-  // czasowa nie przesuwała godziny. 16:00 zostaje 16:00.
+
+  function isMultiDay(start?: string, end?: string): boolean {
+    if (!start || !end) return false
+    return start.slice(0, 10) !== end.slice(0, 10)
+  }
+
+  function weekdayName(d?: string): string {
+    if (!d) return ''
+    const dt = new Date(d.slice(0, 10) + 'T12:00:00')
+    return dt.toLocaleDateString('pl-PL', { weekday: 'long' })
+  }
+
+  function durationLabel(startTs?: string | null, endTs?: string | null): string {
+    const s = clockFromTimestamp(startTs)
+    const e = clockFromTimestamp(endTs)
+    if (!s || !e) return ''
+    const [sh, sm] = s.split(':').map(Number)
+    const [eh, em] = e.split(':').map(Number)
+    let mins = (eh * 60 + em) - (sh * 60 + sm)
+    if (mins <= 0) return ''
+    const h = Math.floor(mins / 60)
+    const m = mins % 60
+    if (h === 0) return `${m} min`
+    if (m === 0) return `${h} h`
+    return `${h} h ${m} min`
+  }
+
   const clockFromTimestamp = (ts?: string | null): string => {
     if (!ts) return ""
     const t = String(ts)
@@ -200,7 +217,6 @@ export default function EventPageClient({ slug }: { slug: string }) {
         </div>
       )}
 
-      {/* HERO */}
       <div style={{position:"relative", height:"min(500px, 45vw)", minHeight:300, overflow:"hidden"}}>
       <EventHero src={event.cover_image_url || "/images/event-concert.jpg"} alt={event.title} />
 
@@ -230,8 +246,6 @@ export default function EventPageClient({ slug }: { slug: string }) {
               {event.short_description}
             </p>
           )}
-          {/* RSVP („Idę" + licznik zainteresowanych + awatary) UKRYTE — wymaga kont (tier D).
-              Zostają: Udostępnij + Plakat. */}
           <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",flexWrap:"wrap",gap:12}}>
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
               <button onClick={handleShare} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"11px 18px",background:"transparent",backdropFilter:"blur(12px)",color:"white",border:"2px solid rgba(255,255,255,0.45)",borderRadius:26,fontSize:15,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
@@ -247,15 +261,16 @@ export default function EventPageClient({ slug }: { slug: string }) {
         </div>
       </div>
 
-      {/* PASEK INFO */}
       <div className="info-bar">
         <div className="info-bar-item">
           <div style={{width:36,height:36,borderRadius:10,background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <Calendar size={16} color="#3b82f6" />
           </div>
           <div>
-            <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,textTransform:"uppercase",letterSpacing:0.5}}>Data</div>
             <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{dateRange(event.start_date, event.end_date)}</div>
+            {!isMultiDay(event.start_date, event.end_date) && (
+              <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>{weekdayName(event.start_date)}</div>
+            )}
           </div>
         </div>
         <div className="info-bar-item">
@@ -263,8 +278,10 @@ export default function EventPageClient({ slug }: { slug: string }) {
             <Clock size={16} color="#16a34a" />
           </div>
           <div>
-            <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,textTransform:"uppercase",letterSpacing:0.5}}>Godzina</div>
             <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{timeLabel || "—"}</div>
+            {!isMultiDay(event.start_date, event.end_date) && durationLabel(event.start_date, event.end_date) && (
+              <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>{durationLabel(event.start_date, event.end_date)}</div>
+            )}
           </div>
         </div>
         <div className="info-bar-item">
@@ -272,7 +289,6 @@ export default function EventPageClient({ slug }: { slug: string }) {
             <MapPin size={16} color="#f97316" />
           </div>
           <div>
-            <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,textTransform:"uppercase",letterSpacing:0.5}}>Lokalizacja</div>
             <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{event.venue_name||event.address||event.city}</div>
             {event.city && event.address && <div style={{fontSize:12,color:"#6b7280"}}>{event.city}</div>}
           </div>
@@ -282,7 +298,6 @@ export default function EventPageClient({ slug }: { slug: string }) {
             <Ticket size={16} color="#f59e0b" />
           </div>
           <div>
-            <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,textTransform:"uppercase",letterSpacing:0.5}}>Wstep</div>
             <div style={{fontSize:14,fontWeight:700,color:event.is_free?"#16a34a":"#111827"}}>
               {event.is_free || !event.price_from || event.price_from === 0 ? "Wolny" : `Od ${event.price_from} PLN`}
             </div>
@@ -295,7 +310,6 @@ export default function EventPageClient({ slug }: { slug: string }) {
         </div>
       </div>
 
-      {/* CONTENT */}
       <div style={{maxWidth:1200,margin:"0 auto",padding:"28px 20px 64px"}}>
         <div className="event-layout">
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
@@ -359,7 +373,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </div>
 
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
-          <div style={{background:"white",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
+            <div style={{background:"white",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
               <div style={{height:220,overflow:"hidden"}}>
                 <EventMap city={event.city} location={event.address} latitude={event.latitude} longitude={event.longitude} />
               </div>
