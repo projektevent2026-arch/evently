@@ -45,6 +45,7 @@ export default function AdminPage() {
   const [search, setSearch] = useState("")
   const [sortBy, setSortBy] = useState("date_desc")
   const [previewEvent, setPreviewEvent] = useState<any>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   useEffect(() => { fetchEvents() }, [])
 
@@ -52,6 +53,32 @@ export default function AdminPage() {
     const { data } = await supabase.from("events").select("*, event_dates(date)").order("start_date", { ascending: false })
     setEvents(data || [])
   }
+
+  const norm = (s: string) =>
+    s.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+
+  const filtered = events
+    .filter(e => filterStatus === "all" || e.status === filterStatus)
+    .filter(e => catFilter === "all" || normalizeCategory(e.category) === catFilter)
+    .filter(e => {
+      if (!dateFrom && !dateTo) return true
+      const dates: string[] = (e.event_dates && e.event_dates.length > 0)
+        ? e.event_dates.map((d: any) => d.date)
+        : (e.start_date ? [e.start_date.slice(0, 10)] : [])
+      return dates.some(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo))
+    })
+    .filter(e => {
+      const q = norm(search.trim())
+      if (!q) return true
+      const hay = norm([e.title, e.city, e.venue_name, e.organizer_name].filter(Boolean).join(" "))
+      return q.split(/\s+/).every(w => hay.includes(w))
+    })
+    .sort((a, b) => {
+      if (sortBy === "date_asc") return (a.start_date || "").localeCompare(b.start_date || "")
+      if (sortBy === "title") return (a.title || "").localeCompare(b.title || "", "pl")
+      if (sortBy === "newest") return (b.created_at || "").localeCompare(a.created_at || "")
+      return (b.start_date || "").localeCompare(a.start_date || "")
+    })
 
   const handleEdit = (event: any) => { window.location.href = `/admin/wydarzenia?id=${event.id}` }
 
@@ -93,31 +120,44 @@ export default function AdminPage() {
     fetchEvents()
   }
 
-  const norm = (s: string) =>
-    s.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
-  const filtered = events
-    .filter(e => filterStatus === "all" || e.status === filterStatus)
-    .filter(e => catFilter === "all" || normalizeCategory(e.category) === catFilter)
-    .filter(e => {
-      if (!dateFrom && !dateTo) return true
-      const dates: string[] = (e.event_dates && e.event_dates.length > 0)
-        ? e.event_dates.map((d: any) => d.date)
-        : (e.start_date ? [e.start_date.slice(0, 10)] : [])
-      return dates.some(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo))
-    })
-    .filter(e => {
-      const q = norm(search.trim())
-      if (!q) return true
-      const hay = norm([e.title, e.city, e.venue_name, e.organizer_name].filter(Boolean).join(" "))
-      return q.split(/\s+/).every(w => hay.includes(w))
-    })
-    .sort((a, b) => {
-      if (sortBy === "date_asc") return (a.start_date || "").localeCompare(b.start_date || "")
-      if (sortBy === "title") return (a.title || "").localeCompare(b.title || "", "pl")
-      if (sortBy === "newest") return (b.created_at || "").localeCompare(a.created_at || "")
-      return (b.start_date || "").localeCompare(a.start_date || "")
-    })
+  const selectAll = () => setSelected(new Set(filtered.map(e => e.id)))
+  const clearSelection = () => setSelected(new Set())
+
+  const handleBulkDelete = async () => {
+    const answer = prompt(`Usuwasz ${selected.size} wydarzeń — tej operacji nie da się cofnąć.\nWpisz liczbę ${selected.size}, żeby potwierdzić:`)
+    if (answer === null) return
+    if (answer.trim() !== String(selected.size)) {
+      alert("Liczba się nie zgadza — nic nie usunięto.")
+      return
+    }
+    await supabase.from("events").delete().in("id", Array.from(selected))
+    clearSelection()
+    fetchEvents()
+  }
+  const handleBulkArchive = async () => {
+    await supabase.from("events").update({ status: "archived" }).in("id", Array.from(selected))
+    clearSelection()
+    fetchEvents()
+  }
+  const handleBulkApprove = async () => {
+    await supabase.from("events").update({ status: "published" }).in("id", Array.from(selected))
+    clearSelection()
+    fetchEvents()
+  }
+  const handleBulkRestore = async () => {
+    await supabase.from("events").update({ status: "published" }).in("id", Array.from(selected))
+    clearSelection()
+    fetchEvents()
+  }
 
   const counts = {
     all: events.length,
@@ -227,6 +267,19 @@ export default function AdminPage() {
             </select>
           </div>
           <p style={{ fontSize: "0.8rem", color: "#6b7280", margin: "0 0 12px" }}>{filtered.length} z {events.length}</p>
+          {selected.size > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, marginBottom: 12, flexWrap: "wrap" }}>
+              <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#166534" }}>{selected.size} zaznaczonych</span>
+              <button onClick={handleBulkApprove} style={{ padding: "6px 12px", background: "#16a34a", color: "white", border: "none", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Zatwierdź</button>
+              <button onClick={handleBulkArchive} style={{ padding: "6px 12px", background: "white", color: "#374151", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Archiwizuj</button>
+              <button onClick={handleBulkRestore} style={{ padding: "6px 12px", background: "white", color: "#374151", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Przywróć</button>
+              <button onClick={handleBulkDelete} style={{ padding: "6px 12px", background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Usuń</button>
+              <button onClick={clearSelection} style={{ padding: "6px 12px", background: "none", color: "#9ca3af", border: "none", fontSize: "0.8rem", cursor: "pointer", marginLeft: "auto" }}>Anuluj</button>
+            </div>
+          )}
+          {selected.size === 0 && filtered.length > 0 && (
+            <button onClick={selectAll} style={{ fontSize: "0.8rem", color: "#16a34a", background: "none", border: "none", cursor: "pointer", marginBottom: 12, padding: 0 }}>Zaznacz wszystkie</button>
+          )}
         </div>
 
         {/* KARTY */}
@@ -235,7 +288,9 @@ export default function AdminPage() {
             const cat = normalizeCategory(event.category)
             const st = STATUS_LABELS[event.status]
             return (
-              <div key={event.id} style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, display: "flex", gap: 12 }}>
+              <div key={event.id} style={{ background: "white", border: selected.has(event.id) ? "1px solid #16a34a" : "1px solid #e5e7eb", borderRadius: 12, padding: 12, display: "flex", gap: 12 }}>
+                <input type="checkbox" checked={selected.has(event.id)} onChange={() => toggleSelect(event.id)}
+                  style={{ width: 18, height: 18, marginTop: 4, flexShrink: 0, cursor: "pointer" }} />
                 <img src={event.cover_image_url || event.image_url || "/images/event-concert.jpg"} alt=""
                   style={{ width: 60, height: 78, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "#f3f4f6" }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
