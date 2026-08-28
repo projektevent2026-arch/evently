@@ -144,16 +144,19 @@ export default function AdminPage() {
     fetchEvents()
   }
   const handleBulkArchive = async () => {
+    if (!confirm(`Przenieść ${selected.size} wydarzeń do archiwum?`)) return
     await supabase.from("events").update({ status: "archived" }).in("id", Array.from(selected))
     clearSelection()
     fetchEvents()
   }
   const handleBulkApprove = async () => {
+    if (!confirm(`Zatwierdzić ${selected.size} wydarzeń?`)) return
     await supabase.from("events").update({ status: "published" }).in("id", Array.from(selected))
     clearSelection()
     fetchEvents()
   }
   const handleBulkRestore = async () => {
+    if (!confirm(`Przywrócić ${selected.size} wydarzeń z archiwum?`)) return
     await supabase.from("events").update({ status: "published" }).in("id", Array.from(selected))
     clearSelection()
     fetchEvents()
@@ -274,7 +277,7 @@ export default function AdminPage() {
               <button onClick={handleBulkArchive} style={{ padding: "6px 12px", background: "white", color: "#374151", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Archiwizuj</button>
               <button onClick={handleBulkRestore} style={{ padding: "6px 12px", background: "white", color: "#374151", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Przywróć</button>
               <button onClick={handleBulkDelete} style={{ padding: "6px 12px", background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Usuń</button>
-              <button onClick={clearSelection} style={{ padding: "6px 12px", background: "none", color: "#9ca3af", border: "none", fontSize: "0.8rem", cursor: "pointer", marginLeft: "auto" }}>Anuluj</button>
+              <button onClick={clearSelection} style={{ padding: "6px 12px", background: "none", color: "#9ca3af", border: "none", fontSize: "0.8rem", cursor: "pointer", marginLeft: "auto" }}>Odznacz wszystkie</button>
             </div>
           )}
           {selected.size === 0 && filtered.length > 0 && (
