@@ -270,10 +270,10 @@ export function EventsGrid() {
           <button
             key={d.id}
             onClick={() => { setActiveDate(d.id); setCustomDate("") }}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
+            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               activeDate === d.id
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
             {d.label}
@@ -282,10 +282,10 @@ export function EventsGrid() {
         <button
           type="button"
           onClick={openCalendar}
-          className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
+          className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
             activeDate === "custom"
-              ? "border-primary bg-primary/10 text-primary"
-              : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
           📅 {activeDate === "custom" && customDate
