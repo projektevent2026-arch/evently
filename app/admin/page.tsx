@@ -162,7 +162,7 @@ export default function AdminPage() {
         <div className="admin-list-pad">
           <div className="admin-list-head" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: "1.25rem" }}>
             <div>
-              <h1 style={{ fontSize: "1.5rem", fontWeight: 800, margin: 0 }}>Wydarzenia</h1>
+            <h1 style={{ fontSize: "1.5rem", fontWeight: 800, margin: 0, color: "#111827" }}>Wydarzenia</h1>
               <p style={{ color: "#6b7280", fontSize: "0.9rem", margin: "4px 0 0" }}>Zarządzaj wszystkimi wydarzeniami</p>
             </div>
             <a href="/admin/wydarzenia" className="admin-add-btn" style={{ display: "flex", alignItems: "center", gap: 6, background: "#16a34a", color: "white", borderRadius: 10, padding: "0.75rem 1.1rem", fontWeight: 600, fontSize: "0.95rem", textDecoration: "none", whiteSpace: "nowrap" }}>
