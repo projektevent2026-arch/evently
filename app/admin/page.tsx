@@ -50,7 +50,10 @@ export default function AdminPage() {
   useEffect(() => { fetchEvents() }, [])
 
   async function fetchEvents() {
-    const { data } = await supabase.from("events").select("*, event_dates(date)").order("start_date", { ascending: false })
+    const { data } = await supabase
+      .from("events")
+      .select("*, event_dates(date)")
+      .order("start_date", { ascending: false })
     setEvents(data || [])
   }
 
@@ -58,7 +61,8 @@ export default function AdminPage() {
     s.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
 
   const filtered = events
-    .filter(e => filterStatus === "all" || e.status === filterStatus)
+    .filter(e => filterStatus === "trash" ? e.deleted_at !== null : e.deleted_at === null)
+    .filter(e => filterStatus === "all" || filterStatus === "trash" || e.status === filterStatus)
     .filter(e => catFilter === "all" || normalizeCategory(e.category) === catFilter)
     .filter(e => {
       if (!dateFrom && !dateTo) return true
@@ -103,8 +107,8 @@ export default function AdminPage() {
     fetchEvents()
   }
   const handleDelete = async (id: string) => {
-    if (!confirm("Usunąć wydarzenie?")) return
-    await supabase.from("events").delete().eq("id", id)
+    if (!confirm("Przenieść wydarzenie do kosza?")) return
+    await supabase.from("events").update({ deleted_at: new Date().toISOString() }).eq("id", id)
     fetchEvents()
   }
   const handleDuplicate = async (event: any) => {
@@ -133,13 +137,13 @@ export default function AdminPage() {
   const clearSelection = () => setSelected(new Set())
 
   const handleBulkDelete = async () => {
-    const answer = prompt(`Usuwasz ${selected.size} wydarzeń — tej operacji nie da się cofnąć.\nWpisz liczbę ${selected.size}, żeby potwierdzić:`)
+    const answer = prompt(`Przenosisz ${selected.size} wydarzeń do kosza.\nWpisz liczbę ${selected.size}, żeby potwierdzić:`)
     if (answer === null) return
     if (answer.trim() !== String(selected.size)) {
-      alert("Liczba się nie zgadza — nic nie usunięto.")
+      alert("Liczba się nie zgadza — nic nie przeniesiono.")
       return
     }
-    await supabase.from("events").delete().in("id", Array.from(selected))
+    await supabase.from("events").update({ deleted_at: new Date().toISOString() }).in("id", Array.from(selected))
     clearSelection()
     fetchEvents()
   }
@@ -162,12 +166,39 @@ export default function AdminPage() {
     fetchEvents()
   }
 
+  const handleRestore = async (id: string) => {
+    await supabase.from("events").update({ deleted_at: null }).eq("id", id)
+    fetchEvents()
+  }
+  const handlePermanentDelete = async (id: string) => {
+    if (!confirm("Usunąć na stałe? Tej operacji NIE da się cofnąć.")) return
+    await supabase.from("events").delete().eq("id", id)
+    fetchEvents()
+  }
+  const handleBulkRestoreFromTrash = async () => {
+    await supabase.from("events").update({ deleted_at: null }).in("id", Array.from(selected))
+    clearSelection()
+    fetchEvents()
+  }
+  const handleBulkPermanentDelete = async () => {
+    const answer = prompt(`Usuwasz NA STAŁE ${selected.size} wydarzeń — to jest nieodwracalne.\nWpisz liczbę ${selected.size}, żeby potwierdzić:`)
+    if (answer === null) return
+    if (answer.trim() !== String(selected.size)) {
+      alert("Liczba się nie zgadza — nic nie usunięto.")
+      return
+    }
+    await supabase.from("events").delete().in("id", Array.from(selected))
+    clearSelection()
+    fetchEvents()
+  }
+
   const counts = {
-    all: events.length,
-    pending: events.filter(e => e.status === "pending").length,
-    published: events.filter(e => e.status === "published").length,
-    draft: events.filter(e => e.status === "draft").length,
-    archived: events.filter(e => e.status === "archived").length,
+    all: events.filter(e => e.deleted_at === null).length,
+    pending: events.filter(e => e.status === "pending" && e.deleted_at === null).length,
+    published: events.filter(e => e.status === "published" && e.deleted_at === null).length,
+    draft: events.filter(e => e.status === "draft" && e.deleted_at === null).length,
+    archived: events.filter(e => e.status === "archived" && e.deleted_at === null).length,
+    trash: events.filter(e => e.deleted_at !== null).length,
   }
 
   const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" }) : "—"
@@ -215,7 +246,7 @@ export default function AdminPage() {
 
           {/* Zakładki statusu */}
           <div style={{ display: "flex", gap: "1.25rem", marginBottom: "1rem", borderBottom: "1px solid #e5e7eb", overflowX: "auto", scrollbarWidth: "none" }}>
-            {(["all", "pending", "published", "draft", "archived"] as const).map(val => (
+          {(["all", "pending", "published", "draft", "archived", "trash"] as const).map(val => (
               <button key={val} onClick={() => setFilterStatus(val)} style={{
                 background: "none", border: "none", cursor: "pointer", fontSize: "0.9rem", whiteSpace: "nowrap",
                 fontWeight: filterStatus === val ? 600 : 400,
@@ -223,7 +254,7 @@ export default function AdminPage() {
                 borderBottom: filterStatus === val ? "2px solid #16a34a" : "2px solid transparent",
                 paddingBottom: "0.6rem",
               }}>
-                {val === "all" ? "Wszystkie" : val === "pending" ? "Oczekujące" : val === "published" ? "Opublikowane" : val === "draft" ? "Szkice" : "Archiwum"}
+                               {val === "all" ? "Wszystkie" : val === "pending" ? "Oczekujące" : val === "published" ? "Opublikowane" : val === "draft" ? "Szkice" : val === "archived" ? "Archiwum" : "Kosz"}
                 {" "}<span style={{ fontSize: "0.78rem", color: "#9ca3af" }}>{counts[val]}</span>
               </button>
             ))}
@@ -273,10 +304,19 @@ export default function AdminPage() {
           {selected.size > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, marginBottom: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#166534" }}>{selected.size} zaznaczonych</span>
-              <button onClick={handleBulkApprove} style={{ padding: "6px 12px", background: "#16a34a", color: "white", border: "none", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Zatwierdź</button>
-              <button onClick={handleBulkArchive} style={{ padding: "6px 12px", background: "white", color: "#374151", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Archiwizuj</button>
-              <button onClick={handleBulkRestore} style={{ padding: "6px 12px", background: "white", color: "#374151", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Przywróć</button>
-              <button onClick={handleBulkDelete} style={{ padding: "6px 12px", background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Usuń</button>
+              {filterStatus === "trash" ? (
+                <>
+                  <button onClick={handleBulkRestoreFromTrash} style={{ padding: "6px 12px", background: "#16a34a", color: "white", border: "none", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Przywróć z kosza</button>
+                  <button onClick={handleBulkPermanentDelete} style={{ padding: "6px 12px", background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Usuń na stałe</button>
+                </>
+              ) : (
+                <>
+                  <button onClick={handleBulkApprove} style={{ padding: "6px 12px", background: "#16a34a", color: "white", border: "none", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Zatwierdź</button>
+                  <button onClick={handleBulkArchive} style={{ padding: "6px 12px", background: "white", color: "#374151", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Archiwizuj</button>
+                  <button onClick={handleBulkRestore} style={{ padding: "6px 12px", background: "white", color: "#374151", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Przywróć</button>
+                  <button onClick={handleBulkDelete} style={{ padding: "6px 12px", background: "#fef2f2", color: "#ef4444", border: "1px solid #fecaca", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Do kosza</button>
+                </>
+              )}
               <button onClick={clearSelection} style={{ padding: "6px 12px", background: "none", color: "#9ca3af", border: "none", fontSize: "0.8rem", cursor: "pointer", marginLeft: "auto" }}>Odznacz wszystkie</button>
             </div>
           )}
@@ -324,7 +364,11 @@ export default function AdminPage() {
                     <button onClick={() => setPreviewEvent(event)} title="Podgląd" style={actBtn}><Eye size={16} /></button>
                     <button onClick={() => handleEdit(event)} title="Edytuj" style={actBtn}><Edit size={16} /></button>
                     <button onClick={() => handleDuplicate(event)} title="Duplikuj" style={actBtn}><Copy size={16} /></button>
-                    <button onClick={() => handleDelete(event.id)} title="Usuń" style={{ ...actBtn, color: "#ef4444" }}><Trash2 size={16} /></button>
+                    {filterStatus === "trash" ? (
+                      <button onClick={() => handlePermanentDelete(event.id)} title="Usuń na stałe" style={{ ...actBtn, color: "#ef4444" }}><Trash2 size={16} /></button>
+                    ) : (
+                      <button onClick={() => handleDelete(event.id)} title="Przenieś do kosza" style={{ ...actBtn, color: "#ef4444" }}><Trash2 size={16} /></button>
+                    )}
                   </div>
                 </div>
               </div>
