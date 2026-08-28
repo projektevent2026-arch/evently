@@ -49,6 +49,17 @@ export default function AdminPage() {
 
   useEffect(() => { fetchEvents() }, [])
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+        e.preventDefault()
+        document.getElementById("admin-search-input")?.focus()
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [])
+
   async function fetchEvents() {
     const { data } = await supabase
       .from("events")
@@ -203,6 +214,14 @@ export default function AdminPage() {
 
   const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" }) : "—"
 
+  const daysUntilPurge = (deletedAt: string): number => {
+    const deleted = new Date(deletedAt)
+    const purgeDate = new Date(deleted)
+    purgeDate.setDate(purgeDate.getDate() + 30)
+    const diffMs = purgeDate.getTime() - Date.now()
+    return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+  }
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "system-ui, sans-serif", background: "#f6f8fa" }}>
       <style>{`
@@ -277,10 +296,11 @@ export default function AdminPage() {
           {/* Szukaj + sortowanie */}
           <div style={{ display: "flex", gap: "0.6rem", marginBottom: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
-              <input
+            <input
+                id="admin-search-input"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Szukaj po nazwie, mieście, organizatorze..."
+                placeholder="Szukaj po nazwie, mieście, organizatorze... (/)"
                 style={{ padding: "0.7rem 2rem 0.7rem 0.85rem", borderRadius: 10, border: "1px solid #e5e7eb", fontSize: "0.9rem", width: "100%", boxSizing: "border-box", outline: "none", background: "white", color: "#111827" }}
               />
               {search && (
@@ -340,6 +360,11 @@ export default function AdminPage() {
                   <div style={{ fontWeight: 600, fontSize: "0.98rem", lineHeight: 1.3, marginBottom: 4, color: "#111827" }}>{event.title}</div>
                   <div style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📍 {event.address || event.city || "—"}</div>
                   <div style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 8 }}>📅 {fmtDate(event.start_date)}</div>
+                  {event.deleted_at && (
+                    <div style={{ fontSize: "0.8rem", color: "#ef4444", marginBottom: 8, fontWeight: 600 }}>
+                      🗑️ Usunięto {fmtDate(event.deleted_at)} — na stałe za {daysUntilPurge(event.deleted_at)} {daysUntilPurge(event.deleted_at) === 1 ? "dzień" : "dni"}
+                    </div>
+                  )}
 
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
                     <span style={{ padding: "2px 9px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 600, background: st?.bg || "#f3f4f6", color: st?.color || "#6b7280" }}>
