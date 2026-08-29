@@ -144,6 +144,13 @@ export default function EventPageClient({ slug }: { slug: string }) {
     return dt.toLocaleDateString('pl-PL', { weekday: 'long' })
   }
 
+  const clockFromTimestamp = (ts?: string | null): string => {
+    if (!ts) return ""
+    const t = String(ts)
+    const timePart = t.includes("T") ? t.split("T")[1] : t.split(" ")[1]
+    return timePart ? timePart.slice(0, 5) : ""
+  }
+
   function durationLabel(startTs?: string | null, endTs?: string | null): string {
     const s = clockFromTimestamp(startTs)
     const e = clockFromTimestamp(endTs)
@@ -159,18 +166,33 @@ export default function EventPageClient({ slug }: { slug: string }) {
     return `${h} h ${m} min`
   }
 
-  const clockFromTimestamp = (ts?: string | null): string => {
-    if (!ts) return ""
-    const t = String(ts)
-    const timePart = t.includes("T") ? t.split("T")[1] : t.split(" ")[1]
-    return timePart ? timePart.slice(0, 5) : ""
-  }
   const timeLabel = (() => {
     const s = clockFromTimestamp(event?.start_date)
     const e = clockFromTimestamp(event?.end_date)
     if (!s) return ""
     return (e && e !== s) ? `${s} - ${e}` : s
   })()
+
+  // Dla eventu z wieloma terminami (event_dates.length > 1): najbliższy
+  // NADCHODZĄCY termin + licznik pozostałych. Jeśli WSZYSTKIE terminy już
+  // minęły, pokazujemy ostatni (najnowszy z przeszłych) bez licznika —
+  // lepsze niż pusty pasek.
+  const nextTermInfo = (() => {
+    const allDates = event?.event_dates
+    if (!allDates || allDates.length <= 1) return null
+
+    const today = new Date().toISOString().slice(0, 10)
+    const sorted = [...allDates].sort((a: any, b: any) => a.date.localeCompare(b.date))
+    const upcoming = sorted.filter((d: any) => d.date >= today)
+    const chosen = upcoming.length > 0 ? upcoming[0] : sorted[sorted.length - 1]
+    const remaining = upcoming.length > 0 ? upcoming.length - 1 : 0
+
+    return {
+      label: fmtDate(chosen.date),
+      remaining,
+    }
+  })()
+
   const fmtShort = (d:string) => { if(!d) return {day:"",month:""}; const dt=new Date(d); return {day:dt.getDate(), month:dt.toLocaleDateString("pl-PL",{month:"short"}).toUpperCase()} }
   const isToday = (d:string) => d ? new Date(d).toDateString()===new Date().toDateString() : false
   const isTomorrow = (d:string) => { if(!d) return false; const t=new Date(); t.setDate(t.getDate()+1); return new Date(d).toDateString()===t.toDateString() }
@@ -262,14 +284,24 @@ export default function EventPageClient({ slug }: { slug: string }) {
       </div>
 
       <div className="info-bar">
-        <div className="info-bar-item">
-          <div style={{width:30,height:30,borderRadius:10,background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-            <Calendar size={14} color="#3b82f6" />
+      <div className="info-bar-item">
+          <div style={{width:36,height:36,borderRadius:10,background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <Calendar size={16} color="#3b82f6" />
           </div>
           <div>
-            <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{dateRange(event.start_date, event.end_date)}</div>
-            {!isMultiDay(event.start_date, event.end_date) && (
-              <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>{weekdayName(event.start_date)}</div>
+            <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>
+              {nextTermInfo ? nextTermInfo.label : dateRange(event.start_date, event.end_date)}
+            </div>
+            {nextTermInfo ? (
+              nextTermInfo.remaining > 0 && (
+                <div style={{fontSize:11,color:"#16a34a",fontWeight:600,marginTop:1}}>
+                  + {nextTermInfo.remaining} {nextTermInfo.remaining === 1 ? "kolejny termin" : "kolejne terminy"}
+                </div>
+              )
+            ) : (
+              !isMultiDay(event.start_date, event.end_date) && (
+                <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>{weekdayName(event.start_date)}</div>
+              )
             )}
           </div>
         </div>
