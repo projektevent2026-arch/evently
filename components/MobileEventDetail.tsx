@@ -94,6 +94,18 @@ function durationLabel(startTs?: string | null, endTs?: string | null): string {
   return `${h} h ${m} min`
 }
 
+// Dla eventu z wieloma terminami: najbliższy NADCHODZĄCY termin + licznik
+// pozostałych, zamiast pełnego zakresu "od pierwszego do ostatniego".
+function nextTermInfo(eventDates: any[] | undefined): { label: string; remaining: number } | null {
+  if (!eventDates || eventDates.length <= 1) return null
+  const today = new Date().toISOString().slice(0, 10)
+  const sorted = [...eventDates].sort((a, b) => a.date.localeCompare(b.date))
+  const upcoming = sorted.filter(d => d.date >= today)
+  const chosen = upcoming.length > 0 ? upcoming[0] : sorted[sorted.length - 1]
+  const remaining = upcoming.length > 0 ? upcoming.length - 1 : 0
+  return { label: fmt(chosen.date), remaining }
+}
+
 // Godzina wyciągana ze stringa timestamptz (start_date/end_date), BEZ new Date,
 // żeby nie przeliczać stref. "2026-07-25 16:00:00+00" -> "16:00".
 // (Kolumny start_time/end_time nie istnieją — godzina siedzi w start_date.)
