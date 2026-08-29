@@ -416,11 +416,18 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
   }
 
   const handleSave = async (statusOverride?: string) => {
-    // Walidacja: data startu nie może być z przeszłości (poza szkicem)
-    if (statusOverride !== "draft" && form.start_date && form.start_date < todayStr()) {
-      setMsg("Błąd: Data rozpoczęcia nie może być z przeszłości")
-      setSection("basic")
-      return
+    // Walidacja: przynajmniej JEDEN termin z serii musi być w przyszłości —
+    // nie blokujemy publikacji, jeśli tylko PIERWSZY termin (form.start_date)
+    // już minął, bo eventy cykliczne w trakcie sezonu mają to normalnie
+    // (część terminów już się odbyła, kolejne wciąż nadchodzą).
+    if (statusOverride !== "draft") {
+      const validDates = dates.filter(d => d.date)
+      const hasUpcoming = validDates.some(d => d.date >= todayStr())
+      if (validDates.length > 0 && !hasUpcoming) {
+        setMsg("Błąd: Wszystkie terminy tego wydarzenia są już z przeszłości")
+        setSection("basic")
+        return
+      }
     }
     if (statusOverride !== "draft" && form.end_date && form.start_date && form.end_date < form.start_date) {
       setMsg("Błąd: Data zakończenia nie może być wcześniejsza niż rozpoczęcia")
@@ -710,10 +717,15 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                 <div style={{ fontSize:12, color:"#9ca3af", lineHeight:1.5, margin:"0 0 12px" }}>
                   Jeden termin albo kilka dni — każdy dzień jako osobny termin. Apka rozpozna, czy to impreza jedno- czy kilkudniowa. Godzina "Od" jest wymagana przy publikowaniu.
                 </div>
-                {dates.map((en, i) => (
-                  <div key={i} style={{ background:"white", border:"1px solid #e5e7eb", borderRadius:10, padding:12, marginBottom:10 }}>
+                {dates.map((en, i) => {
+                  const isPast = en.date && en.date < todayStr()
+                  return (
+                  <div key={i} style={{ background: isPast ? "#f9fafb" : "white", border: isPast ? "1px solid #e5e7eb" : "1px solid #e5e7eb", borderRadius:10, padding:12, marginBottom:10, opacity: isPast ? 0.7 : 1 }}>
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-                      <span style={{ fontSize:11, fontWeight:700, color:"#9ca3af", letterSpacing:"0.04em", textTransform:"uppercase" }}>Termin {i+1}</span>
+                      <span style={{ fontSize:11, fontWeight:700, color:"#9ca3af", letterSpacing:"0.04em", textTransform:"uppercase" }}>
+                        Termin {i+1}
+                        {isPast && <span style={{ marginLeft:8, color:"#ef4444", fontWeight:700 }}>· JUŻ MINĄŁ</span>}
+                      </span>
                       <button type="button" disabled={dates.length === 1}
                         onClick={() => applyDates(dates.filter((_, j) => j !== i))}
                         style={{ border:"none", background:"none", color: dates.length === 1 ? "#e5e7eb" : "#ef4444", fontSize:16, cursor: dates.length === 1 ? "default" : "pointer", padding:"2px 4px", lineHeight:1 }}>✕</button>
@@ -733,9 +745,10 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                         <input type="time" value={en.to}
                           onChange={e => applyDates(dates.map((d, j) => j === i ? { ...d, to: e.target.value } : d))} style={inp} />
                       </div>
-                    </div>
+                      </div>
                   </div>
-                ))}
+                  )
+                })}
                 <button type="button"
                   onClick={() => applyDates([...dates, { date:"", from: dates[dates.length-1]?.from || "", to: dates[dates.length-1]?.to || "" }])}
                   style={{ width:"100%", padding:13, border:"1.5px dashed #cbd5e1", borderRadius:10, background:"white", color:"#6b7280", fontSize:14, cursor:"pointer" }}>
