@@ -4,26 +4,45 @@ import { NextRequest, NextResponse } from 'next/server'
 // Nawet z datą w promcie AI potrafi zwrócić rok z przeszłości, gdy plakat nie
 // podaje roku. Jeśli start_date wyszedł przed dzisiaj, a plakat pewnie miał na
 // myśli najbliższą przyszłość, podbijamy rok (o 1, w razie potrzeby o 2).
-function fixPastDate(dateStr: string | null): string | null {
-  if (!dateStr) return dateStr
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.trim())
-  if (!m) return dateStr
-
+// Podbija rok CAŁEJ serii dat naraz, o tyle samo dla każdej — nie osobno dla
+// każdej daty. Jeśli AI zwróciło serię, w której NAJPÓŹNIEJSZA data jest
+// nadal w przeszłości, cała seria jest przesunięta (np. plakat bez roku,
+// AI zgadło zeszłoroczny) — wtedy podbijamy rok wszystkim o tyle samo.
+// Jeśli najpóźniejsza data jest w przyszłości, seria zostaje BEZ ZMIAN,
+// nawet jeśli pojedyncze wcześniejsze daty już minęły (cykliczne wydarzenie
+// w trakcie sezonu — to normalne, nie błąd).
+function fixPastDateSeries(dateStrs: (string | null)[]): (string | null)[] {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  let year = parseInt(m[1], 10)
-  const monthDay = `${m[2]}-${m[3]}`
+  const parsed = dateStrs.map(d => {
+    if (!d) return null
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d.trim())
+    return m ? { year: parseInt(m[1], 10), monthDay: `${m[2]}-${m[3]}` } : null
+  })
 
-  // maks. 2 podbicia (np. 29 lutego -> szukamy najbliższego sensownego roku)
-  for (let i = 0; i < 3; i++) {
-    const candidate = new Date(`${year}-${monthDay}T12:00:00`)
-    if (!isNaN(candidate.getTime()) && candidate >= today) {
-      return `${year}-${monthDay}`
+  const valid = parsed.filter((p): p is { year: number; monthDay: string } => p !== null)
+  if (valid.length === 0) return dateStrs
+
+  const latest = valid.reduce((max, p) => {
+    const d = new Date(`${p.year}-${p.monthDay}T12:00:00`)
+    const maxD = new Date(`${max.year}-${max.monthDay}T12:00:00`)
+    return d > maxD ? p : max
+  })
+  const latestDate = new Date(`${latest.year}-${latest.monthDay}T12:00:00`)
+
+  // Cała najpóźniejsza data serii jest w przeszłości -> cała seria przesunięta,
+  // szukamy najmniejszego wspólnego podbicia roku.
+  let yearOffset = 0
+  if (!isNaN(latestDate.getTime()) && latestDate < today) {
+    for (let i = 1; i <= 3; i++) {
+      const candidate = new Date(`${latest.year + i}-${latest.monthDay}T12:00:00`)
+      if (candidate >= today) { yearOffset = i; break }
+      yearOffset = i
     }
-    year += 1
   }
-  return `${year}-${monthDay}`
+
+  return parsed.map(p => p ? `${p.year + yearOffset}-${p.monthDay}` : null)
 }
 // Wylicza start_date/end_date (dla reszty apki, która jeszcze ich używa)
 // z tablicy dates zwróconej przez AI. Pierwszy/ostatni po posortowaniu.
@@ -171,13 +190,12 @@ Jeśli na plakacie nie ma żadnego programu ani listy atrakcji, zwróć "schedul
     // Pas bezpieczeństwa: podbij rok każdej daty, jeśli AI mimo wszystko
     // zwróciło przeszłość (może się zdarzyć osobno dla każdego wpisu).
     if (Array.isArray(parsed.dates)) {
-      parsed.dates = parsed.dates
-        .filter((d: any) => d && d.date)
-        .map((d: any) => ({ ...d, date: fixPastDate(d.date) }))
+      const validDates = parsed.dates.filter((d: any) => d && d.date)
+      const fixedDateStrs = fixPastDateSeries(validDates.map((d: any) => d.date))
+      parsed.dates = validDates.map((d: any, i: number) => ({ ...d, date: fixedDateStrs[i] }))
     } else {
       parsed.dates = []
     }
-
     // Wyliczamy start_date/end_date dla wstecznej zgodności — reszta
     // formularza (podgląd, itd.) może jeszcze na nie liczyć, dopóki
     // wszystkie miejsca nie przejdą w pełni na tablicę dates.
