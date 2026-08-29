@@ -163,7 +163,7 @@ export function LocationSidebar() {
             type="text"
             value={city}
             onChange={(e) => handleCityChange(e.target.value)}
-            onFocus={(e) => e.target.select()}
+            onFocus={() => setCity("")}
             onKeyDown={(e) => {
               if (e.key === "Enter") { e.preventDefault(); handleCitySearch() }
               if (e.key === "Escape") setShowSuggestions(false)
