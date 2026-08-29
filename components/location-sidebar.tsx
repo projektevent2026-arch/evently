@@ -159,10 +159,11 @@ export function LocationSidebar() {
         <p className="text-xs text-center text-muted-foreground mb-3">lub</p>
 
         <div className="relative">
-          <input
+        <input
             type="text"
             value={city}
             onChange={(e) => handleCityChange(e.target.value)}
+            onFocus={(e) => e.target.select()}
             onKeyDown={(e) => {
               if (e.key === "Enter") { e.preventDefault(); handleCitySearch() }
               if (e.key === "Escape") setShowSuggestions(false)
