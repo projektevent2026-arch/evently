@@ -82,7 +82,7 @@ export function LocationSidebar() {
         params.set("radius", radius.toString())
         params.set("lat", latitude.toString())
         params.set("lng", longitude.toString())
-        router.push(`/?${params.toString()}`)
+        router.push(`/?${params.toString()}`, { scroll: false })
       },
       () => setLocating(false)
     )
@@ -120,7 +120,7 @@ export function LocationSidebar() {
     params.set("radius", radius.toString())
     params.set("lat", r.lat.toString())
     params.set("lng", r.lng.toString())
-    router.push(`/?${params.toString()}`)
+    router.push(`/?${params.toString()}`, { scroll: false })
   }
 
   // Enter w polu: jeśli są podpowiedzi, weź pierwszą; jeśli nie — dociągnij z geokodera
@@ -200,7 +200,7 @@ export function LocationSidebar() {
                   if (city) {
                     const params = new URLSearchParams(searchParams.toString())
                     params.set("radius", r.toString())
-                    router.push(`/?${params.toString()}`)
+                    router.push(`/?${params.toString()}`, { scroll: false })
                   }
                 }}
                 className={`rounded-lg py-1.5 text-xs font-medium transition-colors ${
