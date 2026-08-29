@@ -57,7 +57,7 @@ function makeShort(desc: string, existing: string): string | null {
 const emptyForm = {
   title:"", slug:"", description:"", short_description:"",
   start_date:"", start_time:"", end_date:"", end_time:"",
-  city:"Suwałki", address:"", venue_name:"",
+  city:"Suwałki", address:"", venue_name:"", location_notes:"",
   category:"", cover_image_url:"", ticket_url:"", website_url:"",
   image_url:"",
   organizer_name:"", price_from:"0", is_free:true,
@@ -163,6 +163,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       city: data.city || "",
       address: data.address || "",
       venue_name: data.venue_name || "",
+      location_notes: data.location_notes || "",
       category: normalizeCategory(data.category),
       cover_image_url: data.cover_image_url || "",
       ticket_url: data.ticket_url || "",
@@ -458,6 +459,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       start_date: start, end_date: end,
       city: form.city, address: form.address || null,
       venue_name: form.venue_name || null,
+      location_notes: form.location_notes || null,
       category: form.category,
       cover_image_url: form.cover_image_url || null,
       image_url: form.image_url || null,
@@ -887,6 +889,11 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                 longitude={form.longitude}
                 onChange={(lat, lng) => setForm(prev => ({ ...prev, latitude: lat, longitude: lng }))}
               />
+
+              <Field label="Przydatne informacje o lokalizacji">
+                <textarea name="location_notes" value={form.location_notes} onChange={handleChange} placeholder="np. Parking płatny, wjazd od ul. Kościuszki" style={{ ...inp, height:80, resize:"vertical" }} maxLength={300} />
+                <Counter cur={form.location_notes.length} max={300} />
+              </Field>
 
               <div style={navRow}>
                 <button type="button" onClick={() => setSection("schedule")} style={navBack}>← Wstecz</button>
