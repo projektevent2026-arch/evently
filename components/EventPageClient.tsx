@@ -260,14 +260,9 @@ export default function EventPageClient({ slug }: { slug: string }) {
               </span>
             </div>
           )}
-          <h1 style={{color:"white",fontSize:"clamp(22px,4vw,36px)",fontWeight:800,margin:"0 0 8px",lineHeight:1.15,textShadow:"0 1px 8px rgba(0,0,0,0.4)"}}>
+           <h1 style={{color:"white",fontSize:"clamp(22px,4vw,36px)",fontWeight:800,margin:"0 0 14px",lineHeight:1.15,textShadow:"0 1px 8px rgba(0,0,0,0.4)"}}>
             {event.title}
           </h1>
-          {event.short_description && (
-            <p style={{color:"rgba(255,255,255,0.8)",fontSize:14,margin:"0 0 14px",lineHeight:1.5,maxWidth:640,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
-              {event.short_description}
-            </p>
-          )}
           <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",flexWrap:"wrap",gap:12}}>
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
               <button onClick={handleShare} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"11px 18px",background:"transparent",backdropFilter:"blur(12px)",color:"white",border:"2px solid rgba(255,255,255,0.45)",borderRadius:26,fontSize:15,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
@@ -311,7 +306,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </div>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{timeLabel || "—"}</div>
-            {!isMultiDay(event.start_date, event.end_date) && durationLabel(event.start_date, event.end_date) && (
+            {durationLabel(event.start_date, event.end_date) && (
               <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>{durationLabel(event.start_date, event.end_date)}</div>
             )}
           </div>
