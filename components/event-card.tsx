@@ -121,7 +121,7 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
         </div>
 
         <div className="flex flex-1 flex-col p-4">
-          <h3 className="line-clamp-2 min-h-[2.6em] text-base font-semibold leading-snug text-card-foreground transition-colors group-hover:text-primary">
+        <h3 className="line-clamp-2 min-h-[2.1em] text-base font-semibold leading-snug text-card-foreground transition-colors group-hover:text-primary">
             {event.title}
           </h3>
 
