@@ -641,7 +641,12 @@ export function MobileHome() {
             { id: 'tomorrow', label: 'Jutro' },
             { id: 'weekend', label: 'Weekend' },
           ] as const).map(d => (
-            <button key={d.id} onClick={() => { setActiveDate(d.id); setCustomDate('') }}
+            <button key={d.id}
+              onClick={e => {
+                setActiveDate(d.id)
+                setCustomDate('')
+                e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+              }}
               className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors flex-shrink-0 ${
                 activeDate === d.id ? 'bg-green-500 text-black border-green-500' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
               }`}>
