@@ -182,7 +182,6 @@ export default function UlubionePage() {
   const { favorites, loaded, toggleFavorite, pruneFavorites } = useFavorites()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
-  const [showPast, setShowPast] = useState(false)
 
   useEffect(() => {
     if (!loaded) return
@@ -233,7 +232,7 @@ export default function UlubionePage() {
         <p className="text-[12px] text-zinc-500 mt-1">
           {loading ? 'Ładowanie...'
             : events.length === 0 ? 'Brak zapisanych wydarzeń'
-            : `${upcomingCount} ${upcomingWord(upcomingCount)} ${eventWord(upcomingCount)}${groups.past.length ? ` · ${groups.past.length} minione` : ''}`}
+            : `${upcomingCount} ${upcomingWord(upcomingCount)} ${eventWord(upcomingCount)}`}
         </p>
       </div>
 
@@ -285,36 +284,7 @@ export default function UlubionePage() {
               )
             })}
 
-            {groups.past.length > 0 && (
-              <section className="mb-10">
-                {!showPast ? (
-                  <button
-                    onClick={() => setShowPast(true)}
-                    className="text-[13px] text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-2"
-                  >
-                    Pokaż {groups.past.length} minionych ›
-                  </button>
-                ) : (
-                  <div className="opacity-50">
-                    <div className="flex items-center gap-2.5 mb-4">
-                      <h2 className="text-[15px] font-black tracking-tight text-zinc-500">
-                        {BUCKET_LABELS.past}
-                      </h2>
-                      <span className="text-[10px] font-medium text-zinc-500 bg-zinc-900/60 px-1.5 py-0.5 rounded-full">
-                        {groups.past.length}
-                      </span>
-                      <div className="flex-1 h-px bg-zinc-800" />
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                      {groups.past.map(e => (
-                        <EventTile key={e.id} event={e} onRemove={toggleFavorite} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </section>
-            )}
-          </>
+</>
         )}
       </div>
     </div>
