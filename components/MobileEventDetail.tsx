@@ -65,6 +65,18 @@ function dateRange(start?: string, end?: string): string {
   return `${fmt(start)} – ${fmt(e)}`
 }
 
+// Dla eventu z wieloma terminami: najbliższy NADCHODZĄCY termin + licznik
+// pozostałych, zamiast pełnego zakresu "od pierwszego do ostatniego".
+function nextTermInfo(eventDates: any[] | undefined): { label: string; remaining: number } | null {
+  if (!eventDates || eventDates.length <= 1) return null
+  const today = new Date().toISOString().slice(0, 10)
+  const sorted = [...eventDates].sort((a, b) => a.date.localeCompare(b.date))
+  const upcoming = sorted.filter(d => d.date >= today)
+  const chosen = upcoming.length > 0 ? upcoming[0] : sorted[sorted.length - 1]
+  const remaining = upcoming.length > 0 ? upcoming.length - 1 : 0
+  return { label: fmt(chosen.date), remaining }
+}
+
 // Sprawdza czy event trwa więcej niż jeden dzień (porównanie samych dat, bez godzin).
 function isMultiDay(start?: string, end?: string): boolean {
   if (!start || !end) return false
@@ -77,6 +89,16 @@ function weekdayName(d?: string): string {
   const dt = new Date(d.slice(0, 10) + 'T12:00:00')
   return dt.toLocaleDateString('pl-PL', { weekday: 'long' })
 }
+
+// Godzina wyciągana ze stringa timestamptz (start_date/end_date), BEZ new Date,
+// żeby nie przeliczać stref. "2026-07-25 16:00:00+00" -> "16:00".
+// (Kolumny start_time/end_time nie istnieją — godzina siedzi w start_date.)
+function fmtClock(dt?: string | null): string {
+  if (!dt) return ''
+  const m = /[T ](\d{2}):(\d{2})/.exec(dt)
+  return m ? `${m[1]}:${m[2]}` : ''
+}
+
 // Czas trwania jednodniowego eventu na podstawie godzin start/end. "1 h 30 min",
 // samo "2 h" gdy pełne godziny, puste gdy brak jednej z godzin.
 function durationLabel(startTs?: string | null, endTs?: string | null): string {
@@ -92,27 +114,6 @@ function durationLabel(startTs?: string | null, endTs?: string | null): string {
   if (h === 0) return `${m} min`
   if (m === 0) return `${h} h`
   return `${h} h ${m} min`
-}
-
-// Dla eventu z wieloma terminami: najbliższy NADCHODZĄCY termin + licznik
-// pozostałych, zamiast pełnego zakresu "od pierwszego do ostatniego".
-function nextTermInfo(eventDates: any[] | undefined): { label: string; remaining: number } | null {
-  if (!eventDates || eventDates.length <= 1) return null
-  const today = new Date().toISOString().slice(0, 10)
-  const sorted = [...eventDates].sort((a, b) => a.date.localeCompare(b.date))
-  const upcoming = sorted.filter(d => d.date >= today)
-  const chosen = upcoming.length > 0 ? upcoming[0] : sorted[sorted.length - 1]
-  const remaining = upcoming.length > 0 ? upcoming.length - 1 : 0
-  return { label: fmt(chosen.date), remaining }
-}
-
-// Godzina wyciągana ze stringa timestamptz (start_date/end_date), BEZ new Date,
-// żeby nie przeliczać stref. "2026-07-25 16:00:00+00" -> "16:00".
-// (Kolumny start_time/end_time nie istnieją — godzina siedzi w start_date.)
-function fmtClock(dt?: string | null): string {
-  if (!dt) return ''
-  const m = /[T ](\d{2}):(\d{2})/.exec(dt)
-  return m ? `${m[1]}:${m[2]}` : ''
 }
 
 // Zamienia URL-e w tekście opisu na klikalne linki. Reszta tekstu (w tym akapity
@@ -247,12 +248,14 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
   const hasTabs = event.schedule && event.schedule.length > 0
   const tabs = hasTabs ? TABS : ['O wydarzeniu', 'Lokalizacja']
 
-// Godzina ze start_date/end_date (tam jest zapisana). Koniec tylko gdy istnieje i różni się od startu.
-const startClock = fmtClock(event.start_date)
-const endClock = fmtClock(event.end_date)
+  // Godzina ze start_date/end_date (tam jest zapisana). Koniec tylko gdy istnieje i różni się od startu.
+  const startClock = fmtClock(event.start_date)
+  const endClock = fmtClock(event.end_date)
   const timeLabel = startClock
     ? (endClock && endClock !== startClock ? `${startClock}–${endClock}` : startClock)
     : ''
+
+  const nextTerm = nextTermInfo(event.event_dates)
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pb-28">
@@ -311,8 +314,14 @@ const endClock = fmtClock(event.end_date)
 
       {/* ── INFO BAR ── */}
       <div className="flex bg-zinc-950 border-b border-zinc-800 overflow-x-auto scrollbar-hide">
-      {[
-          { icon: '📅', value: dateRange(event.start_date, event.end_date) || '—', subtext: !isMultiDay(event.start_date, event.end_date) ? weekdayName(event.start_date) : '' },
+        {[
+          {
+            icon: '📅',
+            value: nextTerm ? nextTerm.label : (dateRange(event.start_date, event.end_date) || '—'),
+            subtext: nextTerm
+              ? (nextTerm.remaining > 0 ? `+ ${nextTerm.remaining} ${nextTerm.remaining === 1 ? 'kolejny termin' : 'kolejne terminy'}` : '')
+              : (!isMultiDay(event.start_date, event.end_date) ? weekdayName(event.start_date) : ''),
+          },
           { icon: '⏰', value: timeLabel || '—', subtext: !isMultiDay(event.start_date, event.end_date) ? durationLabel(event.start_date, event.end_date) : '' },
           { icon: '📍', value: event.city || event.address || '—' },
           { icon: '🎟️', value: event.is_free ? 'Wolny' : event.price_from ? `Od ${event.price_from} PLN` : '—', green: event.is_free },
