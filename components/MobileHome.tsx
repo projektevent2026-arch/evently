@@ -621,7 +621,11 @@ export function MobileHome() {
 
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-2">
           {CATEGORIES.map(cat => (
-            <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
+            <button key={cat.id}
+              onClick={e => {
+                setActiveCategory(cat.id)
+                e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+              }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors flex-shrink-0 ${
                 activeCategory === cat.id ? 'bg-green-500 text-black border-green-500' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
               }`}>
