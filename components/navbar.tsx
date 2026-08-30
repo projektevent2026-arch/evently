@@ -44,12 +44,12 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2">
+      <a href="/" className="flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
             <MapPin className="size-4 text-primary-foreground" />
           </div>
           <span className="text-lg font-semibold tracking-tight text-foreground">evently</span>
-        </Link>
+        </a>
 
         <nav className="flex items-center gap-3">
           <Link
