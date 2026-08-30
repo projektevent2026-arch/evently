@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
@@ -454,7 +455,17 @@ export default function EventMap() {
     <div className="relative flex flex-col h-screen overflow-hidden">
       <div ref={filterBarRef} className="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-gray-200 px-3 py-2">
 
-        {filtersOpen ? (
+<Link href="/" className="flex items-center gap-2 mb-2">
+  <div className="flex size-6 items-center justify-center rounded-lg bg-green-500">
+    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+    </svg>
+  </div>
+  <span className="text-sm font-semibold tracking-tight text-black">evently</span>
+</Link>
+
+{filtersOpen ? (
           <div className="space-y-2">
 
             {/* Lokalizacja */}
