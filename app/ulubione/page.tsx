@@ -199,11 +199,13 @@ export default function UlubionePage() {
           .select('*')
           .in('id', favorites)
           .order('start_date', { ascending: true })
-        if (error) throw error
-        setEvents(data ?? [])
-        // Wyczyść localStorage z ID eventów, które już nie istnieją w bazie —
-        // żeby licznik w BottomNav zgadzał się z tym, co strona faktycznie pokazuje.
-        pruneFavorites((data ?? []).map(e => e.id))
+          if (error) throw error
+          setEvents(data ?? [])
+          // Wyczyść localStorage z ID eventów, które już nie istnieją w bazie LUB
+          // już minęły — żeby licznik w Navbar zgadzał się z tym, co strona
+          // faktycznie pokazuje (tylko nadchodzące).
+          const upcoming = (data ?? []).filter(e => bucketFor(e) !== 'past')
+          pruneFavorites(upcoming.map(e => e.id))
       } catch (err) {
         console.error('[Evently] Nie udało się pobrać ulubionych:', err)
         setEvents([])
