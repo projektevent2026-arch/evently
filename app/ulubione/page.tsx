@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useFavorites } from '@/hooks/useFavorites'
+import { fmtClock } from '@/lib/eventFormat'
 import type { EventDateRow } from '@/lib/getEventWithDates'
 
 interface Event {
@@ -12,6 +13,15 @@ interface Event {
   title: string
   start_date: string
   end_date: string | null
+  // UWAGA: start_time/end_time jako osobne kolumny w tabeli `events` NAJPEWNIEJ
+  // NIE ISTNIEJĄ — przy zapisie (AdminWydarzenie.tsx, dodaj-wydarzenie/page.tsx)
+  // godzina jest zawsze sklejana w start_date/end_date, nigdy wysyłana osobno.
+  // Te dwa pola trzymamy tu tylko na wypadek, gdyby select('*') je zwrócił
+  // (nieszkodliwe), ale NIE są źródłem prawdy — patrz effectiveInfo() niżej,
+  // która dla wydarzeń bez event_dates czyta godzinę z start_date przez
+  // fmtClock(), tym samym mechanizmem co MobileEventDetail.tsx/EventPageClient.tsx.
+  // Osobne, realne kolumny start_time/end_time ma tabela event_dates (terminy
+  // cykliczne) — to inny model, nie mylić.
   start_time: string | null
   end_time: string | null
   venue_name: string | null
@@ -88,9 +98,12 @@ function endOfMonthStr(base: string): string {
 // Efektywny termin wydarzenia do wyświetlenia/grupowania:
 // - jeśli event ma wiersze w event_dates (cykliczny) -> najbliższy NADCHODZĄCY
 //   termin, a jeśli wszystkie już minęły -> ostatni z przeszłych (ten sam
-//   wzorzec co nextTermInfo() na stronie szczegółów wydarzenia)
-// - jeśli event_dates puste -> zwykłe start_date/end_date/start_time/end_time
-//   z tabeli events (wydarzenie jednorazowe / wielodniowe bez cyklu)
+//   wzorzec co nextTermInfo() w lib/eventFormat.tsx). Godzina stąd pochodzi
+//   z realnych kolumn event_dates.start_time/end_time.
+// - jeśli event_dates puste (starszy rekord sprzed wprowadzenia tej tabeli)
+//   -> start_date/end_date z events, a godzina wyciągana przez fmtClock()
+//   z tych samych pól — NIE z e.start_time/e.end_time, bo tych kolumn
+//   najpewniej nie ma (patrz komentarz przy interfejsie Event wyżej).
 function effectiveInfo(e: Event): { date: string; endDate: string; time: string | null; endTime: string | null } {
   const dates = e.event_dates
   if (dates && dates.length > 0) {
@@ -104,8 +117,8 @@ function effectiveInfo(e: Event): { date: string; endDate: string; time: string 
   return {
     date: e.start_date.slice(0, 10),
     endDate: (e.end_date || e.start_date).slice(0, 10),
-    time: e.start_time,
-    endTime: e.end_time,
+    time: fmtClock(e.start_date) || null,
+    endTime: fmtClock(e.end_date) || null,
   }
 }
 
