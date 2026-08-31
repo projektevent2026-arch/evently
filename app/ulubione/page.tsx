@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useFavorites } from '@/hooks/useFavorites'
-import { fmtClock } from '@/lib/eventFormat'
+import { fmtClock, todayStr, addDaysStr, endOfMonthStr, dateBadgeParts } from '@/lib/eventFormat'
 import type { EventDateRow } from '@/lib/getEventWithDates'
 
 interface Event {
@@ -33,8 +33,6 @@ interface Event {
   is_free: boolean
   event_dates?: EventDateRow[]
 }
-
-const MONTH_PL = ['STY','LUT','MAR','KWI','MAJ','CZE','LIP','SIE','WRZ','PAŹ','LIS','GRU']
 
 const CAT_COLORS: Record<string, string> = {
   festyny: 'bg-amber-500 text-black',
@@ -67,34 +65,6 @@ function upcomingWord(n: number): string {
   return n === 1 ? 'nadchodzące' : 'nadchodzących'
 }
 
-// --- Daty: wyłącznie na stringach "YYYY-MM-DD" w czasie LOKALNYM, nigdy
-// przez toISOString() (to konwertuje na UTC i cofa datę o dzień wieczorem
-// w Polsce — dokładnie ten bug, który złapaliśmy w EventDatesList.tsx). ---
-
-function localDateStr(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function todayStr(): string {
-  return localDateStr(new Date())
-}
-
-function addDaysStr(base: string, days: number): string {
-  const d = new Date(base + 'T12:00:00')
-  d.setDate(d.getDate() + days)
-  return localDateStr(d)
-}
-
-// Ostatni dzień KALENDARZOWEGO miesiąca, do którego należy `base`.
-function endOfMonthStr(base: string): string {
-  const d = new Date(base + 'T12:00:00')
-  const end = new Date(d.getFullYear(), d.getMonth() + 1, 0)
-  return localDateStr(end)
-}
-
 // Efektywny termin wydarzenia do wyświetlenia/grupowania:
 // - jeśli event ma wiersze w event_dates (cykliczny) -> najbliższy NADCHODZĄCY
 //   termin, a jeśli wszystkie już minęły -> ostatni z przeszłych (ten sam
@@ -102,8 +72,8 @@ function endOfMonthStr(base: string): string {
 //   z realnych kolumn event_dates.start_time/end_time.
 // - jeśli event_dates puste (starszy rekord sprzed wprowadzenia tej tabeli)
 //   -> start_date/end_date z events, a godzina wyciągana przez fmtClock()
-//   z tych samych pól — NIE z e.start_time/e.end_time, bo tych kolumn
-//   najpewniej nie ma (patrz komentarz przy interfejsie Event wyżej).
+//   z tych samych pól — NIE z e.start_time/e.end_time (patrz komentarz przy
+//   interfejsie Event wyżej).
 function effectiveInfo(e: Event): { date: string; endDate: string; time: string | null; endTime: string | null } {
   const dates = e.event_dates
   if (dates && dates.length > 0) {
@@ -119,18 +89,6 @@ function effectiveInfo(e: Event): { date: string; endDate: string; time: string 
     endDate: (e.end_date || e.start_date).slice(0, 10),
     time: fmtClock(e.start_date) || null,
     endTime: fmtClock(e.end_date) || null,
-  }
-}
-
-function dateBadgeParts(dateStr: string) {
-  const d = new Date(dateStr + 'T12:00:00')
-  const today = todayStr()
-  const tomorrow = addDaysStr(today, 1)
-  return {
-    day: d.getDate(),
-    month: MONTH_PL[d.getMonth()],
-    isToday: dateStr === today,
-    isTomorrow: dateStr === tomorrow,
   }
 }
 

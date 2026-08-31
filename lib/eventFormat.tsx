@@ -1,11 +1,14 @@
 // lib/eventFormat.tsx
 //
 // Współdzielone helpery formatowania dat/godzin i pomocnicze funkcje UI dla
-// stron szczegółów wydarzenia. Wcześniej te same funkcje były zduplikowane
-// 1:1 (czasem pod różnymi nazwami: fmt/fmtDate, clockFromTimestamp/fmtClock)
-// w EventPageClient.tsx (desktop) i MobileEventDetail.tsx (mobile) — jedno
-// źródło prawdy eliminuje ryzyko, że poprawka w jednym pliku zostanie
-// zapomniana w drugim (dokładnie tak powstał bug z "DZIŚ" na 2026-08-31).
+// stron szczegółów wydarzenia oraz kart/list wydarzeń. Wcześniej te same
+// koncepcje ("najbliższy termin", "czy to dziś/jutro") były reimplementowane
+// niezależnie w kilku miejscach — EventPageClient.tsx/MobileEventDetail.tsx
+// (dateRange/isMultiDay/durationLabel itd.), MobileHome.tsx (getDateParts/
+// isToday/isTomorrow/thisWeekendRange) i /ulubione (dateBadgeParts). Jedno
+// źródło prawdy eliminuje ryzyko, że poprawka w jednym miejscu zostanie
+// zapomniana gdzie indziej — dokładnie tak powstał bug z "DZIŚ" na
+// 2026-08-31, gaszony w kilku plikach osobno tego samego dnia.
 //
 // Nazwy dat wejściowych to zwykle pełny timestamp albo sama data
 // "YYYY-MM-DD" — funkcje tu operują na sufiksie .slice(0,10) i kotwiczą
@@ -15,6 +18,83 @@
 // app/dodaj-wydarzenie/page.tsx).
 
 import type { EventDateRow } from "@/lib/getEventWithDates"
+
+// ── Dzień kalendarzowy jako string, wyłącznie w czasie LOKALNYM ──────────
+// Nigdy przez toISOString() (konwertuje na UTC, cofa datę o dzień wieczorem
+// w Polsce). Budujemy string ręcznie z lokalnych getFullYear/getMonth/getDate.
+
+export function localDateStr(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
+export function todayStr(): string {
+  return localDateStr(new Date())
+}
+
+export function addDaysStr(base: string, days: number): string {
+  const d = new Date(base.slice(0, 10) + "T12:00:00")
+  d.setDate(d.getDate() + days)
+  return localDateStr(d)
+}
+
+// Ostatni dzień KALENDARZOWEGO miesiąca, do którego należy `base`.
+export function endOfMonthStr(base: string): string {
+  const d = new Date(base.slice(0, 10) + "T12:00:00")
+  const end = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+  return localDateStr(end)
+}
+
+export function isSameLocalDate(a: string, b: string): boolean {
+  return a.slice(0, 10) === b.slice(0, 10)
+}
+
+export function isToday(dateStr: string): boolean {
+  return dateStr.slice(0, 10) === todayStr()
+}
+
+export function isTomorrow(dateStr: string): boolean {
+  return dateStr.slice(0, 10) === addDaysStr(todayStr(), 1)
+}
+
+// Zakres NAJBLIŻSZEGO weekendu jako pary stringów: piątek -> niedziela
+// (włącznie). W sobotę/niedzielę zwraca trwający weekend (nie przeskakuje
+// na następny). Pon–czw -> nadchodzący piątek. Czysto na stringach, bez
+// arytmetyki na Date.getTime() — mniej podatne na pomyłki ze strefami.
+export function thisWeekendRange(): [string, string] {
+  const day = new Date().getDay() // 0=niedz, 1=pon, ... 5=pt, 6=sob
+  const offsetToFriday = day === 0 ? -2 : 5 - day // sob(-1), niedz(-2), pt(0), pon(+4)...
+  const start = addDaysStr(todayStr(), offsetToFriday)
+  const end = addDaysStr(start, 2)
+  return [start, end]
+}
+
+export function isThisWeekend(dateStr: string): boolean {
+  const [start, end] = thisWeekendRange()
+  const d = dateStr.slice(0, 10)
+  return d >= start && d <= end
+}
+
+const MONTH_PL_SHORT = ["STY","LUT","MAR","KWI","MAJ","CZE","LIP","SIE","WRZ","PAŹ","LIS","GRU"]
+
+// Dzień/miesiąc (skrót) + flagi dziś/jutro dla pojedynczej daty — używane na
+// kartach wydarzeń (MobileHome.tsx) i badge'ach na /ulubione. Wcześniej ta
+// sama logika była reimplementowana osobno w obu miejscach (getDateParts /
+// dateBadgeParts) — teraz jedno źródło.
+export function dateBadgeParts(dateStr: string): { day: number; month: string; isToday: boolean; isTomorrow: boolean } {
+  const dOnly = dateStr.slice(0, 10)
+  const dt = new Date(dOnly + "T12:00:00")
+  return {
+    day: dt.getDate(),
+    month: MONTH_PL_SHORT[dt.getMonth()],
+    isToday: isToday(dOnly),
+    isTomorrow: isTomorrow(dOnly),
+  }
+}
+
+// ── Formatowanie dat/godzin do wyświetlania ───────────────────────────────
 
 // "2026-09-06..." -> "6 września 2026"
 export function fmtDate(d?: string | null): string {
@@ -74,25 +154,12 @@ export function durationLabel(startTs?: string | null, endTs?: string | null): s
   return `${h} h ${m} min`
 }
 
-function localDateStr(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, "0")
-  const day = String(d.getDate()).padStart(2, "0")
-  return `${y}-${m}-${day}`
-}
-
 // Dla eventu z wieloma terminami: najbliższy NADCHODZĄCY termin + licznik
 // pozostałych. Jeśli WSZYSTKIE terminy już minęły, zwraca ostatni
 // (najnowszy z przeszłych) — lepsze niż pusty pasek.
-//
-// PRZY KONSOLIDACJI POPRAWIONO: "dzisiaj" liczone teraz przez localDateStr()
-// zamiast new Date().toISOString().slice(0,10) — ten drugi wariant miał
-// (węższe niż setHours(0,0,0,0), ale realne) okno błędu między północą UTC
-// a północą czasu polskiego, w którym zwracał wczorajszą datę. Ten sam
-// rodzaj bugu naprawiany dziś w kilku innych miejscach projektu.
 export function nextTermInfo(eventDates: EventDateRow[] | undefined | null): { label: string; remaining: number } | null {
   if (!eventDates || eventDates.length <= 1) return null
-  const today = localDateStr(new Date())
+  const today = todayStr()
   const sorted = [...eventDates].sort((a, b) => a.date.localeCompare(b.date))
   const upcoming = sorted.filter(d => d.date.slice(0, 10) >= today)
   const chosen = upcoming.length > 0 ? upcoming[0] : sorted[sorted.length - 1]

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useFavorites } from '@/hooks/useFavorites'
 import PosterModal from '@/components/PosterModal'
+import { dateBadgeParts, isToday, isTomorrow, isThisWeekend, isSameLocalDate } from '@/lib/eventFormat'
 
 interface Event {
   id: string
@@ -72,23 +73,6 @@ function normalizeCategory(raw: string | null): string {
   return 'festyny'
 }
 
-const MONTH_PL = ['STY','LUT','MAR','KWI','MAJ','CZE','LIP','SIE','WRZ','PAŹ','LIS','GRU']
-
-function startOfToday(): Date {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-function isUpcoming(start_date?: string | null, end_date?: string | null): boolean {
-  const today = startOfToday()
-  const ref = end_date || start_date
-  if (!ref) return true
-  const refDay = new Date(ref)
-  refDay.setHours(0, 0, 0, 0)
-  return refDay >= today
-}
-
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371
   const dLat = (lat2 - lat1) * Math.PI / 180
@@ -99,48 +83,6 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number): numb
 
 function formatDist(km: number): string {
   return km < 1 ? `${Math.round(km * 1000)} m od Ciebie` : `${km.toFixed(1)} km od Ciebie`
-}
-
-function getDateParts(dateStr: string) {
-  const d = new Date(dateStr)
-  const today = new Date()
-  const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1)
-  return {
-    day: d.getDate(),
-    month: MONTH_PL[d.getMonth()],
-    isToday: d.toDateString() === today.toDateString(),
-    isTomorrow: d.toDateString() === tomorrow.toDateString(),
-  }
-}
-
-function isToday(d: string) { return new Date(d).toDateString() === new Date().toDateString() }
-function isTomorrow(d: string) {
-  const t = new Date(); t.setDate(t.getDate() + 1)
-  return new Date(d).toDateString() === t.toDateString()
-}
-// Zakres NAJBLIŻSZEGO weekendu: piątek 00:00 -> niedziela 23:59.
-// W sobotę/niedzielę zwraca trwający weekend (nie przeskakuje na następny).
-// Pon–czw -> nadchodzący piątek. To naprawia bug „pokazywał wszystkie weekendy do końca roku".
-function thisWeekendRange(): [Date, Date] {
-  const now = new Date()
-  const day = now.getDay() // 0=niedz, 1=pon, ... 5=pt, 6=sob
-  const offsetToFriday = day === 0 ? -2 : 5 - day // sob(-1), niedz(-2), pt(0), pon(+4)...
-  const start = new Date(now)
-  start.setDate(now.getDate() + offsetToFriday)
-  start.setHours(0, 0, 0, 0)
-  const end = new Date(start)
-  end.setDate(start.getDate() + 2)
-  end.setHours(23, 59, 59, 999)
-  return [start, end]
-}
-
-function isThisWeekend(d: string): boolean {
-  const [start, end] = thisWeekendRange()
-  const t = new Date(d).getTime()
-  return t >= start.getTime() && t <= end.getTime()
-}
-function isOnDate(d: string, target: string) {
-  return new Date(d).toDateString() === new Date(target).toDateString()
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -300,7 +242,7 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
   const normCat = normalizeCategory(event.category)
   const tagColor = CAT_COLORS[normCat] ?? 'bg-zinc-600 text-white'
   const tagLabel = CAT_LABELS[normCat] ?? normCat
-  const { day, month, isToday: today, isTomorrow: tomorrow } = getDateParts(event.next_date)
+  const { day, month, isToday: today, isTomorrow: tomorrow } = dateBadgeParts(event.next_date)
   const time = event.next_start_time?.slice(0, 5)
   const img = event.cover_image_url || event.image_url
   const posterImg = event.image_url || event.cover_image_url
@@ -515,7 +457,6 @@ export function MobileHome() {
   // Logo w headerze: reset filtrów do stanu domyślnego + świeże dane z serwera
   // (router.refresh() wymusza ominięcie cache'u routera dla strony z
   // export const revalidate = 60) + fetch listy wydarzeń jeszcze raz.
-  // Wcześniej logo było samym <span> bez żadnej funkcji.
   const goHome = useCallback(() => {
     setSearch('')
     setActiveCategory('all')
@@ -573,7 +514,7 @@ export function MobileHome() {
       if (activeDate === 'today' && !isToday(e.next_date)) return false
       if (activeDate === 'tomorrow' && !isTomorrow(e.next_date)) return false
       if (activeDate === 'weekend' && !isThisWeekend(e.next_date)) return false
-      if (activeDate === 'custom' && customDate && !isOnDate(e.next_date, customDate)) return false
+      if (activeDate === 'custom' && customDate && !isSameLocalDate(e.next_date, customDate)) return false
       if (activeCategory !== 'all') {
         if (normalizeCategory(e.category) !== activeCategory) return false
       }
@@ -600,7 +541,7 @@ export function MobileHome() {
         />
       )}
 
-      {/* Header — samo logo, teraz klikalne: reset filtrów + odświeżenie listy (goHome).
+      {/* Header — samo logo, klikalne: reset filtrów + odświeżenie listy (goHome).
           Dzwonek (push) i avatar-atrapa (/profil 404) ukryte do tier D */}
       <div className="px-4 pt-5 pb-3">
         <div className="flex items-center justify-between mb-3">
