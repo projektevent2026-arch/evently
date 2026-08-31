@@ -21,10 +21,22 @@ const CATEGORY_LABELS: Record<string,string> = {
 }
 
 // Zwraca dzisiejszą datę jako YYYY-MM-DD (do atrybutu min i porównań)
+//
+// UWAGA: nie liczyć tego przez toISOString(). setHours(0,0,0,0) ustawia
+// północ w czasie LOKALNYM, ale toISOString() konwertuje na UTC — dla
+// Polski (UTC+1/+2) to ZAWSZE cofa datę o jeden dzień, przez cały dzień.
+// Ten sam bug znaleziony i naprawiony w components/EventDatesList.tsx
+// oraz app/admin/wydarzenia/AdminWydarzenie.tsx — budujemy string ręcznie
+// z lokalnych getFullYear/getMonth/getDate.
+function localDateStr(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
 function todayStr(): string {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString().split("T")[0]
+  return localDateStr(new Date())
 }
 
 const emptyForm = {
