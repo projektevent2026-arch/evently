@@ -512,6 +512,20 @@ export function MobileHome() {
     }
   }, [])
 
+  // Logo w headerze: reset filtrów do stanu domyślnego + świeże dane z serwera
+  // (router.refresh() wymusza ominięcie cache'u routera dla strony z
+  // export const revalidate = 60) + fetch listy wydarzeń jeszcze raz.
+  // Wcześniej logo było samym <span> bez żadnej funkcji.
+  const goHome = useCallback(() => {
+    setSearch('')
+    setActiveCategory('all')
+    setActiveDate('all')
+    setCustomDate('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    router.refresh()
+    loadEvents()
+  }, [router, loadEvents])
+
   useEffect(() => {
     const savedLat = localStorage.getItem('evently_lat')
     const savedLon = localStorage.getItem('evently_lon')
@@ -586,10 +600,16 @@ export function MobileHome() {
         />
       )}
 
-      {/* Header — samo logo. Dzwonek (push) i avatar-atrapa (/profil 404) ukryte do tier D */}
+      {/* Header — samo logo, teraz klikalne: reset filtrów + odświeżenie listy (goHome).
+          Dzwonek (push) i avatar-atrapa (/profil 404) ukryte do tier D */}
       <div className="px-4 pt-5 pb-3">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[18px] font-black text-green-500 tracking-tight">● evently</span>
+          <button
+            onClick={goHome}
+            className="text-[18px] font-black text-green-500 tracking-tight"
+          >
+            ● evently
+          </button>
         </div>
 
         <button
