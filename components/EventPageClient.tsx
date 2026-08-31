@@ -10,86 +10,13 @@ import { getEventWithDates } from "@/lib/getEventWithDates"
 import EventDatesList from "@/components/EventDatesList"
 import Link from "next/link"
 import dynamic from "next/dynamic"
+import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, nextTermInfo, linkify, downloadIcs } from "@/lib/eventFormat"
 
 const EventMap = dynamic(() => import("@/components/event-map").then(m => m.EventMap), { ssr: false })
 
 const CATEGORY_LABELS: Record<string,string> = {
   culture:"Kultura", music:"Muzyka", food:"Jedzenie",
   sport:"Sport", family:"Rodzinne", technology:"Technologia", festiwal:"Festiwal"
-}
-
-function linkify(text: string) {
-  const parts = text.split(/(https?:\/\/[^\s]+|www\.[^\s]+)/g)
-  return parts.map((part, i) => {
-    if (/^(https?:\/\/|www\.)/.test(part)) {
-      const trailing = part.match(/[.,);]+$/)?.[0] ?? ""
-      const clean = trailing ? part.slice(0, part.length - trailing.length) : part
-      const href = clean.startsWith("http") ? clean : `https://${clean}`
-      return (
-        <span key={i}>
-          <a href={href} target="_blank" rel="noopener noreferrer" style={{color:"#16a34a",textDecoration:"underline",wordBreak:"break-all"}}>{clean}</a>
-          {trailing}
-        </span>
-      )
-    }
-    return part ? <span key={i}>{part}</span> : null
-  })
-}
-
-function icsEscape(s: string) {
-  return String(s || "")
-    .replace(/\\/g, "\\\\")
-    .replace(/;/g, "\\;")
-    .replace(/,/g, "\\,")
-    .replace(/\r?\n/g, "\\n")
-}
-
-function downloadIcs(event: any) {
-  const startDate = (event.start_date || "").slice(0, 10).replace(/-/g, "")
-  if (!startDate) return
-  const startT = (event.start_time || "").slice(0, 5).replace(":", "")
-  const endDate = (event.end_date || event.start_date || "").slice(0, 10).replace(/-/g, "")
-  const endT = (event.end_time || "").slice(0, 5).replace(":", "")
-
-  const dtstamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")
-
-  let timeLines: string[]
-  if (startT) {
-    timeLines = [`DTSTART:${startDate}T${startT}00`]
-    if (endT) timeLines.push(`DTEND:${endDate}T${endT}00`)
-    else timeLines.push("DURATION:PT2H")
-  } else {
-    timeLines = [`DTSTART;VALUE=DATE:${startDate}`, "DURATION:P1D"]
-  }
-
-  const loc = [event.venue_name, event.address, event.city].filter(Boolean).join(", ")
-
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Evently//PL//EN",
-    "CALSCALE:GREGORIAN",
-    "BEGIN:VEVENT",
-    `UID:${event.id || event.slug || "evently"}@evently`,
-    `DTSTAMP:${dtstamp}`,
-    ...timeLines,
-    `SUMMARY:${icsEscape(event.title)}`,
-    loc ? `LOCATION:${icsEscape(loc)}` : "",
-    event.description ? `DESCRIPTION:${icsEscape(event.description)}` : "",
-    "END:VEVENT",
-    "END:VCALENDAR",
-  ].filter(Boolean)
-
-  const ics = lines.join("\r\n")
-  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `${event.slug || "wydarzenie"}.ics`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 export default function EventPageClient({ slug }: { slug: string }) {
@@ -119,79 +46,11 @@ export default function EventPageClient({ slug }: { slug: string }) {
     else navigator.clipboard.writeText(window.location.href)
   }
 
+  // Wersja pełna (dzień tygodnia + data) — używana tylko tutaj (panel
+  // "Szczegóły"), nie duplikowana w MobileEventDetail, więc zostaje lokalna.
   const fmt = (d:string) => d ? new Date(d).toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long",year:"numeric"}) : ""
-  const fmtDate = (d:string) => d ? new Date(d).toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"}) : ""
 
-  const dateRange = (start?: string, end?: string): string => {
-    if (!start) return ""
-    const s = start.slice(0, 10)
-    const e = end ? end.slice(0, 10) : ""
-    if (!e || e === s) return fmtDate(s)
-    if (s.slice(0, 7) === e.slice(0, 7)) {
-      return `${parseInt(s.slice(8, 10), 10)}–${fmtDate(e)}`
-    }
-    return `${fmtDate(s)} – ${fmtDate(e)}`
-  }
-
-  function isMultiDay(start?: string, end?: string): boolean {
-    if (!start || !end) return false
-    return start.slice(0, 10) !== end.slice(0, 10)
-  }
-
-  function weekdayName(d?: string): string {
-    if (!d) return ''
-    const dt = new Date(d.slice(0, 10) + 'T12:00:00')
-    return dt.toLocaleDateString('pl-PL', { weekday: 'long' })
-  }
-
-  const clockFromTimestamp = (ts?: string | null): string => {
-    if (!ts) return ""
-    const t = String(ts)
-    const timePart = t.includes("T") ? t.split("T")[1] : t.split(" ")[1]
-    return timePart ? timePart.slice(0, 5) : ""
-  }
-
-  function durationLabel(startTs?: string | null, endTs?: string | null): string {
-    const s = clockFromTimestamp(startTs)
-    const e = clockFromTimestamp(endTs)
-    if (!s || !e) return ''
-    const [sh, sm] = s.split(':').map(Number)
-    const [eh, em] = e.split(':').map(Number)
-    let mins = (eh * 60 + em) - (sh * 60 + sm)
-    if (mins <= 0) return ''
-    const h = Math.floor(mins / 60)
-    const m = mins % 60
-    if (h === 0) return `${m} min`
-    if (m === 0) return `${h} h`
-    return `${h} h ${m} min`
-  }
-
-  const timeLabel = (() => {
-    const s = clockFromTimestamp(event?.start_date)
-    const e = clockFromTimestamp(event?.end_date)
-    if (!s) return ""
-    return (e && e !== s) ? `${s} - ${e}` : s
-  })()
-
-  // Dla eventu z wieloma terminami (event_dates.length > 1): najbliższy
-  // NADCHODZĄCY termin + licznik pozostałych. Jeśli WSZYSTKIE terminy już
-  // minęły, pokazujemy ostatni (najnowszy z przeszłych) bez licznika —
-  // lepsze niż pusty pasek.
-  const nextTermInfo = (() => {
-    const allDates = event?.event_dates
-    if (!allDates || allDates.length <= 1) return null
-
-    const today = new Date().toISOString().slice(0, 10)
-    const sorted = [...allDates].sort((a: any, b: any) => a.date.localeCompare(b.date))
-    const upcoming = sorted.filter((d: any) => d.date >= today)
-    const chosen = upcoming.length > 0 ? upcoming[0] : sorted[sorted.length - 1]
-    const remaining = upcoming.length > 0 ? upcoming.length - 1 : 0
-
-    return {
-      label: fmtDate(chosen.date),
-      remaining,
-    }
-  })()
+  const nextTerm = nextTermInfo(event?.event_dates)
 
   const fmtShort = (d:string) => { if(!d) return {day:"",month:""}; const dt=new Date(d); return {day:dt.getDate(), month:dt.toLocaleDateString("pl-PL",{month:"short"}).toUpperCase()} }
   const isToday = (d:string) => d ? new Date(d).toDateString()===new Date().toDateString() : false
@@ -203,6 +62,12 @@ export default function EventPageClient({ slug }: { slug: string }) {
   const dateBadge = isToday(event.start_date) ? "DZIS" : isTomorrow(event.start_date) ? "JUTRO" : null
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.address,event.city].filter(Boolean).join(", "))}`
   const hasTabs = event.schedule && event.schedule.length > 0
+  const timeLabel = (() => {
+    const s = fmtClock(event?.start_date)
+    const e = fmtClock(event?.end_date)
+    if (!s) return ""
+    return (e && e !== s) ? `${s} - ${e}` : s
+  })()
 
   return (
     <main style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"system-ui,sans-serif"}}>
@@ -285,12 +150,12 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </div>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>
-              {nextTermInfo ? nextTermInfo.label : dateRange(event.start_date, event.end_date)}
+              {nextTerm ? nextTerm.label : dateRange(event.start_date, event.end_date)}
             </div>
-            {nextTermInfo ? (
-              nextTermInfo.remaining > 0 && (
+            {nextTerm ? (
+              nextTerm.remaining > 0 && (
                 <div style={{fontSize:11,color:"#16a34a",fontWeight:600,marginTop:1}}>
-                  + {nextTermInfo.remaining} {nextTermInfo.remaining === 1 ? "kolejny termin" : "kolejne terminy"}
+                  + {nextTerm.remaining} {nextTerm.remaining === 1 ? "kolejny termin" : "kolejne terminy"}
                 </div>
               )
             ) : (

@@ -11,6 +11,7 @@ import EventSchedule from '@/components/EventSchedule'
 import { useFavorites } from '@/hooks/useFavorites'
 import { getEventWithDates } from '@/lib/getEventWithDates'
 import EventDatesList from '@/components/EventDatesList'
+import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, nextTermInfo, linkify, downloadIcs } from '@/lib/eventFormat'
 
 const EventMap = dynamic(() => import('@/components/event-map').then(m => m.EventMap), { ssr: false })
 
@@ -42,164 +43,6 @@ const CAT_GRADIENT: Record<string, string> = {
 }
 
 const TABS = ['O wydarzeniu', 'Program', 'Lokalizacja']
-
-// Data — bezpieczne wyświetlanie. Bierzemy tylko część YYYY-MM-DD, żeby
-// new Date nie przeliczał strefy czasowej i nie zmieniał dnia.
-function fmt(d: string) {
-  if (!d) return ''
-  const dayPart = d.slice(0, 10) // 'YYYY-MM-DD'
-  const dt = new Date(dayPart + 'T12:00:00') // południe = odporne na strefę
-  return dt.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
-// Zakres dat dla wielodniowych: "25–26 lipca 2026" gdy ten sam miesiąc,
-// inaczej pełne obie daty. Jednodniowy -> bez zmian.
-function dateRange(start?: string, end?: string): string {
-  if (!start) return ''
-  const s = start.slice(0, 10)
-  const e = end ? end.slice(0, 10) : ''
-  if (!e || e === s) return fmt(start)
-  if (s.slice(0, 7) === e.slice(0, 7)) {
-    return `${parseInt(s.slice(8, 10), 10)}–${fmt(e)}`
-  }
-  return `${fmt(start)} – ${fmt(e)}`
-}
-
-// Dla eventu z wieloma terminami: najbliższy NADCHODZĄCY termin + licznik
-// pozostałych, zamiast pełnego zakresu "od pierwszego do ostatniego".
-function nextTermInfo(eventDates: any[] | undefined): { label: string; remaining: number } | null {
-  if (!eventDates || eventDates.length <= 1) return null
-  const today = new Date().toISOString().slice(0, 10)
-  const sorted = [...eventDates].sort((a, b) => a.date.localeCompare(b.date))
-  const upcoming = sorted.filter(d => d.date >= today)
-  const chosen = upcoming.length > 0 ? upcoming[0] : sorted[sorted.length - 1]
-  const remaining = upcoming.length > 0 ? upcoming.length - 1 : 0
-  return { label: fmt(chosen.date), remaining }
-}
-
-// Sprawdza czy event trwa więcej niż jeden dzień (porównanie samych dat, bez godzin).
-function isMultiDay(start?: string, end?: string): boolean {
-  if (!start || !end) return false
-  return start.slice(0, 10) !== end.slice(0, 10)
-}
-
-// Nazwa dnia tygodnia — tylko dla eventów jednodniowych (patrz isMultiDay powyżej).
-function weekdayName(d?: string): string {
-  if (!d) return ''
-  const dt = new Date(d.slice(0, 10) + 'T12:00:00')
-  return dt.toLocaleDateString('pl-PL', { weekday: 'long' })
-}
-
-// Godzina wyciągana ze stringa timestamptz (start_date/end_date), BEZ new Date,
-// żeby nie przeliczać stref. "2026-07-25 16:00:00+00" -> "16:00".
-// (Kolumny start_time/end_time nie istnieją — godzina siedzi w start_date.)
-function fmtClock(dt?: string | null): string {
-  if (!dt) return ''
-  const m = /[T ](\d{2}):(\d{2})/.exec(dt)
-  return m ? `${m[1]}:${m[2]}` : ''
-}
-
-// Czas trwania jednodniowego eventu na podstawie godzin start/end. "1 h 30 min",
-// samo "2 h" gdy pełne godziny, puste gdy brak jednej z godzin.
-function durationLabel(startTs?: string | null, endTs?: string | null): string {
-  const s = fmtClock(startTs)
-  const e = fmtClock(endTs)
-  if (!s || !e) return ''
-  const [sh, sm] = s.split(':').map(Number)
-  const [eh, em] = e.split(':').map(Number)
-  let mins = (eh * 60 + em) - (sh * 60 + sm)
-  if (mins <= 0) return ''
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  if (h === 0) return `${m} min`
-  if (m === 0) return `${h} h`
-  return `${h} h ${m} min`
-}
-
-// Zamienia URL-e w tekście opisu na klikalne linki. Reszta tekstu (w tym akapity
-// dzięki whitespace-pre-line) zostaje bez zmian. Końcowa interpunkcja (., ,) nie
-// wpada do linka.
-function linkify(text: string) {
-  const parts = text.split(/(https?:\/\/[^\s]+|www\.[^\s]+)/g)
-  return parts.map((part, i) => {
-    if (/^(https?:\/\/|www\.)/.test(part)) {
-      const trailing = part.match(/[.,);]+$/)?.[0] ?? ''
-      const clean = trailing ? part.slice(0, part.length - trailing.length) : part
-      const href = clean.startsWith('http') ? clean : `https://${clean}`
-      return (
-        <span key={i}>
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-green-400 underline break-all"
-          >
-            {clean}
-          </a>
-          {trailing}
-        </span>
-      )
-    }
-    return part ? <span key={i}>{part}</span> : null
-  })
-}
-
-// Escapowanie tekstu do formatu .ics.
-function icsEscape(s: string) {
-  return String(s || "")
-    .replace(/\\/g, "\\\\")
-    .replace(/;/g, "\\;")
-    .replace(/,/g, "\\,")
-    .replace(/\r?\n/g, "\\n")
-}
-
-// Generuje i pobiera plik .ics. Na telefonie tapnięcie od razu otwiera Kalendarz
-// (Google/Apple) z gotowym wpisem = darmowe przypomnienie bez push.
-// Godzina ze start_time/end_time jako czas lokalny -> 20:00 zostaje 20:00.
-function downloadIcs(event: any) {
-  const startDate = (event.start_date || "").slice(0, 10).replace(/-/g, "")
-  if (!startDate) return
-  const startT = (event.start_time || "").slice(0, 5).replace(":", "")
-  const endDate = (event.end_date || event.start_date || "").slice(0, 10).replace(/-/g, "")
-  const endT = (event.end_time || "").slice(0, 5).replace(":", "")
-  const dtstamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")
-
-  let timeLines: string[]
-  if (startT) {
-    timeLines = [`DTSTART:${startDate}T${startT}00`]
-    if (endT) timeLines.push(`DTEND:${endDate}T${endT}00`)
-    else timeLines.push("DURATION:PT2H")
-  } else {
-    timeLines = [`DTSTART;VALUE=DATE:${startDate}`, "DURATION:P1D"]
-  }
-
-  const loc = [event.venue_name, event.address, event.city].filter(Boolean).join(", ")
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Evently//PL//EN",
-    "CALSCALE:GREGORIAN",
-    "BEGIN:VEVENT",
-    `UID:${event.id || event.slug || "evently"}@evently`,
-    `DTSTAMP:${dtstamp}`,
-    ...timeLines,
-    `SUMMARY:${icsEscape(event.title)}`,
-    loc ? `LOCATION:${icsEscape(loc)}` : "",
-    event.description ? `DESCRIPTION:${icsEscape(event.description)}` : "",
-    "END:VEVENT",
-    "END:VCALENDAR",
-  ].filter(Boolean)
-
-  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `${event.slug || "wydarzenie"}.ics`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
 
 export default function MobileEventDetail({ slug }: { slug: string }) {
   const router = useRouter()
@@ -367,7 +210,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
           <div>
 <p className="text-[13.5px] text-zinc-200 leading-relaxed mb-4 whitespace-pre-line">
               {event.description || event.short_description
-                ? linkify(event.description || event.short_description)
+                ? linkify(event.description || event.short_description, 'dark')
                 : 'Brak opisu.'}
             </p>
             <EventDatesList dates={event.event_dates} variant="dark" />
@@ -400,6 +243,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                 <div className="flex-1">
                   <div className="text-[12px] font-bold text-white">{event.organizer_name}</div>
                   {event.website_url && (
+                    
                     <a
                       href={event.website_url}
                       target="_blank"
