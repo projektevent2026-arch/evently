@@ -24,17 +24,27 @@ import type { EventDateRow } from "@/lib/getEventWithDates"
 const MONTHS_PL_SHORT = ["STY","LUT","MAR","KWI","MAJ","CZE","LIP","SIE","WRZ","PAŹ","LIS","GRU"]
 const INITIAL_VISIBLE = 5
 
+// UWAGA: nie używać .toISOString() do wyliczania "dzisiejszej" daty lokalnej.
+// setHours(0,0,0,0) ustawia północ w czasie LOKALNYM, ale toISOString()
+// konwertuje na UTC — dla Polski (UTC+1/+2) to systematycznie cofa datę
+// o jeden dzień (np. 31 sie 00:00 CEST = 30 sie 22:00 UTC). Stąd bug z
+// "DZIŚ" pokazującym się na wczorajszym terminie. Budujemy string ręcznie
+// z lokalnych getFullYear/getMonth/getDate, żeby uniknąć konwersji stref.
+function localDateStr(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
 function todayStr(): string {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString().split("T")[0]
+  return localDateStr(new Date())
 }
 
 function tomorrowStr(): string {
   const d = new Date()
   d.setDate(d.getDate() + 1)
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString().split("T")[0]
+  return localDateStr(d)
 }
 
 export default function EventDatesList({

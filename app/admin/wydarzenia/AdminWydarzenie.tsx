@@ -29,10 +29,39 @@ function normalizeCategory(raw: string | null | undefined): string {
 }
 
 // Zwraca dzisiejszą datę jako YYYY-MM-DD (do atrybutu min i porównań)
+//
+// UWAGA: nie liczyć tego przez toISOString(). setHours(0,0,0,0) ustawia
+// północ w czasie LOKALNYM, ale toISOString() konwertuje na UTC — dla
+// Polski (UTC+1/+2) to ZAWSZE cofa datę o jeden dzień, przez cały dzień,
+// nie tylko wieczorem (lokalna północ = 22:00/23:00 poprzedniego dnia UTC).
+// Ten sam bug złapany w components/EventDatesList.tsx — budujemy string
+// ręcznie z lokalnych getFullYear/getMonth/getDate.
+function localDateStr(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
 function todayStr(): string {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString().split("T")[0]
+  return localDateStr(new Date())
+}
+
+// Wyciąga datę (YYYY-MM-DD) i godzinę (HH:MM) wprost ze stringa timestampu
+// zapisanego w bazie — BEZ przechodzenia przez new Date()/toISOString()/
+// toTimeString(). Reszta apki (fmtClock w MobileEventDetail/EventPageClient)
+// świadomie robi to tak samo, właśnie żeby uniknąć przeliczania stref —
+// new Date() na timestampie bez offsetu i mieszanie UTC (data) z czasem
+// lokalnym (godzina) z tego samego obiektu to dokładnie ten sam rodzaj
+// błędu co w todayStr(), tylko w innym miejscu. To ścieżka EDYCJI — błąd
+// tutaj może nadpisać poprawnie zapisane dane błędnymi przy zwykłym zapisie.
+function splitStoredTimestamp(ts: string | null | undefined): { date: string; time: string } {
+  if (!ts) return { date: "", time: "" }
+  const s = String(ts)
+  const date = s.slice(0, 10)
+  const m = /[T ](\d{2}):(\d{2})/.exec(s)
+  const time = m ? `${m[1]}:${m[2]}` : ""
+  return { date, time }
 }
 
 // "2026-08-08" -> "8 sierpnia" (do opisu terminów)
@@ -144,12 +173,8 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
         }))
       : [{ date: "", from: "", to: "" }]
   
-    const startDate = data.start_date ? new Date(data.start_date) : null
-    const endDate = data.end_date ? new Date(data.end_date) : null
-    const sd = startDate ? startDate.toISOString().split("T")[0] : ""
-    const st = startDate ? startDate.toTimeString().slice(0,5) : ""
-    const ed = endDate ? endDate.toISOString().split("T")[0] : ""
-    const et = endDate ? endDate.toTimeString().slice(0,5) : ""
+    const { date: sd, time: st } = splitStoredTimestamp(data.start_date)
+    const { date: ed, time: et } = splitStoredTimestamp(data.end_date)
   
     setForm({
       title: data.title || "",

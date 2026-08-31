@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useFavorites } from '@/hooks/useFavorites'
+import type { EventDateRow } from '@/lib/getEventWithDates'
 
 interface Event {
   id: string
@@ -20,6 +21,7 @@ interface Event {
   image_url: string | null
   cover_image_url: string | null
   is_free: boolean
+  event_dates?: EventDateRow[]
 }
 
 const MONTH_PL = ['STY','LUT','MAR','KWI','MAJ','CZE','LIP','SIE','WRZ','PAŹ','LIS','GRU']
@@ -55,33 +57,75 @@ function upcomingWord(n: number): string {
   return n === 1 ? 'nadchodzące' : 'nadchodzących'
 }
 
-function startOfToday(): Date {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d
+// --- Daty: wyłącznie na stringach "YYYY-MM-DD" w czasie LOKALNYM, nigdy
+// przez toISOString() (to konwertuje na UTC i cofa datę o dzień wieczorem
+// w Polsce — dokładnie ten bug, który złapaliśmy w EventDatesList.tsx). ---
+
+function localDateStr(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
-function eventDay(dateStr: string): Date {
-  const d = new Date(dateStr.slice(0, 10) + 'T12:00:00')
-  d.setHours(0, 0, 0, 0)
-  return d
+function todayStr(): string {
+  return localDateStr(new Date())
 }
 
-function getDateParts(dateStr: string) {
-  const d = new Date(dateStr.slice(0, 10) + 'T12:00:00')
-  const today = startOfToday()
-  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
-  const ev = eventDay(dateStr)
+function addDaysStr(base: string, days: number): string {
+  const d = new Date(base + 'T12:00:00')
+  d.setDate(d.getDate() + days)
+  return localDateStr(d)
+}
+
+// Ostatni dzień KALENDARZOWEGO miesiąca, do którego należy `base`.
+function endOfMonthStr(base: string): string {
+  const d = new Date(base + 'T12:00:00')
+  const end = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+  return localDateStr(end)
+}
+
+// Efektywny termin wydarzenia do wyświetlenia/grupowania:
+// - jeśli event ma wiersze w event_dates (cykliczny) -> najbliższy NADCHODZĄCY
+//   termin, a jeśli wszystkie już minęły -> ostatni z przeszłych (ten sam
+//   wzorzec co nextTermInfo() na stronie szczegółów wydarzenia)
+// - jeśli event_dates puste -> zwykłe start_date/end_date/start_time/end_time
+//   z tabeli events (wydarzenie jednorazowe / wielodniowe bez cyklu)
+function effectiveInfo(e: Event): { date: string; endDate: string; time: string | null; endTime: string | null } {
+  const dates = e.event_dates
+  if (dates && dates.length > 0) {
+    const today = todayStr()
+    const sorted = [...dates].sort((a, b) => a.date.localeCompare(b.date))
+    const upcoming = sorted.filter(d => d.date.slice(0, 10) >= today)
+    const chosen = upcoming.length > 0 ? upcoming[0] : sorted[sorted.length - 1]
+    const dateOnly = chosen.date.slice(0, 10)
+    return { date: dateOnly, endDate: dateOnly, time: chosen.start_time, endTime: chosen.end_time }
+  }
   return {
-    day: d.getDate(),
-    month: MONTH_PL[d.getMonth()],
-    isToday: ev.getTime() === today.getTime(),
-    isTomorrow: ev.getTime() === tomorrow.getTime(),
+    date: e.start_date.slice(0, 10),
+    endDate: (e.end_date || e.start_date).slice(0, 10),
+    time: e.start_time,
+    endTime: e.end_time,
   }
 }
 
-// Grupowanie po CZASIE (nie po miejscu) — ulubione to lista „co mnie czeka”,
+function dateBadgeParts(dateStr: string) {
+  const d = new Date(dateStr + 'T12:00:00')
+  const today = todayStr()
+  const tomorrow = addDaysStr(today, 1)
+  return {
+    day: d.getDate(),
+    month: MONTH_PL[d.getMonth()],
+    isToday: dateStr === today,
+    isTomorrow: dateStr === tomorrow,
+  }
+}
+
+// Grupowanie po CZASIE (nie po miejscu) — ulubione to lista „co mnie czeka",
 // więc najważniejsze jest, co jest najbliżej i czego nie przegapić.
+// "week" = najbliższe 7 dni (rolling). "month" = do końca BIEŻĄCEGO miesiąca
+// kalendarzowego (nie rolling 30 dni — inaczej wydarzenie z września wpada
+// do "W tym miesiącu" jeszcze w sierpniu, co jest sprzeczne z etykietą).
 type Bucket = 'week' | 'month' | 'later' | 'past'
 
 const BUCKET_LABELS: Record<Bucket, string> = {
@@ -91,26 +135,24 @@ const BUCKET_LABELS: Record<Bucket, string> = {
   past:  'Minione',
 }
 
-function bucketFor(e: Event): Bucket {
-  const today = startOfToday()
-  // event trwa do end_date (festiwal kilkudniowy) albo do start_date
-  const endRef = eventDay(e.end_date || e.start_date)
-  if (endRef < today) return 'past'
+function bucketFor(info: ReturnType<typeof effectiveInfo>): Bucket {
+  const today = todayStr()
+  if (info.endDate < today) return 'past'
 
-  const start = eventDay(e.start_date)
-  const in7 = new Date(today); in7.setDate(today.getDate() + 7)
-  const in30 = new Date(today); in30.setDate(today.getDate() + 30)
+  const weekEnd = addDaysStr(today, 7)
+  const monthEnd = endOfMonthStr(today)
 
-  if (start <= in7) return 'week'
-  if (start <= in30) return 'month'
+  if (info.date <= weekEnd) return 'week'
+  if (info.date <= monthEnd) return 'month'
   return 'later'
 }
 
 function EventTile({ event, onRemove }: { event: Event; onRemove: (id: string) => void }) {
   const cat = normalizeCategory(event.category)
-  const { day, month, isToday, isTomorrow } = getDateParts(event.start_date)
+  const info = effectiveInfo(event)
+  const { day, month, isToday, isTomorrow } = dateBadgeParts(info.date)
   const img = event.cover_image_url || event.image_url
-  const time = event.start_time?.slice(0, 5)
+  const time = info.time?.slice(0, 5)
   const place = event.venue_name || event.address || event.city
 
   return (
@@ -196,15 +238,22 @@ export default function UlubionePage() {
       try {
         const { data, error } = await supabase
           .from('events')
-          .select('*')
+          .select('*, event_dates(id, date, start_time, end_time)')
           .in('id', favorites)
-          .order('start_date', { ascending: true })
           if (error) throw error
-          setEvents(data ?? [])
+
+          // Sortowanie po EFEKTYWNYM terminie (nie po surowym start_date) —
+          // dla eventów cyklicznych start_date to często pierwszy, dawno
+          // miniony termin, więc sortowanie po nim myliłoby kolejność kart.
+          const sorted = [...(data ?? [])].sort((a, b) =>
+            effectiveInfo(a as Event).date.localeCompare(effectiveInfo(b as Event).date)
+          ) as Event[]
+
+          setEvents(sorted)
           // Wyczyść localStorage z ID eventów, które już nie istnieją w bazie LUB
           // już minęły — żeby licznik w Navbar zgadzał się z tym, co strona
           // faktycznie pokazuje (tylko nadchodzące).
-          const upcoming = (data ?? []).filter(e => bucketFor(e) !== 'past')
+          const upcoming = sorted.filter(e => bucketFor(effectiveInfo(e)) !== 'past')
           pruneFavorites(upcoming.map(e => e.id))
       } catch (err) {
         console.error('[Evently] Nie udało się pobrać ulubionych:', err)
@@ -218,7 +267,7 @@ export default function UlubionePage() {
 
   // Podział na grupy czasowe
   const groups: Record<Bucket, Event[]> = { week: [], month: [], later: [], past: [] }
-  events.forEach(e => groups[bucketFor(e)].push(e))
+  events.forEach(e => groups[bucketFor(effectiveInfo(e))].push(e))
   const upcomingCount = groups.week.length + groups.month.length + groups.later.length
   const order: Bucket[] = ['week', 'month', 'later', 'past']
 
