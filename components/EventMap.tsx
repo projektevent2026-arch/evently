@@ -227,7 +227,7 @@ export default function EventMap() {
       const center = urlCenter ?? userPosition ?? ([54.1, 22.93] as [number, number])
       const map = L.map(mapRef.current!, { center, zoom: urlCenter ? 13 : 11, zoomControl: false })
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      L.tileLayer(`https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${process.env.NEXT_PUBLIC_CARTO_KEY}`, {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd', maxZoom: 20,
       }).addTo(map)
