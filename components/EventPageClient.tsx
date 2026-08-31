@@ -10,7 +10,7 @@ import { getEventWithDates } from "@/lib/getEventWithDates"
 import EventDatesList from "@/components/EventDatesList"
 import Link from "next/link"
 import dynamic from "next/dynamic"
-import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, nextTermInfo, linkify, downloadIcs } from "@/lib/eventFormat"
+import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, nextTermInfo, linkify, downloadIcs, effectiveStartDate, isToday, isTomorrow } from "@/lib/eventFormat"
 
 const EventMap = dynamic(() => import("@/components/event-map").then(m => m.EventMap), { ssr: false })
 
@@ -53,13 +53,17 @@ export default function EventPageClient({ slug }: { slug: string }) {
   const nextTerm = nextTermInfo(event?.event_dates)
 
   const fmtShort = (d:string) => { if(!d) return {day:"",month:""}; const dt=new Date(d); return {day:dt.getDate(), month:dt.toLocaleDateString("pl-PL",{month:"short"}).toUpperCase()} }
-  const isToday = (d:string) => d ? new Date(d).toDateString()===new Date().toDateString() : false
-  const isTomorrow = (d:string) => { if(!d) return false; const t=new Date(); t.setDate(t.getDate()+1); return new Date(d).toDateString()===t.toDateString() }
 
   if (loading) return <div style={{display:"flex",minHeight:"100vh",alignItems:"center",justifyContent:"center"}}><p style={{color:"#6b7280",fontSize:14}}>Ladowanie...</p></div>
   if (!event) return <div style={{display:"flex",minHeight:"100vh",alignItems:"center",justifyContent:"center"}}><p style={{color:"#6b7280"}}>Nie znaleziono wydarzenia.</p></div>
 
-  const dateBadge = isToday(event.start_date) ? "DZIS" : isTomorrow(event.start_date) ? "JUTRO" : null
+  // Data użyta do badge "DZIŚ/JUTRO" na hero: dla wydarzenia cyklicznego
+  // to najbliższy nadchodzący termin z event_dates, NIE surowe start_date
+  // (które jest pierwszym, historycznym terminem całej serii — stąd
+  // wcześniej badge prawie nigdy się nie zapalał dla cykli, patrz
+  // effectiveStartDate() w lib/eventFormat.tsx).
+  const badgeDate = effectiveStartDate(event.event_dates, event.start_date)
+  const dateBadge = isToday(badgeDate) ? "DZIS" : isTomorrow(badgeDate) ? "JUTRO" : null
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.address,event.city].filter(Boolean).join(", "))}`
   const hasTabs = event.schedule && event.schedule.length > 0
   const timeLabel = (() => {

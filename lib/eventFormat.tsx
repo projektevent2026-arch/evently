@@ -8,7 +8,11 @@
 // isToday/isTomorrow/thisWeekendRange) i /ulubione (dateBadgeParts). Jedno
 // źródło prawdy eliminuje ryzyko, że poprawka w jednym miejscu zostanie
 // zapomniana gdzie indziej — dokładnie tak powstał bug z "DZIŚ" na
-// 2026-08-31, gaszony w kilku plikach osobno tego samego dnia.
+// 2026-08-31, gaszony w kilku plikach osobno tego samego dnia. Kolejny
+// przykład tego samego mechanizmu: hero na desktopie (EventPageClient.tsx)
+// liczyło badge "DZIŚ/JUTRO" z surowego event.start_date, które dla
+// wydarzenia cyklicznego to pierwszy, historyczny termin serii — nie
+// najbliższy nadchodzący. effectiveStartDate() poniżej to naprawia.
 //
 // Nazwy dat wejściowych to zwykle pełny timestamp albo sama data
 // "YYYY-MM-DD" — funkcje tu operują na sufiksie .slice(0,10) i kotwiczą
@@ -94,6 +98,42 @@ export function dateBadgeParts(dateStr: string): { day: number; month: string; i
   }
 }
 
+// ── Najbliższy termin (wydarzenia cykliczne, tabela event_dates) ─────────
+
+// Surowa data (YYYY-MM-DD) najbliższego NADCHODZĄCEGO terminu z listy, a
+// jeśli wszystkie już minęły — data ostatniego (najnowszego z przeszłych).
+// Wspólny rdzeń dla nextTermInfo() (poniżej) i effectiveStartDate().
+function nextEventDateRaw(eventDates: EventDateRow[]): string {
+  const today = todayStr()
+  const sorted = [...eventDates].sort((a, b) => a.date.localeCompare(b.date))
+  const upcoming = sorted.filter(d => d.date.slice(0, 10) >= today)
+  const chosen = upcoming.length > 0 ? upcoming[0] : sorted[sorted.length - 1]
+  return chosen.date.slice(0, 10)
+}
+
+// Dla eventu z wieloma terminami: najbliższy NADCHODZĄCY termin + licznik
+// pozostałych. Jeśli WSZYSTKIE terminy już minęły, zwraca ostatni
+// (najnowszy z przeszłych) — lepsze niż pusty pasek.
+export function nextTermInfo(eventDates: EventDateRow[] | undefined | null): { label: string; remaining: number } | null {
+  if (!eventDates || eventDates.length <= 1) return null
+  const sorted = [...eventDates].sort((a, b) => a.date.localeCompare(b.date))
+  const chosenDate = nextEventDateRaw(eventDates)
+  const today = todayStr()
+  const upcoming = sorted.filter(d => d.date.slice(0, 10) >= today)
+  const remaining = upcoming.length > 0 ? upcoming.length - 1 : 0
+  return { label: fmtDate(chosenDate), remaining }
+}
+
+// "Efektywna" data startu wydarzenia do celów typu badge DZIŚ/JUTRO na
+// hero: jeśli wydarzenie ma terminy w event_dates (cykliczne), bierze
+// najbliższy nadchodzący (albo ostatni, jeśli wszystkie minęły) — NIE
+// surowe events.start_date, które dla cyklu jest pierwszym, historycznym
+// terminem serii. Jeśli event_dates puste, zwraca fallbackStart wprost.
+export function effectiveStartDate(eventDates: EventDateRow[] | undefined | null, fallbackStart: string): string {
+  if (eventDates && eventDates.length > 0) return nextEventDateRaw(eventDates)
+  return fallbackStart.slice(0, 10)
+}
+
 // ── Formatowanie dat/godzin do wyświetlania ───────────────────────────────
 
 // "2026-09-06..." -> "6 września 2026"
@@ -152,19 +192,6 @@ export function durationLabel(startTs?: string | null, endTs?: string | null): s
   if (h === 0) return `${m} min`
   if (m === 0) return `${h} h`
   return `${h} h ${m} min`
-}
-
-// Dla eventu z wieloma terminami: najbliższy NADCHODZĄCY termin + licznik
-// pozostałych. Jeśli WSZYSTKIE terminy już minęły, zwraca ostatni
-// (najnowszy z przeszłych) — lepsze niż pusty pasek.
-export function nextTermInfo(eventDates: EventDateRow[] | undefined | null): { label: string; remaining: number } | null {
-  if (!eventDates || eventDates.length <= 1) return null
-  const today = todayStr()
-  const sorted = [...eventDates].sort((a, b) => a.date.localeCompare(b.date))
-  const upcoming = sorted.filter(d => d.date.slice(0, 10) >= today)
-  const chosen = upcoming.length > 0 ? upcoming[0] : sorted[sorted.length - 1]
-  const remaining = upcoming.length > 0 ? upcoming.length - 1 : 0
-  return { label: fmtDate(chosen.date), remaining }
 }
 
 // Zamienia URL-e w tekście na klikalne linki. Reszta tekstu (w tym akapity
