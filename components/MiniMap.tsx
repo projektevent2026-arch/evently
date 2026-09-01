@@ -33,11 +33,15 @@ interface Event {
 
 interface MiniMapProps {
   center?: [number, number]
+  // Wywoływane tuż przed przejściem na /mapa (kliknięcie miniaturki lub
+  // linku "otwórz mapę") — nie blokuje nawigacji, tylko pozwala rodzicowi
+  // zareagować (np. zapamiętać "zwiń przy powrocie").
+  onNavigate?: () => void
 }
 
 const DEFAULT_CENTER: [number, number] = [54.1116, 22.9302]
 
-export default function MiniMap({ center: externalCenter }: MiniMapProps) {
+export default function MiniMap({ center: externalCenter, onNavigate }: MiniMapProps) {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -79,7 +83,7 @@ export default function MiniMap({ center: externalCenter }: MiniMapProps) {
 
   return (
     <div>
-      <a href={mapaHref} style={{ display: "block", cursor: "pointer" }}>
+      <a href={mapaHref} onClick={onNavigate} style={{ display: "block", cursor: "pointer" }}>
         <MapContainer
           key={`${center[0]}-${center[1]}`}
           center={center}
@@ -122,7 +126,7 @@ export default function MiniMap({ center: externalCenter }: MiniMapProps) {
       </a>
       <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 6, textAlign: "center" }}>
         {events.length} wydarzeń na mapie ·{" "}
-        <a href={mapaHref} style={{ color: "#16a34a", fontWeight: 600 }}>
+        <a href={mapaHref} onClick={onNavigate} style={{ color: "#16a34a", fontWeight: 600 }}>
           otwórz mapę
         </a>
       </p>
