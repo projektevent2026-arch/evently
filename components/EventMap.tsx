@@ -145,7 +145,11 @@ export default function EventMap() {
 
   // Panel filtrów — domyślnie rozwinięty; zwijamy do cienkiego paska,
   // żeby mapa (h-screen pod spodem) dostała więcej widocznego miejsca.
-  const [filtersOpen, setFiltersOpen] = useState(true)
+  // Domyślnie zwinięte — więcej mapy widoczne od razu przy wejściu na /mapa,
+// niezależnie skąd (mini-mapa na stronie głównej, link "Mapa" w nagłówku,
+// bezpośredni URL). Przycisk "Filtry ▾" w zwiniętym widoku jednym kliknięciem
+// rozwija panel z powrotem.
+const [filtersOpen, setFiltersOpen] = useState(false)
 
   useEffect(() => {
     if (hasLocation) setLocInput('Moja lokalizacja')
