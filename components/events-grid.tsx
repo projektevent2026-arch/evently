@@ -134,9 +134,7 @@ export function EventsGrid() {
   // moment, w którym pokazujemy pełnoekranowy napis "Ładowanie...".
   // "refreshing" = KAŻDE kolejne odświeżenie (zmiana filtra, lokalizacji,
   // powrót na stronę) — siatka zostaje widoczna, tylko dyskretny wskaźnik
-  // obok licznika. Wcześniej każde odświeżenie czyściło całą siatkę do
-  // samego tekstu "Ładowanie...", co dawało wrażenie migotania/wolności
-  // przy każdej zmianie filtra, nie tylko przy pierwszym wejściu na stronę.
+  // obok licznika.
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const hasLoadedOnceRef = useRef(false)
@@ -151,6 +149,26 @@ export function EventsGrid() {
 
   function openCalendar() {
     try { dateInputRef.current?.showPicker() } catch { dateInputRef.current?.click() }
+  }
+
+  // Sesja + RSVP wydzielone do OSOBNEJ funkcji, uruchamianej BEZ czekania
+  // (fire-and-forget) — wcześniej to zapytanie siedziało w tym samym
+  // try/finally co główny fetch wydarzeń, więc setLoading(false) czekało
+  // aż SKOŃCZY SIĘ TAKŻE sesja/RSVP, mimo że lista wydarzeń była już
+  // gotowa. To realnie wydłużało czas do pierwszego wyświetlenia treści,
+  // niezależnie od tego czy user jest zalogowany.
+  function loadAttendance() {
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!session) return
+        return supabase.from("event_attendees").select("event_id").eq("user_id", session.user.id)
+      })
+      .then((res) => {
+        if (res?.data) setAttendingIds(new Set(res.data.map((a) => a.event_id)))
+      })
+      .catch((attErr) => {
+        console.warn("[Evently] Nie udało się pobrać listy RSVP (pomijam):", attErr)
+      })
   }
 
   const loadEvents = useCallback(async () => {
@@ -193,24 +211,15 @@ export function EventsGrid() {
         }))
 
       setEvents(mapped)
+      setLoading(false)
+      setRefreshing(false)
+      hasLoadedOnceRef.current = true
 
-      // Pobranie sesji + RSVP jest DRUGORZĘDNE — jego błąd NIE ma pokazywać ekranu awarii.
-      // To zapytanie ZOSTAJE bezpośrednio do Supabase — zależy od sesji zalogowanego
-      // użytkownika, więc nie da się go cache'ować wspólnie przez /api/events.
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          const { data: attendance } = await supabase
-            .from("event_attendees").select("event_id").eq("user_id", session.user.id)
-          if (attendance) setAttendingIds(new Set(attendance.map((a) => a.event_id)))
-        }
-      } catch (attErr) {
-        console.warn("[Evently] Nie udało się pobrać listy RSVP (pomijam):", attErr)
-      }
+      // Drugorzędne, nieblokujące — leci w tle, aktualizuje UI kiedy skończy.
+      loadAttendance()
     } catch (err) {
       console.error("[Evently] Nie udało się pobrać wydarzeń:", err)
       setLoadError(true)
-    } finally {
       setLoading(false)
       setRefreshing(false)
       hasLoadedOnceRef.current = true
