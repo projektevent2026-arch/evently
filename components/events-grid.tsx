@@ -130,7 +130,16 @@ export function EventsGrid() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [activeDate, setActiveDate] = useState("all")
   const [customDate, setCustomDate] = useState("")
+  // "loading" = PIERWSZE wczytanie w ogóle (siatka jeszcze pusta) — jedyny
+  // moment, w którym pokazujemy pełnoekranowy napis "Ładowanie...".
+  // "refreshing" = KAŻDE kolejne odświeżenie (zmiana filtra, lokalizacji,
+  // powrót na stronę) — siatka zostaje widoczna, tylko dyskretny wskaźnik
+  // obok licznika. Wcześniej każde odświeżenie czyściło całą siatkę do
+  // samego tekstu "Ładowanie...", co dawało wrażenie migotania/wolności
+  // przy każdej zmianie filtra, nie tylko przy pierwszym wejściu na stronę.
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const hasLoadedOnceRef = useRef(false)
   const [loadError, setLoadError] = useState(false)
   const [attendingIds, setAttendingIds] = useState<Set<string>>(new Set())
 
@@ -145,7 +154,8 @@ export function EventsGrid() {
   }
 
   const loadEvents = useCallback(async () => {
-    setLoading(true)
+    if (hasLoadedOnceRef.current) setRefreshing(true)
+    else setLoading(true)
     setLoadError(false)
     try {
       const data = await fetchPublishedEvents()
@@ -202,6 +212,8 @@ export function EventsGrid() {
       setLoadError(true)
     } finally {
       setLoading(false)
+      setRefreshing(false)
+      hasLoadedOnceRef.current = true
     }
   }, [filterLat, filterLng, filterRadius, hasLocationFilter, q])
 
@@ -234,6 +246,7 @@ export function EventsGrid() {
         <p className="mt-1 text-sm text-muted-foreground">
           {filtered.length} {filtered.length === 1 ? "wydarzenie" : filtered.length < 5 ? "wydarzenia" : "wydarzeń"}
           {hasLocationFilter && ` w promieniu ${filterRadius} km`}
+          {refreshing && <span className="ml-2 text-xs opacity-70">· odświeżam…</span>}
         </p>
       </div>
 
@@ -306,7 +319,7 @@ export function EventsGrid() {
       <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {loading ? (
           <p className="col-span-4 py-12 text-center text-muted-foreground">Ładowanie...</p>
-        ) : loadError ? (
+        ) : loadError && events.length === 0 ? (
           <div className="col-span-4 py-16 text-center">
             <p className="text-4xl mb-4">📡</p>
             <p className="text-lg font-semibold text-foreground mb-2">Nie udało się załadować wydarzeń</p>

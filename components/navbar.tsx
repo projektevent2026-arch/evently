@@ -44,12 +44,15 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-      <a href="/" className="flex items-center gap-2">
+      {/* Link zamiast zwykłego <a> — <a> wymuszał pełne przeładowanie strony
+          przez przeglądarkę (jak F5), co dawało zauważalny "skok" i migający
+          ekran ładowania przy powrocie na stronę główną z innej podstrony. */}
+      <Link href="/" className="flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
             <MapPin className="size-4 text-primary-foreground" />
           </div>
           <span className="text-lg font-semibold tracking-tight text-foreground">evently</span>
-        </a>
+        </Link>
 
         <nav className="flex items-center gap-3">
           <Link
