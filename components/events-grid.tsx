@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { EventCard, type EventData } from "@/components/event-card"
 import { supabase } from "@/lib/supabase"
 import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
+import { isToday, isTomorrow, isThisWeekend, isSameLocalDate, haversineKm } from "@/lib/eventFormat"
 
 const CATEGORIES = ["kultura", "muzyka", "sport", "festyny"]
 
@@ -15,64 +16,6 @@ const DATE_FILTERS = [
   { id: "tomorrow", label: "Jutro" },
   { id: "weekend",  label: "Weekend" },
 ]
-
-// Zwraca początek dzisiejszego dnia (00:00) — event z dzisiejszą datą ma zostać widoczny.
-function startOfToday(): Date {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-// Event jest "aktualny", jeśli jeszcze się nie zakończył.
-function isUpcoming(start_date?: string | null, end_date?: string | null): boolean {
-  const today = startOfToday()
-  const ref = end_date || start_date
-  if (!ref) return true
-  const refDay = new Date(ref)
-  refDay.setHours(0, 0, 0, 0)
-  return refDay >= today
-}
-
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLng = (lng2 - lng1) * Math.PI / 180
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2)
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
-function isToday(d: string) { return new Date(d).toDateString() === new Date().toDateString() }
-function isTomorrow(d: string) {
-  const t = new Date(); t.setDate(t.getDate() + 1)
-  return new Date(d).toDateString() === t.toDateString()
-}
-
-// Zakres NAJBLIŻSZEGO weekendu: piątek 00:00 -> niedziela 23:59.
-function thisWeekendRange(): [Date, Date] {
-  const now = new Date()
-  const day = now.getDay()
-  const offsetToFriday = day === 0 ? -2 : 5 - day
-  const start = new Date(now)
-  start.setDate(now.getDate() + offsetToFriday)
-  start.setHours(0, 0, 0, 0)
-  const end = new Date(start)
-  end.setDate(start.getDate() + 2)
-  end.setHours(23, 59, 59, 999)
-  return [start, end]
-}
-
-function isThisWeekend(d: string): boolean {
-  const [start, end] = thisWeekendRange()
-  const t = new Date(d).getTime()
-  return t >= start.getTime() && t <= end.getTime()
-}
-
-function isOnDate(d: string, target: string) {
-  return new Date(d).toDateString() === new Date(target).toDateString()
-}
 
 // ─────────────────────────────────────────────────────────────
 // FETCH z timeoutem + retry — ten sam wzorzec co w MobileHome.
@@ -227,7 +170,7 @@ export function EventsGrid() {
       if (activeDate === "today") return isToday(e.start_date)
       if (activeDate === "tomorrow") return isTomorrow(e.start_date)
       if (activeDate === "weekend") return isThisWeekend(e.start_date)
-      if (activeDate === "custom" && customDate) return isOnDate(e.start_date, customDate)
+      if (activeDate === "custom" && customDate) return isSameLocalDate(e.start_date, customDate)
       return true
     })()
     return matchQ && matchCat && matchDate
