@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase"
 import { getEventWithDates } from "@/lib/getEventWithDates"
 import EventDatesList from "@/components/EventDatesList"
 import Link from "next/link"
+import Image from "next/image"
 import dynamic from "next/dynamic"
 import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, nextTermInfo, linkify, downloadIcs, effectiveStartDate, isToday, isTomorrow } from "@/lib/eventFormat"
 
@@ -347,7 +348,13 @@ export default function EventPageClient({ slug }: { slug: string }) {
                   <Link key={ev.id} href={`/events/${ev.id}`} className="similar-card">
                     <div style={{background:"white",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
                       <div style={{position:"relative",height:130,overflow:"hidden"}}>
-                        <img src={ev.cover_image_url||"/images/event-concert.jpg"} alt={ev.title} style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                        <Image
+                          src={ev.cover_image_url||"/images/event-concert.jpg"}
+                          alt={ev.title}
+                          fill
+                          sizes="(max-width: 900px) 50vw, 25vw"
+                          style={{objectFit:"cover"}}
+                        />
                         <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.65) 0%,transparent 55%)"}} />
                         <div style={{position:"absolute",bottom:10,left:10,background:"white",borderRadius:10,padding:"5px 9px",textAlign:"center",minWidth:42}}>
                           <div style={{fontSize:17,fontWeight:800,color:"#111827",lineHeight:1}}>{s.day}</div>

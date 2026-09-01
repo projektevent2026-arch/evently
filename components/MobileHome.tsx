@@ -4,6 +4,7 @@ import { matchesQuery } from '@/lib/searchEvent'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useFavorites } from '@/hooks/useFavorites'
 import PosterModal from '@/components/PosterModal'
 import { dateBadgeParts, isToday, isTomorrow, isThisWeekend, isSameLocalDate, haversineKm, formatDist } from '@/lib/eventFormat'
@@ -308,8 +309,8 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
               </div>
 
               {img && (
-                <div className="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-zinc-700">
-                  <img src={img} alt={event.title} className="w-full h-full object-cover" loading="lazy" />
+                <div className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-zinc-700">
+                  <Image src={img} alt={event.title} fill sizes="80px" className="object-cover" />
                 </div>
               )}
             </div>

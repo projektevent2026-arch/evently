@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 
 /**
  * EventImage — dobiera tryb wyświetlania na podstawie proporcji obrazka.
@@ -90,23 +91,31 @@ export default function EventImage({
 
   return (
     <div className={`relative overflow-hidden bg-zinc-900 ${className}`}>
-      {/* rozmyte tło — tylko dla pionowych plakatów (object-contain) */}
+      {/* rozmyte tło — tylko dla pionowych plakatów (object-contain).
+          Ten sam src i sizes co główny obraz poniżej -> Next.js generuje
+          identyczny zoptymalizowany URL dla obu, więc przeglądarka pobiera
+          go raz i współdzieli z cache'a (tak jak wcześniej przy zwykłych
+          <img>), zamiast podwajać liczbę requestów. */}
       {contain && (
-        <img
+        <Image
           src={src}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl brightness-50"
+          fill
+          sizes="(max-width: 768px) 100vw, 50vw"
+          className="scale-110 object-cover blur-2xl brightness-50"
         />
       )}
-      <img
+      <Image
         ref={imgRef}
         src={src}
         alt={alt}
-        loading={eager ? "eager" : "lazy"}
+        fill
+        sizes="(max-width: 768px) 100vw, 50vw"
+        priority={eager}
         onLoad={(e) => decideFit(e.currentTarget)}
         onError={() => setFailed(true)}
-        className={`relative h-full w-full transition-opacity duration-200 ${
+        className={`relative object-cover transition-opacity duration-200 ${
           contain ? "object-contain" : "object-cover"
         } ${fit === null ? "opacity-0" : "opacity-100"}`}
       />

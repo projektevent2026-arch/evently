@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 
 interface EventHeroProps {
   src?: string | null
@@ -23,15 +24,13 @@ export default function EventHero({ src, alt = '' }: EventHeroProps) {
   return (
     <>
       {isPortrait && (
-        <img
+        <Image
           src={src}
           alt=""
           aria-hidden="true"
+          fill
+          sizes="100vw"
           style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
             objectFit: 'cover',
             filter: 'blur(24px) brightness(0.45)',
             transform: 'scale(1.15)',
@@ -39,9 +38,12 @@ export default function EventHero({ src, alt = '' }: EventHeroProps) {
         />
       )}
 
-      <img
+      <Image
         src={src}
         alt={alt}
+        fill
+        sizes="100vw"
+        priority
         onLoad={(e) => {
           const img = e.currentTarget
           if (img.naturalWidth && img.naturalHeight) {
@@ -49,10 +51,6 @@ export default function EventHero({ src, alt = '' }: EventHeroProps) {
           }
         }}
         style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
           objectFit: isPortrait ? 'contain' : 'cover',
           objectPosition: 'center',
         }}
