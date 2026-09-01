@@ -379,7 +379,20 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
       {showPoster && (event.image_url || event.cover_image_url) && (
         <div onClick={() => setShowPoster(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,cursor:"pointer"}}>
-          <img src={event.image_url || event.cover_image_url} alt="Plakat" style={{maxHeight:"90vh",maxWidth:"90vw",objectFit:"contain",borderRadius:12}} onClick={e => e.stopPropagation()} />
+          {/* Kontener o stałym rozmiarze (90vh x 90vw) — next/image w trybie
+              fill wymaga rodzica z jawnym rozmiarem. object-contain w środku
+              daje ten sam efekt co wcześniejsze maxHeight/maxWidth na
+              zwykłym <img>: plakat skaluje się w całości, zachowując
+              proporcje. */}
+          <div style={{position:"relative", width:"90vw", height:"90vh"}} onClick={e => e.stopPropagation()}>
+            <Image
+              src={event.image_url || event.cover_image_url}
+              alt="Plakat"
+              fill
+              sizes="90vw"
+              style={{objectFit:"contain", borderRadius:12}}
+            />
+          </div>
           <button onClick={() => setShowPoster(false)} style={{position:"absolute",top:20,right:20,background:"#333",border:"none",color:"white",width:40,height:40,borderRadius:"50%",fontSize:20,cursor:"pointer"}}>x</button>
         </div>
       )}

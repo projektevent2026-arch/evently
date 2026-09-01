@@ -2,6 +2,7 @@
 
 import { createPortal } from 'react-dom'
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 interface PosterModalProps {
   src: string
@@ -21,12 +22,22 @@ export default function PosterModal({ src, onClose }: PosterModalProps) {
       className="fixed inset-0 bg-black z-[9999] flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <img
-        src={src}
-        alt="Plakat"
-        className="max-h-[88vh] max-w-full object-contain rounded-xl"
+      {/* Kontener o stałej wysokości (88vh) — next/image w trybie fill
+          wymaga rodzica z jawnym rozmiarem. object-contain w środku daje
+          ten sam efekt co wcześniejsze maxHeight/maxWidth na zwykłym <img>:
+          plakat skaluje się w całości, zachowując proporcje. */}
+      <div
+        className="relative h-[88vh] w-full"
         onClick={(e) => e.stopPropagation()}
-      />
+      >
+        <Image
+          src={src}
+          alt="Plakat"
+          fill
+          sizes="100vw"
+          className="object-contain rounded-xl"
+        />
+      </div>
       <button
         onClick={onClose}
         aria-label="Zamknij"
