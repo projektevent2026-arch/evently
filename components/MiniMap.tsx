@@ -90,7 +90,18 @@ export default function MiniMap({ center: externalCenter }: MiniMapProps) {
           dragging={false}
           doubleClickZoom={false}
         >
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="" />
+          {/*
+            CARTO (voyager) zamiast surowego tile.openstreetmap.org — spójne
+            z EventMap.tsx i event-map.tsx. Atrybucja MUSI zostać widoczna
+            (regulamin CARTO, akceptowany przy odbiorze klucza) — wcześniej
+            attribution="" ją ukrywało, co złamałoby warunki darmowego
+            poziomu po migracji na CARTO. Zostaje krótka, w rogu miniaturki.
+          */}
+          <TileLayer
+            url={`https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${process.env.NEXT_PUBLIC_CARTO_KEY}`}
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            subdomains="abcd"
+          />
           {events.map((ev) => (
             <Marker key={ev.id} position={[ev.latitude, ev.longitude]} icon={icon}>
               <Popup>

@@ -17,8 +17,15 @@ export function EventMap({ city, location, latitude, longitude }: EventMapProps)
 
       const map = L.map("map").setView([52.2297, 21.0122], 13)
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
+      // CARTO (voyager) zamiast surowego tile.openstreetmap.org — ten drugi to
+      // oficjalny serwer TESTOWY OSM z nieformalną polityką "nie dla produkcji"
+      // i ryzykiem zablokowania IP/User-Agenta przy większym ruchu. CARTO ma
+      // darmowy, hojny limit (5 mln zapytań/miesiąc) w zamian za widoczną
+      // atrybucję poniżej — to spójne z EventMap.tsx (mapa /mapa).
+      L.tileLayer(`https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${process.env.NEXT_PUBLIC_CARTO_KEY}`, {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: "abcd",
+        maxZoom: 20,
       }).addTo(map)
 
       const icon = L.icon({
