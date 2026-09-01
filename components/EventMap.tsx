@@ -133,6 +133,16 @@ export default function EventMap() {
   const [customDate, setCustomDate] = useState('')
   const dateInputRef = useRef<HTMLInputElement>(null)
 
+  // Flaga "mapa faktycznie istnieje" — mapInstanceRef jest ref-em, więc jego
+  // zmiana NIE odpala ponownie efektów. Bez tego, gdy strona otwiera się z
+  // lat/lng w URL (np. z MiniMap po ustaleniu lokalizacji), efekt rysujący
+  // niebieską pinezkę odpalał się RAZ, natychmiast po mount — zanim Leaflet
+  // (dynamiczny import) zdążył się załadować i mapInstanceRef.current w ogóle
+  // powstał. Efekt widział "mapy jeszcze nie ma", wychodził, i nigdy nie
+  // dostawał drugiej szansy, bo urlCenter/userPosition już się nie zmieniały.
+  // Stąd pinezka nie pojawiała się mimo poprawnie wycentrowanej mapy.
+  const [mapReady, setMapReady] = useState(false)
+
   // Panel filtrów — domyślnie rozwinięty; zwijamy do cienkiego paska,
   // żeby mapa (h-screen pod spodem) dostała więcej widocznego miejsca.
   const [filtersOpen, setFiltersOpen] = useState(true)
@@ -203,6 +213,9 @@ export default function EventMap() {
 
       markerGroupRef.current = mcg
       map.addLayer(mcg)
+
+      // Sygnał dla efektu z pinezką: mapa istnieje, spróbuj jeszcze raz.
+      setMapReady(true)
     }
 
     initMap()
@@ -293,7 +306,7 @@ export default function EventMap() {
       })
       userMarkerRef.current = L.marker(pos, { icon }).addTo(map)
     })
-  }, [userPosition, urlCenter])
+  }, [userPosition, urlCenter, mapReady])
 
   const categories = ['kultura', 'muzyka', 'sport', 'festyny']
 
