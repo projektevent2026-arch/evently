@@ -51,13 +51,8 @@ function getTime(start_time?: string | null): string | null {
   return start_time.slice(0, 5)
 }
 
-// Krótka data ("7 Wrz") do zawsze widocznego badge'a obok godziny — WCZEŚNIEJ
-// karta w ogóle nie pokazywała daty w treści, tylko samą godzinę (widoczne
-// np. przy wydarzeniach 2+ tygodnie w przyszłość: "04:00" bez żadnego
-// kontekstu, kiedy to jest). Róg zdjęcia ma DZIŚ/JUTRO/CYKLICZNE, ale tylko
-// dla tych trzech przypadków — dla reszty nic. dateBadgeParts pochodzi z
-// lib/eventFormat.tsx, więc liczy dzień/miesiąc tym samym, sprawdzonym
-// mechanizmem co reszta apki (bez błędu strefy czasowej).
+// Krótka data ("7 Wrz") — liczona tym samym mechanizmem co reszta apki
+// (lib/eventFormat.tsx), więc bez błędu strefy czasowej.
 function getShortDate(start_date?: string): string | null {
   if (!start_date) return null
   const { day, month } = dateBadgeParts(start_date)
@@ -74,6 +69,12 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
   const dayBadge = getDayBadge(event.start_date, event.schedule_type)
   const dateShort = getShortDate(event.start_date)
   const time = getTime(event.start_time)
+  // Data i godzina POŁĄCZONE w jedną plakietkę ("6 Wrz, 09:00") — zamiast
+  // dwóch osobnych. Trzy osobne plakietki (data/godzina/cena) nie mieściły
+  // się w jednym rzędzie na szerokości karty, więc cena zawijała się na
+  // nową linię i karta rosła w wysokość. Dwie plakietki (data+godzina
+  // razem, cena osobno) mieszczą się tak samo jak przed dodaniem daty.
+  const dateTimeLabel = dateShort && time ? `${dateShort}, ${time}` : (dateShort || time)
   const cat = normalizeCategory(event.category)
   // Plakat ma odwrotny priorytet niż zdjęcie na karcie — najpierw właściwy plakat, potem zdjęcie jako fallback
   const posterImg = event.image_url || event.image
@@ -126,16 +127,11 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
             <span>{capitalizeCity(event.city)}</span>
           </div>
 
-          {(dateShort || time || event.price) && (
-            <div className="mt-2 flex items-center gap-2 flex-wrap">
-              {dateShort && (
+          {(dateTimeLabel || event.price) && (
+            <div className="mt-2 flex items-center gap-2">
+              {dateTimeLabel && (
                 <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
-                  {dateShort}
-                </span>
-              )}
-              {time && (
-                <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
-                  {time}
+                  {dateTimeLabel}
                 </span>
               )}
               {event.price && (
