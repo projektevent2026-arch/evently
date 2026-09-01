@@ -5,14 +5,9 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { EventCard, type EventData } from "@/components/event-card"
 import { supabase } from "@/lib/supabase"
+import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
 
 const CATEGORIES = ["kultura", "muzyka", "sport", "festyny"]
-const CATEGORY_LABELS: Record<string, string> = {
-  kultura: "Kultura", culture: "Kultura",
-  muzyka: "Muzyka", music: "Muzyka",
-  sport: "Sport",
-  festyny: "Festyny", folk: "Festyny", family: "Festyny",
-}
 
 const DATE_FILTERS = [
   { id: "all",      label: "Wszystkie" },
@@ -77,16 +72,6 @@ function isThisWeekend(d: string): boolean {
 
 function isOnDate(d: string, target: string) {
   return new Date(d).toDateString() === new Date(target).toDateString()
-}
-
-function normalizeCategory(cat: string | null): string {
-  if (!cat) return ""
-  const c = cat.toLowerCase()
-  if (c === "kultura" || c === "culture") return "kultura"
-  if (c === "muzyka" || c === "music") return "muzyka"
-  if (c === "sport") return "sport"
-  if (c === "festyny" || c === "folk" || c === "family" || c === "rodzinne") return "festyny"
-  return c
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -155,8 +140,7 @@ export function EventsGrid() {
   // (fire-and-forget) — wcześniej to zapytanie siedziało w tym samym
   // try/finally co główny fetch wydarzeń, więc setLoading(false) czekało
   // aż SKOŃCZY SIĘ TAKŻE sesja/RSVP, mimo że lista wydarzeń była już
-  // gotowa. To realnie wydłużało czas do pierwszego wyświetlenia treści,
-  // niezależnie od tego czy user jest zalogowany.
+  // gotowa.
   function loadAttendance() {
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
@@ -211,11 +195,14 @@ export function EventsGrid() {
         }))
 
       setEvents(mapped)
+
+      // Pobranie sesji + RSVP jest DRUGORZĘDNE — jego błąd NIE ma pokazywać ekranu awarii.
+      // To zapytanie ZOSTAJE bezpośrednio do Supabase — zależy od sesji zalogowanego
+      // użytkownika, więc nie da się go cache'ować wspólnie przez /api/events.
       setLoading(false)
       setRefreshing(false)
       hasLoadedOnceRef.current = true
 
-      // Drugorzędne, nieblokujące — leci w tle, aktualizuje UI kiedy skończy.
       loadAttendance()
     } catch (err) {
       console.error("[Evently] Nie udało się pobrać wydarzeń:", err)
@@ -281,7 +268,7 @@ export function EventsGrid() {
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
-            {CATEGORY_LABELS[cat]}
+            {CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS]}
           </button>
         ))}
       </div>

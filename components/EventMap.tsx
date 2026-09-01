@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import { fmtDate, isToday, isTomorrow, isThisWeekend, isSameLocalDate, haversineKm, formatDist } from '@/lib/eventFormat'
+import { normalizeCategory, CATEGORY_LABELS, CATEGORY_MAP_COLORS } from '@/lib/eventCategory'
 
 interface Event {
   id: string
@@ -34,27 +35,11 @@ interface GeoResult {
   label: string
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  kultura: '#8B5CF6', culture: '#8B5CF6', Kultura: '#8B5CF6',
-  muzyka: '#22C55E',  music: '#22C55E',   Muzyka: '#22C55E',
-  sport: '#3B82F6',   Sport: '#3B82F6',
-  festyny: '#F59E0B', folk: '#F59E0B',    family: '#F59E0B', Rodzinne: '#F59E0B',
-}
-const CATEGORY_LABELS: Record<string, string> = {
-  kultura: 'Kultura', culture: 'Kultura',
-  muzyka: 'Muzyka',   music: 'Muzyka',
-  sport: 'Sport',
-  festyny: 'Festyny', folk: 'Festyny', family: 'Festyny', rodzinne: 'Festyny',
-}
-
 function getCategoryLabel(cat: string | null): string {
-  if (!cat) return 'Inne'
-  return CATEGORY_LABELS[cat.toLowerCase()] ?? cat
+  return CATEGORY_LABELS[normalizeCategory(cat)]
 }
-const DEFAULT_COLOR = '#22C55E'
-
-function getCategoryColor(cat: string | null) {
-  return cat ? (CATEGORY_COLORS[cat] ?? DEFAULT_COLOR) : DEFAULT_COLOR
+function getCategoryColor(cat: string | null): string {
+  return CATEGORY_MAP_COLORS[normalizeCategory(cat)]
 }
 
 /** Popup składany ze stringa — tytuły z cudzysłowami muszą być bezpieczne. */
@@ -140,16 +125,12 @@ export default function EventMap() {
   // (dynamiczny import) zdążył się załadować i mapInstanceRef.current w ogóle
   // powstał. Efekt widział "mapy jeszcze nie ma", wychodził, i nigdy nie
   // dostawał drugiej szansy, bo urlCenter/userPosition już się nie zmieniały.
-  // Stąd pinezka nie pojawiała się mimo poprawnie wycentrowanej mapy.
   const [mapReady, setMapReady] = useState(false)
 
-  // Panel filtrów — domyślnie rozwinięty; zwijamy do cienkiego paska,
-  // żeby mapa (h-screen pod spodem) dostała więcej widocznego miejsca.
-  // Domyślnie zwinięte — więcej mapy widoczne od razu przy wejściu na /mapa,
-// niezależnie skąd (mini-mapa na stronie głównej, link "Mapa" w nagłówku,
-// bezpośredni URL). Przycisk "Filtry ▾" w zwiniętym widoku jednym kliknięciem
-// rozwija panel z powrotem.
-const [filtersOpen, setFiltersOpen] = useState(false)
+  // Panel filtrów — domyślnie zwinięty: więcej mapy widoczne od razu przy
+  // wejściu na /mapa, niezależnie skąd (mini-mapa, link "Mapa", bezpośredni
+  // URL). Przycisk "Filtry ▾" w zwiniętym widoku rozwija panel z powrotem.
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   useEffect(() => {
     if (hasLocation) setLocInput('Moja lokalizacja')
@@ -173,10 +154,6 @@ const [filtersOpen, setFiltersOpen] = useState(false)
         // Endpoint zwraca WSZYSTKIE opublikowane eventy (bez wymogu lat/lng) —
         // mapa potrzebuje tylko tych z lokalizacją, więc filtrujemy tu, tak jak
         // wcześniej robiło to zapytanie .not('latitude','is',null) w Supabase.
-        // Przy okazji: to NAPRAWIA bug — poprzednie zapytanie mapy nie miało
-        // filtra status='published' w ogóle (MobileHome i EventsGrid go miały),
-        // więc mapa mogła pokazywać eventy pending/draft. Teraz endpoint
-        // filtruje status po stronie serwera dla wszystkich trzech miejsc jednakowo.
         const withLocation = data.filter(e => e.latitude != null && e.longitude != null)
         setEvents(withLocation)
         setLoading(false)
@@ -240,7 +217,11 @@ const [filtersOpen, setFiltersOpen] = useState(false)
       if (urlTime === 'jutro'   && !isTomorrow(ev.next_date))    return false
       if (urlTime === 'weekend' && !isThisWeekend(ev.next_date)) return false
       if (urlTime === 'custom' && customDate && !isSameLocalDate(ev.next_date, customDate)) return false
-      if (activeCategories.size > 0 && !activeCategories.has(ev.category ?? 'Inne')) return false
+      // Znormalizowane porównanie — wcześniej porównywało surowe ev.category
+      // (np. "culture"/"Kultura") wprost z kanonicznym kluczem przycisku
+      // filtra, więc kategorie zapisane w innym formacie nie pasowały mimo
+      // że powinny.
+      if (activeCategories.size > 0 && !activeCategories.has(normalizeCategory(ev.category))) return false
       if (urlQ) {
         const hay = `${ev.title} ${ev.venue_name ?? ''}`.toLowerCase()
         if (!hay.includes(urlQ)) return false

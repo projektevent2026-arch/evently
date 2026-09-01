@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { useFavorites } from '@/hooks/useFavorites'
 import PosterModal from '@/components/PosterModal'
 import { dateBadgeParts, isToday, isTomorrow, isThisWeekend, isSameLocalDate, haversineKm, formatDist } from '@/lib/eventFormat'
+import { normalizeCategory, CATEGORY_LABELS as CAT_LABELS, CATEGORY_BADGE_CLASSES as CAT_COLORS } from '@/lib/eventCategory'
 
 interface Event {
   id: string
@@ -51,28 +52,6 @@ const CATEGORIES = [
 ]
 
 const RADII = [5, 10, 25, 50]
-
-const CAT_COLORS: Record<string, string> = {
-  festyny: 'bg-amber-500 text-black',
-  kultura: 'bg-purple-500 text-white',
-  muzyka:  'bg-green-500 text-black',
-  sport:   'bg-blue-500 text-white',
-}
-
-const CAT_LABELS: Record<string, string> = {
-  festyny: 'Festyny',
-  kultura: 'Kultura',
-  muzyka:  'Muzyka',
-  sport:   'Sport',
-}
-
-function normalizeCategory(raw: string | null): string {
-  const c = (raw ?? '').toLowerCase().trim()
-  if (c === 'kultura' || c === 'culture') return 'kultura'
-  if (c === 'muzyka' || c === 'music') return 'muzyka'
-  if (c === 'sport') return 'sport'
-  return 'festyny'
-}
 
 // ─────────────────────────────────────────────────────────────
 // FETCH z timeoutem + retry. To jest fix na P1 (nieskończone „Ładowanie").

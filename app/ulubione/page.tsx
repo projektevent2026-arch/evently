@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useFavorites } from '@/hooks/useFavorites'
 import { fmtClock, todayStr, addDaysStr, endOfMonthStr, dateBadgeParts } from '@/lib/eventFormat'
+import { normalizeCategory, CATEGORY_LABELS as CAT_LABELS, CATEGORY_BADGE_CLASSES as CAT_COLORS } from '@/lib/eventCategory'
 import type { EventDateRow } from '@/lib/getEventWithDates'
 
 interface Event {
@@ -32,25 +33,6 @@ interface Event {
   cover_image_url: string | null
   is_free: boolean
   event_dates?: EventDateRow[]
-}
-
-const CAT_COLORS: Record<string, string> = {
-  festyny: 'bg-amber-500 text-black',
-  kultura: 'bg-purple-500 text-white',
-  muzyka:  'bg-green-500 text-black',
-  sport:   'bg-blue-500 text-white',
-}
-
-const CAT_LABELS: Record<string, string> = {
-  festyny: 'Festyny', kultura: 'Kultura', muzyka: 'Muzyka', sport: 'Sport',
-}
-
-function normalizeCategory(raw: string | null): string {
-  const c = (raw ?? '').toLowerCase().trim()
-  if (c === 'kultura' || c === 'culture') return 'kultura'
-  if (c === 'muzyka' || c === 'music') return 'muzyka'
-  if (c === 'sport') return 'sport'
-  return 'festyny'
 }
 
 // Polska odmiana: 1 wydarzenie / 2-4 wydarzenia / 5+ wydarzeń (i 12-14 zawsze "wydarzeń")

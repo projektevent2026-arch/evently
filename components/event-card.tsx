@@ -8,26 +8,7 @@ import { MapPin, Users, Heart, Eye } from "lucide-react"
 import EventImage from "@/components/EventImage"
 import PosterModal from "@/components/PosterModal"
 import { useFavorites } from "@/hooks/useFavorites"
-
-const CATEGORY_LABELS: Record<string, string> = {
-  festyny: "Festyny", kultura: "Kultura", muzyka: "Muzyka", sport: "Sport",
-}
-
-const CATEGORY_STYLES: Record<string, string> = {
-  festyny: "bg-amber-500 text-black",
-  kultura: "bg-purple-500 text-white",
-  muzyka: "bg-green-500 text-black",
-  sport: "bg-blue-500 text-white",
-}
-
-function normalizeCategory(raw: string | null | undefined): string {
-  const c = (raw ?? "").toLowerCase().trim()
-  if (c === "kultura" || c === "culture") return "kultura"
-  if (c === "muzyka" || c === "music") return "muzyka"
-  if (c === "sport") return "sport"
-  // festyny, folk, family, rodzinne i wszystko nierozpoznane → festyny (rdzeń kategorii)
-  return "festyny"
-}
+import { normalizeCategory, CATEGORY_LABELS, CATEGORY_BADGE_CLASSES as CATEGORY_STYLES } from "@/lib/eventCategory"
 
 function capitalizeCity(city: string): string {
   if (!city) return ""
