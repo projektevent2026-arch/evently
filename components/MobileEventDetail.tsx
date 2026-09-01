@@ -12,37 +12,22 @@ import { useFavorites } from '@/hooks/useFavorites'
 import { getEventWithDates } from '@/lib/getEventWithDates'
 import EventDatesList from '@/components/EventDatesList'
 import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, nextTermInfo, linkify, downloadIcs } from '@/lib/eventFormat'
+import { normalizeCategory, CATEGORY_LABELS, CATEGORY_BADGE_CLASSES, type CategoryKey } from '@/lib/eventCategory'
 
 const EventMap = dynamic(() => import('@/components/event-map').then(m => m.EventMap), { ssr: false })
 
-const CAT_LABELS: Record<string, string> = {
-  culture: 'Kultura', music: 'Muzyka', food: 'Jedzenie',
-  sport: 'Sport', family: 'Rodzinne', technology: 'Technologia',
-  festiwal: 'Festiwal', kultura: 'Kultura', muzyka: 'Muzyka',
-  jedzenie: 'Jedzenie',
-}
+const TABS = ['O wydarzeniu', 'Program', 'Lokalizacja']
 
-const CAT_COLOR: Record<string, string> = {
-  festiwal: 'bg-green-500 text-black', muzyka: 'bg-green-500 text-black',
-  music: 'bg-green-500 text-black', sport: 'bg-blue-500 text-white',
-  kultura: 'bg-purple-500 text-white', culture: 'bg-purple-500 text-white',
-  family: 'bg-orange-400 text-black', jedzenie: 'bg-orange-500 text-white',
-  food: 'bg-orange-500 text-white',
-}
-
-const CAT_GRADIENT: Record<string, string> = {
+// Gradient tła hero per kategoria — używany tylko tutaj, więc zostaje
+// lokalny (nie w lib/eventCategory.ts). Rekeyowany na kanoniczne 4
+// kategorie: wcześniej "technology" nie miało własnego wpisu i dostawało
+// domyślny, szary gradient — teraz spójnie dostaje ten sam co "festyny".
+const CAT_GRADIENT: Record<CategoryKey, string> = {
   muzyka: 'from-[#060e18] via-[#0e2040] to-[#2d5cbf]',
-  music: 'from-[#060e18] via-[#0e2040] to-[#2d5cbf]',
-  festiwal: 'from-[#060e18] via-[#0e2040] to-[#2d5cbf]',
   sport: 'from-[#060f1a] via-[#0a1f35] to-[#1a3a5c]',
   kultura: 'from-[#120820] via-[#1e1040] to-[#3d1a6e]',
-  culture: 'from-[#120820] via-[#1e1040] to-[#3d1a6e]',
-  family: 'from-[#1a0a00] via-[#2d1800] to-[#4a2800]',
-  jedzenie: 'from-[#1a0800] via-[#2a1200] to-[#4a2200]',
-  food: 'from-[#1a0800] via-[#2a1200] to-[#4a2200]',
+  festyny: 'from-[#1a0a00] via-[#2d1800] to-[#4a2800]',
 }
-
-const TABS = ['O wydarzeniu', 'Program', 'Lokalizacja']
 
 export default function MobileEventDetail({ slug }: { slug: string }) {
   const router = useRouter()
@@ -83,10 +68,10 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
     </div>
   )
 
-  const cat = (event.category ?? 'inne').toLowerCase()
-  const gradient = CAT_GRADIENT[cat] ?? 'from-zinc-900 via-zinc-800 to-zinc-700'
-  const tagColor = CAT_COLOR[cat] ?? 'bg-zinc-600 text-white'
-  const tagLabel = CAT_LABELS[cat] ?? cat.toUpperCase()
+  const cat = normalizeCategory(event.category)
+  const gradient = CAT_GRADIENT[cat]
+  const tagColor = CATEGORY_BADGE_CLASSES[cat]
+  const tagLabel = CATEGORY_LABELS[cat]
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.address, event.city].filter(Boolean).join(', '))}`
   const hasTabs = event.schedule && event.schedule.length > 0
   const tabs = hasTabs ? TABS : ['O wydarzeniu', 'Lokalizacja']
@@ -244,8 +229,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                   <div className="text-[12px] font-bold text-white">{event.organizer_name}</div>
                   {event.website_url && (
                     
-                    <a
-                      href={event.website_url}
+                     <a href={event.website_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[10px] text-zinc-500"

@@ -12,13 +12,9 @@ import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
 import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, nextTermInfo, linkify, downloadIcs, effectiveStartDate, isToday, isTomorrow } from "@/lib/eventFormat"
+import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
 
 const EventMap = dynamic(() => import("@/components/event-map").then(m => m.EventMap), { ssr: false })
-
-const CATEGORY_LABELS: Record<string,string> = {
-  culture:"Kultura", music:"Muzyka", food:"Jedzenie",
-  sport:"Sport", family:"Rodzinne", technology:"Technologia", festiwal:"Festiwal"
-}
 
 export default function EventPageClient({ slug }: { slug: string }) {
   const searchParams = useSearchParams()
@@ -126,7 +122,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
           {event.category && (
             <div style={{marginBottom:10}}>
               <span style={{background:"#16a34a",color:"white",fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,letterSpacing:0.5}}>
-                {CATEGORY_LABELS[event.category]||event.category}
+                {CATEGORY_LABELS[normalizeCategory(event.category)]}
               </span>
             </div>
           )}
@@ -327,7 +323,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
                 <div>
                   <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,marginBottom:6,textTransform:"uppercase",letterSpacing:0.5}}>Kategoria</div>
                   <span style={{background:"#f0fdf4",color:"#16a34a",fontSize:12,fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1px solid #bbf7d0"}}>
-                    {CATEGORY_LABELS[event.category]||event.category}
+                    {CATEGORY_LABELS[normalizeCategory(event.category)]}
                   </span>
                 </div>
               </div>
@@ -361,7 +357,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
                           <div style={{fontSize:9,fontWeight:700,color:"#16a34a",textTransform:"uppercase"}}>{s.month}</div>
                         </div>
                         <div style={{position:"absolute",top:10,left:10,background:"#16a34a",color:"white",fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:10}}>
-                          {CATEGORY_LABELS[ev.category]||ev.category}
+                          {CATEGORY_LABELS[normalizeCategory(ev.category)]}
                         </div>
                       </div>
                       <div style={{padding:"12px 14px"}}>
@@ -379,11 +375,6 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
       {showPoster && (event.image_url || event.cover_image_url) && (
         <div onClick={() => setShowPoster(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,cursor:"pointer"}}>
-          {/* Kontener o stałym rozmiarze (90vh x 90vw) — next/image w trybie
-              fill wymaga rodzica z jawnym rozmiarem. object-contain w środku
-              daje ten sam efekt co wcześniejsze maxHeight/maxWidth na
-              zwykłym <img>: plakat skaluje się w całości, zachowując
-              proporcje. */}
           <div style={{position:"relative", width:"90vw", height:"90vh"}} onClick={e => e.stopPropagation()}>
             <Image
               src={event.image_url || event.cover_image_url}
