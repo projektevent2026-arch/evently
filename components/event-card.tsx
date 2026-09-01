@@ -9,6 +9,7 @@ import EventImage from "@/components/EventImage"
 import PosterModal from "@/components/PosterModal"
 import { useFavorites } from "@/hooks/useFavorites"
 import { normalizeCategory, CATEGORY_LABELS, CATEGORY_BADGE_CLASSES as CATEGORY_STYLES } from "@/lib/eventCategory"
+import { dateBadgeParts } from "@/lib/eventFormat"
 
 function capitalizeCity(city: string): string {
   if (!city) return ""
@@ -50,6 +51,19 @@ function getTime(start_time?: string | null): string | null {
   return start_time.slice(0, 5)
 }
 
+// Krótka data ("7 Wrz") do zawsze widocznego badge'a obok godziny — WCZEŚNIEJ
+// karta w ogóle nie pokazywała daty w treści, tylko samą godzinę (widoczne
+// np. przy wydarzeniach 2+ tygodnie w przyszłość: "04:00" bez żadnego
+// kontekstu, kiedy to jest). Róg zdjęcia ma DZIŚ/JUTRO/CYKLICZNE, ale tylko
+// dla tych trzech przypadków — dla reszty nic. dateBadgeParts pochodzi z
+// lib/eventFormat.tsx, więc liczy dzień/miesiąc tym samym, sprawdzonym
+// mechanizmem co reszta apki (bez błędu strefy czasowej).
+function getShortDate(start_date?: string): string | null {
+  if (!start_date) return null
+  const { day, month } = dateBadgeParts(start_date)
+  return `${day} ${month.charAt(0)}${month.slice(1).toLowerCase()}`
+}
+
 
 export function EventCard({ event, initialGoing = false }: { event: EventData; initialGoing?: boolean }) {
   const [posterSrc, setPosterSrc] = useState<string | null>(null)
@@ -58,6 +72,7 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
   const liked = isFavorite(event.id)
 
   const dayBadge = getDayBadge(event.start_date, event.schedule_type)
+  const dateShort = getShortDate(event.start_date)
   const time = getTime(event.start_time)
   const cat = normalizeCategory(event.category)
   // Plakat ma odwrotny priorytet niż zdjęcie na karcie — najpierw właściwy plakat, potem zdjęcie jako fallback
@@ -111,8 +126,13 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
             <span>{capitalizeCity(event.city)}</span>
           </div>
 
-          {(time || event.price) && (
-            <div className="mt-2 flex items-center gap-2">
+          {(dateShort || time || event.price) && (
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              {dateShort && (
+                <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
+                  {dateShort}
+                </span>
+              )}
               {time && (
                 <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
                   {time}
