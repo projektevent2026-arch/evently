@@ -2,17 +2,12 @@
 
 import dynamic from "next/dynamic"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { MapPin, Navigation, ChevronDown } from "lucide-react"
 
 const MiniMap = dynamic(() => import("@/components/MiniMap"), { ssr: false })
 
 const RADII = [5, 10, 25, 50]
-
-// Klucz w localStorage: zapamiętuje, że użytkownik ostatnio przeszedł z
-// mini-mapy na pełną /mapa — przy powrocie na stronę główną sekcja
-// "Blisko Ciebie" startuje zwinięta zamiast domyślnie rozwiniętej.
-const MINIMAP_COLLAPSED_KEY = "evently_minimap_collapsed"
 
 interface GeoResult {
   lat: number
@@ -62,32 +57,8 @@ export function LocationSidebar() {
   const [searching, setSearching] = useState(false)
   const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  // Domyślnie rozwinięta — nadpisywane w useEffect, jeśli localStorage mówi
-  // inaczej (bo dopiero po stronie klienta wiemy, czy user tu już był).
-  const [miniMapCollapsed, setMiniMapCollapsed] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-
-  useEffect(() => {
-    if (localStorage.getItem(MINIMAP_COLLAPSED_KEY) === "true") {
-      setMiniMapCollapsed(true)
-    }
-  }, [])
-
-  // Wywoływane z MiniMap tuż przed przejściem na /mapa — zapamiętuje na
-  // NASTĘPNY powrót na stronę główną, że sekcja ma być zwinięta. Nie
-  // zwija niczego teraz (strona i tak zaraz się przeładowuje).
-  function handleMiniMapNavigate() {
-    localStorage.setItem(MINIMAP_COLLAPSED_KEY, "true")
-  }
-
-  function toggleMiniMap() {
-    setMiniMapCollapsed(prev => {
-      const next = !prev
-      localStorage.setItem(MINIMAP_COLLAPSED_KEY, String(next))
-      return next
-    })
-  }
 
   const handleGeolocate = () => {
     setLocating(true)
@@ -254,20 +225,10 @@ export function LocationSidebar() {
         )}
       </div>
 
-      {/* Blisko Ciebie — zwijalna, domyślnie rozwinięta; zwija się sama na
-          NASTĘPNY powrót po przejściu przez mini-mapę na /mapa (patrz
-          handleMiniMapNavigate), a poza tym rozwijana/zwijana ręcznie. */}
+      {/* Blisko Ciebie */}
       <div className="rounded-2xl border border-border bg-card p-4">
-        <button
-          onClick={toggleMiniMap}
-          className="w-full flex items-center justify-between mb-3"
-        >
-          <h3 className="text-sm font-semibold text-foreground">Blisko Ciebie</h3>
-          <ChevronDown
-            className={`size-4 text-primary transition-transform duration-200 ${miniMapCollapsed ? "" : "rotate-180"}`}
-          />
-        </button>
-        {!miniMapCollapsed && <MiniMap center={mapCenter} onNavigate={handleMiniMapNavigate} />}
+        <h3 className="text-sm font-semibold text-foreground mb-3">Blisko Ciebie</h3>
+        <MiniMap center={mapCenter} />
       </div>
     </>
   )
