@@ -5,14 +5,17 @@
 // koncepcje ("najbliższy termin", "czy to dziś/jutro") były reimplementowane
 // niezależnie w kilku miejscach — EventPageClient.tsx/MobileEventDetail.tsx
 // (dateRange/isMultiDay/durationLabel itd.), MobileHome.tsx (getDateParts/
-// isToday/isTomorrow/thisWeekendRange) i /ulubione (dateBadgeParts). Jedno
-// źródło prawdy eliminuje ryzyko, że poprawka w jednym miejscu zostanie
-// zapomniana gdzie indziej — dokładnie tak powstał bug z "DZIŚ" na
-// 2026-08-31, gaszony w kilku plikach osobno tego samego dnia. Kolejny
-// przykład tego samego mechanizmu: hero na desktopie (EventPageClient.tsx)
-// liczyło badge "DZIŚ/JUTRO" z surowego event.start_date, które dla
-// wydarzenia cyklicznego to pierwszy, historyczny termin serii — nie
-// najbliższy nadchodzący. effectiveStartDate() poniżej to naprawia.
+// isToday/isTomorrow/thisWeekendRange), /ulubione (dateBadgeParts) i
+// EventMap.tsx/mapa (formatDate/isToday/isTomorrow/isThisWeekend/haversineKm/
+// formatDist). Jedno źródło prawdy eliminuje ryzyko, że poprawka w jednym
+// miejscu zostanie zapomniana gdzie indziej — dokładnie tak powstał bug z
+// "DZIŚ" na 2026-08-31, gaszony w kilku plikach osobno tego samego dnia.
+// Kolejny przykład: hero na desktopie liczyło badge "DZIŚ/JUTRO" z surowego
+// event.start_date zamiast najbliższego terminu cyklu (effectiveStartDate
+// poniżej to naprawia); a EventMap.tsx (/mapa) miało WŁASNĄ, BŁĘDNĄ wersję
+// isThisWeekend — dopasowywała KAŻDĄ sobotę/niedzielę w przyszłości, nie
+// tylko najbliższy weekend, więc filtr "Weekend" działał tam inaczej niż na
+// reszcie strony. Skonsolidowane poniżej naprawia to przy okazji.
 //
 // Nazwy dat wejściowych to zwykle pełny timestamp albo sama data
 // "YYYY-MM-DD" — funkcje tu operują na sufiksie .slice(0,10) i kotwiczą
@@ -75,6 +78,12 @@ export function thisWeekendRange(): [string, string] {
   return [start, end]
 }
 
+// UWAGA: to sprawdza czy `dateStr` mieści się w zakresie NAJBLIŻSZEGO
+// weekendu (piątek–niedziela), NIE czy dzień tygodnia to sobota/niedziela
+// w ogóle. Wcześniej EventMap.tsx (/mapa) miało własną, błędną wersję
+// (`new Date(d).getDay() === 0 || === 6`), która dopasowywała KAŻDĄ przyszłą
+// sobotę/niedzielę — filtr "Weekend" na mapie i na stronie głównej dawał
+// różne wyniki. Po konsolidacji obie strony liczą to tak samo.
 export function isThisWeekend(dateStr: string): boolean {
   const [start, end] = thisWeekendRange()
   const d = dateStr.slice(0, 10)
@@ -84,9 +93,7 @@ export function isThisWeekend(dateStr: string): boolean {
 const MONTH_PL_SHORT = ["STY","LUT","MAR","KWI","MAJ","CZE","LIP","SIE","WRZ","PAŹ","LIS","GRU"]
 
 // Dzień/miesiąc (skrót) + flagi dziś/jutro dla pojedynczej daty — używane na
-// kartach wydarzeń (MobileHome.tsx) i badge'ach na /ulubione. Wcześniej ta
-// sama logika była reimplementowana osobno w obu miejscach (getDateParts /
-// dateBadgeParts) — teraz jedno źródło.
+// kartach wydarzeń (MobileHome.tsx) i badge'ach na /ulubione.
 export function dateBadgeParts(dateStr: string): { day: number; month: string; isToday: boolean; isTomorrow: boolean } {
   const dOnly = dateStr.slice(0, 10)
   const dt = new Date(dOnly + "T12:00:00")
@@ -128,7 +135,7 @@ export function nextTermInfo(eventDates: EventDateRow[] | undefined | null): { l
 // hero: jeśli wydarzenie ma terminy w event_dates (cykliczne), bierze
 // najbliższy nadchodzący (albo ostatni, jeśli wszystkie minęły) — NIE
 // surowe events.start_date, które dla cyklu jest pierwszym, historycznym
-// terminem serii. Jeśli event_dates puste, zwraca fallbackStart wprost.
+// terminem serii.
 export function effectiveStartDate(eventDates: EventDateRow[] | undefined | null, fallbackStart: string): string {
   if (eventDates && eventDates.length > 0) return nextEventDateRaw(eventDates)
   return fallbackStart.slice(0, 10)
@@ -192,6 +199,24 @@ export function durationLabel(startTs?: string | null, endTs?: string | null): s
   if (h === 0) return `${m} min`
   if (m === 0) return `${h} h`
   return `${h} h ${m} min`
+}
+
+// ── Odległość (Haversine) ─────────────────────────────────────────────────
+// Wcześniej zduplikowane pod dwiema nazwami: haversine() w MobileHome.tsx i
+// haversineKm() w EventMap.tsx — identyczna matematyka. formatDist() też
+// była zduplikowana 1:1 w obu plikach.
+
+export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+export function formatDist(km: number): string {
+  return km < 1 ? `${Math.round(km * 1000)} m od Ciebie` : `${km.toFixed(1)} km od Ciebie`
 }
 
 // Zamienia URL-e w tekście na klikalne linki. Reszta tekstu (w tym akapity

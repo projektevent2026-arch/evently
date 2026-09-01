@@ -6,6 +6,7 @@ import Link from 'next/link'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
+import { fmtDate, isToday, isTomorrow, isThisWeekend, isSameLocalDate, haversineKm, formatDist } from '@/lib/eventFormat'
 
 interface Event {
   id: string
@@ -66,49 +67,6 @@ function escapeHtml(s: string): string {
     .replace(/'/g, '&#39;')
 }
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
-function formatDist(km: number): string {
-  return km < 1 ? `${Math.round(km * 1000)} m od Ciebie` : `${km.toFixed(1)} km od Ciebie`
-}
-
-function isToday(d: string) {
-  const a = new Date(d), b = new Date()
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-}
-
-function isTomorrow(d: string) {
-  const a = new Date(d), b = new Date()
-  b.setDate(b.getDate() + 1)
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-}
-
-function isThisWeekend(d: string) {
-  const day = new Date(d).getDay()
-  return day === 0 || day === 6
-}
-
-function isUpcoming(start_date?: string | null, end_date?: string | null): boolean {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const ref = end_date || start_date
-  if (!ref) return true
-  const refDay = new Date(ref)
-  refDay.setHours(0, 0, 0, 0)
-  return refDay >= today
-}
-
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLng = (lng2 - lng1) * Math.PI / 180
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
 async function searchNominatim(query: string): Promise<GeoResult[]> {
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=pl&accept-language=pl`
   const res = await fetch(url, {
@@ -130,10 +88,6 @@ const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
   { key: 'jutro', label: 'Jutro' },
   { key: 'weekend', label: 'Weekend' },
 ]
-
-function isOnDate(d: string, target: string) {
-  return new Date(d).toDateString() === new Date(target).toDateString()
-}
 
 export default function EventMap() {
   const searchParams = useSearchParams()
@@ -268,7 +222,7 @@ export default function EventMap() {
       if (urlTime === 'dzis'    && !isToday(ev.next_date))       return false
       if (urlTime === 'jutro'   && !isTomorrow(ev.next_date))    return false
       if (urlTime === 'weekend' && !isThisWeekend(ev.next_date)) return false
-      if (urlTime === 'custom' && customDate && !isOnDate(ev.next_date, customDate)) return false
+      if (urlTime === 'custom' && customDate && !isSameLocalDate(ev.next_date, customDate)) return false
       if (activeCategories.size > 0 && !activeCategories.has(ev.category ?? 'Inne')) return false
       if (urlQ) {
         const hay = `${ev.title} ${ev.venue_name ?? ''}`.toLowerCase()
@@ -314,7 +268,7 @@ export default function EventMap() {
               ${ev.is_free ? `<span style="background:#dcfce7;color:#15803d;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">Wstęp wolny</span>` : ''}
             </div>
             <div style="font-weight:700;font-size:14px;line-height:1.3;margin-bottom:5px;color:#111">${escapeHtml(ev.title)}</div>
-            <div style="font-size:11px;color:#666;margin-bottom:3px">${formatDate(ev.next_date)}</div>
+            <div style="font-size:11px;color:#666;margin-bottom:3px">${fmtDate(ev.next_date)}</div>
             ${place ? `<div style="font-size:11px;color:#888;margin-bottom:3px">${escapeHtml(place)}</div>` : ''}
             ${dist !== null ? `<div style="font-size:11px;font-weight:600;color:#16a34a;margin-bottom:8px">${formatDist(dist)}</div>` : '<div style="margin-bottom:8px"></div>'}
             <a href="/events/${escapeHtml(ev.slug)}" style="display:block;text-align:center;background:#22C55E;color:black;font-weight:700;font-size:11px;padding:7px;border-radius:8px;text-decoration:none">Zobacz wydarzenie</a>

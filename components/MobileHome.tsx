@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useFavorites } from '@/hooks/useFavorites'
 import PosterModal from '@/components/PosterModal'
-import { dateBadgeParts, isToday, isTomorrow, isThisWeekend, isSameLocalDate } from '@/lib/eventFormat'
+import { dateBadgeParts, isToday, isTomorrow, isThisWeekend, isSameLocalDate, haversineKm, formatDist } from '@/lib/eventFormat'
 
 interface Event {
   id: string
@@ -71,18 +71,6 @@ function normalizeCategory(raw: string | null): string {
   if (c === 'muzyka' || c === 'music') return 'muzyka'
   if (c === 'sport') return 'sport'
   return 'festyny'
-}
-
-function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLon = (lon2 - lon1) * Math.PI / 180
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
-}
-
-function formatDist(km: number): string {
-  return km < 1 ? `${Math.round(km * 1000)} m od Ciebie` : `${km.toFixed(1)} km od Ciebie`
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -505,7 +493,7 @@ export function MobileHome() {
     .map(e => ({
       ...e,
       distance: (effLat !== null && effLon !== null && e.latitude !== null && e.longitude !== null)
-        ? haversine(effLat, effLon, e.latitude, e.longitude) : null
+        ? haversineKm(effLat, effLon, e.latitude, e.longitude) : null
     }))
     .filter(e => {
 // Przy aktywnym wyszukiwaniu promień nie odcina — szukasz konkretnej rzeczy,
