@@ -69,12 +69,6 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
   const dayBadge = getDayBadge(event.start_date, event.schedule_type)
   const dateShort = getShortDate(event.start_date)
   const time = getTime(event.start_time)
-  // Data i godzina POŁĄCZONE w jedną plakietkę ("6 Wrz, 09:00") — zamiast
-  // dwóch osobnych. Trzy osobne plakietki (data/godzina/cena) nie mieściły
-  // się w jednym rzędzie na szerokości karty, więc cena zawijała się na
-  // nową linię i karta rosła w wysokość. Dwie plakietki (data+godzina
-  // razem, cena osobno) mieszczą się tak samo jak przed dodaniem daty.
-  const dateTimeLabel = dateShort && time ? `${dateShort}, ${time}` : (dateShort || time)
   const cat = normalizeCategory(event.category)
   // Plakat ma odwrotny priorytet niż zdjęcie na karcie — najpierw właściwy plakat, potem zdjęcie jako fallback
   const posterImg = event.image_url || event.image
@@ -127,15 +121,27 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
             <span>{capitalizeCity(event.city)}</span>
           </div>
 
-          {(dateTimeLabel || event.price) && (
-            <div className="mt-2 flex items-center gap-2">
-              {dateTimeLabel && (
-                <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
-                  {dateTimeLabel}
+          {(dateShort || time || event.price) && (
+            // whitespace-nowrap na każdej plakietce -> tekst NIGDY się nie
+            // łamie w środku (to był realny problem: "5 Wrz," / "00:00" na
+            // dwóch liniach WEWNĄTRZ jednej plakietki, nie zbyt dużo
+            // plakietek w rzędzie). overflow-x-auto na całym rzędzie ->
+            // jeśli mimo to nie mieszczą się wszystkie, rząd przewija się
+            // w bok zamiast rosnąć w pionie — wysokość karty jest teraz
+            // zawsze taka sama, niezależnie od długości tekstu.
+            <div className="mt-2 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+              {dateShort && (
+                <span className="whitespace-nowrap flex-shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
+                  {dateShort}
+                </span>
+              )}
+              {time && (
+                <span className="whitespace-nowrap flex-shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
+                  {time}
                 </span>
               )}
               {event.price && (
-                <span className="rounded-md bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
+                <span className="whitespace-nowrap flex-shrink-0 rounded-md bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
                   {event.price}
                 </span>
               )}
