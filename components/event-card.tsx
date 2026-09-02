@@ -64,8 +64,30 @@ function getUrgencyBadge(start_date?: string, schedule_type?: string): UrgencyBa
   return { label: null, color: "bg-zinc-900/90", icon: "later" }
 }
 
+// Dwa warianty tła karty — "dark" (domyślny, dopasowany do reszty apki:
+// strona główna, panel admina) i "light" (dla stron ze świadomie jasnym,
+// lokalnym motywem, np. EventPageClient.tsx — sekcja "Podobne wydarzenia").
+// Bez tego karta zawsze przynosiła swój ciemny motyw (bg-card itd.
+// rozwiązuje się globalnie na ciemne wartości w tym projekcie), co gryzło
+// się z jasnym tłem tamtej strony.
+const THEME = {
+  dark: {
+    card: "border-border bg-card hover:border-primary/30",
+    title: "text-card-foreground",
+    location: "text-muted-foreground",
+    priceBadge: "bg-muted text-foreground",
+    footerBorder: "border-border/50",
+  },
+  light: {
+    card: "border-gray-200 bg-white hover:border-primary/30 shadow-sm",
+    title: "text-gray-900",
+    location: "text-gray-500",
+    priceBadge: "bg-gray-100 text-gray-800",
+    footerBorder: "border-gray-100",
+  },
+} as const
 
-export function EventCard({ event, initialGoing = false }: { event: EventData; initialGoing?: boolean }) {
+export function EventCard({ event, initialGoing = false, theme = "dark" }: { event: EventData; initialGoing?: boolean; theme?: "dark" | "light" }) {
   const [posterSrc, setPosterSrc] = useState<string | null>(null)
   // Ulubione na localStorage — bez kont. Serce jest zsynchronizowane z detalem i stroną /ulubione.
   const { isFavorite, toggleFavorite } = useFavorites()
@@ -75,6 +97,7 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
   const time = getTime(event.start_time)
   const urgency = getUrgencyBadge(event.start_date, event.schedule_type)
   const cat = normalizeCategory(event.category)
+  const t = THEME[theme]
   // Plakat ma odwrotny priorytet niż zdjęcie na karcie — najpierw właściwy plakat, potem zdjęcie jako fallback
   const posterImg = event.image_url || event.image
 
@@ -82,7 +105,7 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
     <>
       {posterSrc && <PosterModal src={posterSrc} onClose={() => setPosterSrc(null)} />}
       <Link href={`/events/${event.slug || event.id}`} className="block">
-      <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
+      <article className={`group relative flex flex-col overflow-hidden rounded-2xl border transition-all hover:shadow-lg hover:shadow-primary/5 ${t.card}`}>
         <div className="relative aspect-[16/10] overflow-hidden">
           <EventImage
             src={event.image}
@@ -127,24 +150,24 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
         </div>
 
         <div className="flex flex-1 flex-col pt-2 pb-1.5 px-3">
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-card-foreground transition-colors group-hover:text-primary">
+        <h3 className={`line-clamp-2 text-sm font-semibold leading-snug transition-colors group-hover:text-primary ${t.title}`}>
             {event.title}
           </h3>
 
-          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className={`mt-1 flex items-center gap-1.5 text-xs ${t.location}`}>
             <MapPin className="size-3.5 text-primary/70 flex-shrink-0" />
             <span className="truncate">{capitalizeCity(event.city)}</span>
           </div>
 
           {event.price && (
             <div className="mt-0.5">
-              <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
+              <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${t.priceBadge}`}>
                 {event.price}
               </span>
             </div>
           )}
 
-<div className="mt-0.5 flex items-center justify-end border-t border-border/50 pt-1">
+<div className={`mt-0.5 flex items-center justify-end border-t pt-1 ${t.footerBorder}`}>
             {/* Licznik „zainteresowanych" (RSVP) UKRYTY — wymaga kont (tier D). */}
             {posterImg && (
               <Button

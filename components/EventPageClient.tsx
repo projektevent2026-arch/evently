@@ -353,9 +353,9 @@ export default function EventPageClient({ slug }: { slug: string }) {
               <Link href="/" style={{fontSize:14,color:"#16a34a",fontWeight:700,textDecoration:"none"}}>Zobacz wszystkie</Link>
             </div>
             <div className="similar-grid">
-              {similarEvents.map(ev => (
-                <EventCard key={ev.id} event={ev} />
-              ))}
+            {similarEvents.map(ev => (
+  <EventCard key={ev.id} event={ev} theme="light" />
+))}
             </div>
           </div>
         )}
