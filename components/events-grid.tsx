@@ -127,7 +127,13 @@ export function EventsGrid() {
           image_url: e.image_url || null,
           interested: e.interested_count || 0,
           category: e.category || "Inne",
-          price: e.is_free ? "Wstęp wolny" : e.price_from ? `od ${e.price_from} zł` : "Wstęp wolny",
+          // Na kartach w siatce pokazujemy tylko sygnał darmowe/płatne, NIE
+          // konkretną kwotę — pełna cena ("Od 100 PLN") jest dopiero na
+          // stronie szczegółów wydarzenia (liczona tam niezależnie, patrz
+          // EventPageClient.tsx). To celowy podział: karta ma dać szybki
+          // sygnał przy przeglądaniu, dokładna liczba jest potrzebna dopiero
+          // przy podejmowaniu decyzji "idę / nie idę".
+          price: e.is_free ? "Wstęp wolny" : "Wstęp płatny",
           // Pola tylko do wyszukiwania — nie renderowane w kartach.
           description: e.description ?? null,
           short_description: e.short_description ?? null,
