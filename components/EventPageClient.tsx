@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { getEventWithDates } from "@/lib/getEventWithDates"
 import EventDatesList from "@/components/EventDatesList"
+import { EventCard, type EventData } from "@/components/event-card"
 import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
@@ -22,7 +23,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("details")
-  const [similarEvents, setSimilarEvents] = useState<any[]>([])
+  const [similarEvents, setSimilarEvents] = useState<EventData[]>([])
   const [showPoster, setShowPoster] = useState(false)
 
   useEffect(() => {
@@ -31,7 +32,26 @@ export default function EventPageClient({ slug }: { slug: string }) {
       if (data) {
         setEvent(data)
         const { data: similar } = await supabase.from("events").select("*").eq("status","published").neq("id", data.id).limit(4)
-        setSimilarEvents(similar || [])
+        // Mapowanie na EventData — TEN SAM kształt i TA SAMA karta (EventCard),
+        // której używa strona główna. Wcześniej ta sekcja renderowała własny,
+        // ręcznie napisany blok JSX (inny styl, brak koloru pilności, brak
+        // ceny) — dwa różne wyglądy kart w jednej apce. To naprawia spójność.
+        const mapped: EventData[] = (similar || []).map((ev: any) => ({
+          id: ev.id,
+          slug: ev.slug,
+          title: ev.title,
+          date: "",
+          start_date: ev.start_date,
+          start_time: fmtClock(ev.start_date) || null,
+          schedule_type: ev.schedule_type,
+          city: ev.city,
+          image: ev.cover_image_url || "/images/event-concert.jpg",
+          image_url: ev.image_url || null,
+          interested: 0,
+          category: ev.category || "Inne",
+          price: ev.is_free ? "Wstęp wolny" : "Wstęp płatny",
+        }))
+        setSimilarEvents(mapped)
       }
       setLoading(false)
     }
@@ -48,8 +68,6 @@ export default function EventPageClient({ slug }: { slug: string }) {
   const fmt = (d:string) => d ? new Date(d).toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long",year:"numeric"}) : ""
 
   const nextTerm = nextTermInfo(event?.event_dates)
-
-  const fmtShort = (d:string) => { if(!d) return {day:"",month:""}; const dt=new Date(d); return {day:dt.getDate(), month:dt.toLocaleDateString("pl-PL",{month:"short"}).toUpperCase()} }
 
   if (loading) return <div style={{display:"flex",minHeight:"100vh",alignItems:"center",justifyContent:"center"}}><p style={{color:"#6b7280",fontSize:14}}>Ladowanie...</p></div>
   if (!event) return <div style={{display:"flex",minHeight:"100vh",alignItems:"center",justifyContent:"center"}}><p style={{color:"#6b7280"}}>Nie znaleziono wydarzenia.</p></div>
@@ -76,9 +94,6 @@ export default function EventPageClient({ slug }: { slug: string }) {
         .tab-btn { background:none; border:none; cursor:pointer; padding:14px 0; font-size:14px; font-weight:500; color:#9ca3af; border-bottom:2px solid transparent; transition:all 0.2s; white-space:nowrap; flex:1; text-align:center; }
         .tab-btn.active { color:#16a34a; border-bottom-color:#16a34a; font-weight:700; }
         .tab-btn:hover:not(.active) { color:#374151; }
-        .similar-card { text-decoration:none; display:block; }
-        .similar-card > div { transition:box-shadow 0.2s, transform 0.2s; }
-        .similar-card:hover > div { transform:translateY(-4px); box-shadow:0 8px 24px rgba(0,0,0,0.12); }
         .detail-item { display:flex; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid #f3f4f6; }
         .detail-item:last-child { border-bottom:none; padding-bottom:0; }
         .detail-icon-wrap { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:17px; }
@@ -132,7 +147,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
           <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",flexWrap:"wrap",gap:12}}>
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
               <button onClick={handleShare} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"11px 18px",background:"transparent",backdropFilter:"blur(12px)",color:"white",border:"2px solid rgba(255,255,255,0.45)",borderRadius:26,fontSize:15,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
-                Udostepnij
+                Udostępnij
               </button>
               {(event.image_url || event.cover_image_url) && (
                 <button onClick={() => setShowPoster(true)} style={{background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",padding:"11px 16px",borderRadius:26,fontSize:14,fontWeight:600,border:"1px solid rgba(255,255,255,0.15)",cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6}}>
@@ -338,36 +353,9 @@ export default function EventPageClient({ slug }: { slug: string }) {
               <Link href="/" style={{fontSize:14,color:"#16a34a",fontWeight:700,textDecoration:"none"}}>Zobacz wszystkie</Link>
             </div>
             <div className="similar-grid">
-              {similarEvents.map(ev => {
-                const s = fmtShort(ev.start_date)
-                return (
-                  <Link key={ev.id} href={`/events/${ev.id}`} className="similar-card">
-                    <div style={{background:"white",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
-                      <div style={{position:"relative",height:130,overflow:"hidden"}}>
-                        <Image
-                          src={ev.cover_image_url||"/images/event-concert.jpg"}
-                          alt={ev.title}
-                          fill
-                          sizes="(max-width: 900px) 50vw, 25vw"
-                          style={{objectFit:"cover"}}
-                        />
-                        <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.65) 0%,transparent 55%)"}} />
-                        <div style={{position:"absolute",bottom:10,left:10,background:"white",borderRadius:10,padding:"5px 9px",textAlign:"center",minWidth:42}}>
-                          <div style={{fontSize:17,fontWeight:800,color:"#111827",lineHeight:1}}>{s.day}</div>
-                          <div style={{fontSize:9,fontWeight:700,color:"#16a34a",textTransform:"uppercase"}}>{s.month}</div>
-                        </div>
-                        <div style={{position:"absolute",top:10,left:10,background:"#16a34a",color:"white",fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:10}}>
-                          {CATEGORY_LABELS[normalizeCategory(ev.category)]}
-                        </div>
-                      </div>
-                      <div style={{padding:"12px 14px"}}>
-                        <div style={{fontSize:14,fontWeight:700,color:"#111827",marginBottom:5,lineHeight:1.3}}>{ev.title}</div>
-                        <div style={{fontSize:12,color:"#9ca3af"}}>📍 {ev.city}</div>
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
+              {similarEvents.map(ev => (
+                <EventCard key={ev.id} event={ev} />
+              ))}
             </div>
           </div>
         )}
