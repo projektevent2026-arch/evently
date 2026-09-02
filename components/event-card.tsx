@@ -126,32 +126,32 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
           )}
         </div>
 
-        <div className="flex flex-1 flex-col pt-2.5 pb-2 px-3">
+        <div className="flex flex-1 flex-col pt-2 pb-1.5 px-3">
         <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-card-foreground transition-colors group-hover:text-primary">
             {event.title}
           </h3>
 
-          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
             <MapPin className="size-3.5 text-primary/70 flex-shrink-0" />
             <span className="truncate">{capitalizeCity(event.city)}</span>
           </div>
 
           {event.price && (
-            <div className="mt-1">
+            <div className="mt-0.5">
               <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
                 {event.price}
               </span>
             </div>
           )}
 
-<div className="mt-1 flex items-center justify-end border-t border-border/50 pt-1.5">
+<div className="mt-0.5 flex items-center justify-end border-t border-border/50 pt-1">
             {/* Licznik „zainteresowanych" (RSVP) UKRYTY — wymaga kont (tier D). */}
             {posterImg && (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPosterSrc(posterImg) }}
-                className="h-7 rounded-lg text-[11px] font-semibold border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
+                className="h-6 rounded-lg text-[11px] font-semibold border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
               >
                 <Eye className="size-3 mr-1" />
                 Plakat
