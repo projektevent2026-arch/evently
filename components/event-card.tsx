@@ -126,7 +126,7 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
           )}
         </div>
 
-        <div className="flex flex-1 flex-col pt-2.5 pb-2.5 px-3">
+        <div className="flex flex-1 flex-col pt-2.5 pb-2 px-3">
         <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-card-foreground transition-colors group-hover:text-primary">
             {event.title}
           </h3>
@@ -144,7 +144,7 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
             </div>
           )}
 
-<div className="mt-1.5 flex items-center justify-end border-t border-border/50 pt-1.5">
+<div className="mt-1 flex items-center justify-end border-t border-border/50 pt-1.5">
             {/* Licznik „zainteresowanych" (RSVP) UKRYTY — wymaga kont (tier D). */}
             {posterImg && (
               <Button
