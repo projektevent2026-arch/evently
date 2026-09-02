@@ -101,6 +101,12 @@ export function EventCard({ event, initialGoing = false, theme = "dark" }: { eve
   // Plakat ma odwrotny priorytet niż zdjęcie na karcie — najpierw właściwy plakat, potem zdjęcie jako fallback
   const posterImg = event.image_url || event.image
 
+  const openPoster = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setPosterSrc(posterImg!)
+  }
+
   return (
     <>
       {posterSrc && <PosterModal src={posterSrc} onClose={() => setPosterSrc(null)} />}
@@ -170,15 +176,32 @@ export function EventCard({ event, initialGoing = false, theme = "dark" }: { eve
 <div className={`mt-0.5 flex items-center justify-end border-t pt-1 ${t.footerBorder}`}>
             {/* Licznik „zainteresowanych" (RSVP) UKRYTY — wymaga kont (tier D). */}
             {posterImg && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPosterSrc(posterImg) }}
-                className="h-6 rounded-lg text-[11px] font-semibold border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
-              >
-                <Eye className="size-3 mr-1" />
-                Plakat
-              </Button>
+              theme === "light" ? (
+                // Zwykły <button> zamiast współdzielonego <Button variant="outline">
+                // — ten drugi ciągnie własne, globalne zmienne koloru tła, które
+                // w tym projekcie ZAWSZE rozwiązują się na ciemne wartości,
+                // niezależnie od otoczenia. Na jasnej karcie dawało to ciemny,
+                // nieczytelny przycisk. Ten sam powód, dla którego "Kup bilety"
+                // i "Dodaj do kalendarza" na tej samej stronie już wcześniej
+                // omijały ten komponent na rzecz własnego stylu.
+                <button
+                  onClick={openPoster}
+                  className="h-6 inline-flex items-center gap-1 rounded-lg border border-green-200 bg-white px-2.5 text-[11px] font-semibold text-green-700 hover:bg-green-50 transition-colors"
+                >
+                  <Eye className="size-3" />
+                  Plakat
+                </button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={openPoster}
+                  className="h-6 rounded-lg text-[11px] font-semibold border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
+                >
+                  <Eye className="size-3 mr-1" />
+                  Plakat
+                </Button>
+              )
             )}
           </div>
         </div>
