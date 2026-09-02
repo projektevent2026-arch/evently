@@ -101,9 +101,11 @@ export default function EventPageClient({ slug }: { slug: string }) {
         .info-bar-item { display:flex; align-items:center; gap:8px; padding:10px 20px; border-right:1px solid #f3f4f6; flex-shrink:0; }
         .info-bar-item:last-child { border-right:none; margin-left:auto; }
         .event-layout { display:grid; grid-template-columns:1fr 360px; gap:28px; align-items:start; }
+        .event-sidebar { position:sticky; top:84px; }
         .similar-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
         @media (max-width: 900px) {
           .event-layout { grid-template-columns:1fr; }
+          .event-sidebar { position:static; }
           .info-bar-item { padding:12px 16px; }
           .similar-grid { grid-template-columns:repeat(2,1fr); }
         }
@@ -280,7 +282,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
             </div>
           </div>
 
-          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          <div className="event-sidebar" style={{display:"flex",flexDirection:"column",gap:16}}>
             <div style={{background:"white",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
               <div style={{height:220,overflow:"hidden"}}>
                 <EventMap city={event.city} location={event.address} latitude={event.latitude} longitude={event.longitude} />
@@ -314,8 +316,8 @@ export default function EventPageClient({ slug }: { slug: string }) {
                   <div>
                     <div style={{fontSize:15,fontWeight:700,color:"#111827"}}>{event.organizer_name}</div>
                     {event.website_url && (
-                      <a href={event.website_url} target="_blank" rel="noopener noreferrer" style={{fontSize:13,color:"#16a34a",textDecoration:"none"}}>
-                        {event.website_url.replace(/^https?:\/\//, "")}
+                      <a href={event.website_url} target="_blank" rel="noopener noreferrer" style={{fontSize:13,color:"#16a34a",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>
+                        ↗ Strona organizatora
                       </a>
                     )}
                   </div>
@@ -353,9 +355,9 @@ export default function EventPageClient({ slug }: { slug: string }) {
               <Link href="/" style={{fontSize:14,color:"#16a34a",fontWeight:700,textDecoration:"none"}}>Zobacz wszystkie</Link>
             </div>
             <div className="similar-grid">
-            {similarEvents.map(ev => (
-  <EventCard key={ev.id} event={ev} theme="light" />
-))}
+              {similarEvents.map(ev => (
+                <EventCard key={ev.id} event={ev} theme="light" />
+              ))}
             </div>
           </div>
         )}
