@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Users, Heart, Eye } from "lucide-react"
+import { MapPin, Users, Heart, Eye, Calendar, RotateCw } from "lucide-react"
 import EventImage from "@/components/EventImage"
 import PosterModal from "@/components/PosterModal"
 import { useFavorites } from "@/hooks/useFavorites"
@@ -33,17 +33,6 @@ export interface EventData {
   initialGoing?: boolean
 }
 
-function getDayBadge(start_date?: string, schedule_type?: string): { label: string; color: string } | null {
-  if (schedule_type === 'recurring') return { label: "CYKLICZNE", color: "bg-purple-500" }
-  if (!start_date) return null
-  const now = new Date()
-  const event = new Date(start_date)
-  const diffDays = Math.floor((event.setHours(0,0,0,0) - now.setHours(0,0,0,0)) / 86400000)
-  if (diffDays === 0) return { label: "DZIS", color: "bg-red-500" }
-  if (diffDays === 1) return { label: "JUTRO", color: "bg-orange-500" }
-  return null
-}
-
 // Godzina ze start_time (string 'HH:MM'), NIE z start_date przez new Date
 // (to dawało +2h przez strefę czasową).
 function getTime(start_time?: string | null): string | null {
@@ -59,6 +48,29 @@ function getShortDate(start_date?: string): string | null {
   return `${day} ${month.charAt(0)}${month.slice(1).toLowerCase()}`
 }
 
+// Plakietka data+godzina NA ZDJĘCIU (nie w treści karty) — to jest sedno
+// naprawy: obszar zdjęcia ma stałą wysokość (aspect-[16/10]) niezależnie
+// od tego, co się w nim wyświetla, więc długość tekstu plakietki nigdy
+// nie wpływa na wysokość całej karty. Wcześniej data/godzina/cena jako
+// osobne plakietki w treści łamały się (albo się zawijały wewnątrz, albo
+// zawijały do nowej linii), rozciągając kartę.
+//
+// Kolor = PILNOŚĆ/CHARAKTER czasowy (dziś/jutro/cykliczne/później) —
+// CELOWO niezależny od koloru kategorii (Kultura/Sport/...) tuż obok, żeby
+// dwa różne znaczenia nie dzieliły tej samej palety kolorów.
+type UrgencyBadge = { label: string | null; color: string; icon: "today" | "tomorrow" | "recurring" | "later" }
+
+function getUrgencyBadge(start_date?: string, schedule_type?: string): UrgencyBadge {
+  if (schedule_type === 'recurring') return { label: "CYKLICZNE", color: "bg-purple-600", icon: "recurring" }
+  if (!start_date) return { label: null, color: "bg-zinc-800", icon: "later" }
+  const now = new Date()
+  const event = new Date(start_date)
+  const diffDays = Math.floor((event.setHours(0,0,0,0) - now.setHours(0,0,0,0)) / 86400000)
+  if (diffDays === 0) return { label: "DZISIAJ", color: "bg-red-600", icon: "today" }
+  if (diffDays === 1) return { label: "JUTRO", color: "bg-orange-600", icon: "tomorrow" }
+  return { label: null, color: "bg-zinc-900/90", icon: "later" }
+}
+
 
 export function EventCard({ event, initialGoing = false }: { event: EventData; initialGoing?: boolean }) {
   const [posterSrc, setPosterSrc] = useState<string | null>(null)
@@ -66,9 +78,9 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
   const { isFavorite, toggleFavorite } = useFavorites()
   const liked = isFavorite(event.id)
 
-  const dayBadge = getDayBadge(event.start_date, event.schedule_type)
   const dateShort = getShortDate(event.start_date)
   const time = getTime(event.start_time)
+  const urgency = getUrgencyBadge(event.start_date, event.schedule_type)
   const cat = normalizeCategory(event.category)
   // Plakat ma odwrotny priorytet niż zdjęcie na karcie — najpierw właściwy plakat, potem zdjęcie jako fallback
   const posterImg = event.image_url || event.image
@@ -102,13 +114,23 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
             <Heart className={`size-4 ${liked ? "fill-current" : ""}`} />
           </button>
 
-          <div className="absolute bottom-3 left-3">
-            {dayBadge && (
-              <span className={`${dayBadge.color} rounded-md px-2 py-0.5 text-xs font-bold text-white`}>
-                {dayBadge.label}
-              </span>
-            )}
-          </div>
+          {(dateShort || time) && (
+            <div className={`absolute bottom-3 left-3 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 backdrop-blur-sm ${urgency.color}`}>
+              {urgency.icon === "recurring" ? (
+                <RotateCw className="size-3.5 text-white flex-shrink-0" />
+              ) : (
+                <Calendar className="size-3.5 text-white flex-shrink-0" />
+              )}
+              <div className="leading-tight">
+                {urgency.label && (
+                  <div className="text-[10px] font-black text-white tracking-wide">{urgency.label}</div>
+                )}
+                <div className={`font-bold text-white whitespace-nowrap ${urgency.label ? "text-[11px]" : "text-xs"}`}>
+                  {urgency.icon === "recurring" ? time : [dateShort, time].filter(Boolean).join(", ")}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-1 flex-col p-4">
@@ -121,30 +143,11 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
             <span>{capitalizeCity(event.city)}</span>
           </div>
 
-          {(dateShort || time || event.price) && (
-            // whitespace-nowrap na każdej plakietce -> tekst NIGDY się nie
-            // łamie w środku (to był realny problem: "5 Wrz," / "00:00" na
-            // dwóch liniach WEWNĄTRZ jednej plakietki, nie zbyt dużo
-            // plakietek w rzędzie). overflow-x-auto na całym rzędzie ->
-            // jeśli mimo to nie mieszczą się wszystkie, rząd przewija się
-            // w bok zamiast rosnąć w pionie — wysokość karty jest teraz
-            // zawsze taka sama, niezależnie od długości tekstu.
-            <div className="mt-2 flex items-center gap-2 overflow-x-auto scrollbar-hide">
-              {dateShort && (
-                <span className="whitespace-nowrap flex-shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
-                  {dateShort}
-                </span>
-              )}
-              {time && (
-                <span className="whitespace-nowrap flex-shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
-                  {time}
-                </span>
-              )}
-              {event.price && (
-                <span className="whitespace-nowrap flex-shrink-0 rounded-md bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
-                  {event.price}
-                </span>
-              )}
+          {event.price && (
+            <div className="mt-2">
+              <span className="rounded-md bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
+                {event.price}
+              </span>
             </div>
           )}
 
