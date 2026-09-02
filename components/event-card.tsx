@@ -48,16 +48,9 @@ function getShortDate(start_date?: string): string | null {
   return `${day} ${month.charAt(0)}${month.slice(1).toLowerCase()}`
 }
 
-// Plakietka data+godzina NA ZDJĘCIU (nie w treści karty) — to jest sedno
-// naprawy: obszar zdjęcia ma stałą wysokość (aspect-[16/10]) niezależnie
-// od tego, co się w nim wyświetla, więc długość tekstu plakietki nigdy
-// nie wpływa na wysokość całej karty. Wcześniej data/godzina/cena jako
-// osobne plakietki w treści łamały się (albo się zawijały wewnątrz, albo
-// zawijały do nowej linii), rozciągając kartę.
-//
-// Kolor = PILNOŚĆ/CHARAKTER czasowy (dziś/jutro/cykliczne/później) —
-// CELOWO niezależny od koloru kategorii (Kultura/Sport/...) tuż obok, żeby
-// dwa różne znaczenia nie dzieliły tej samej palety kolorów.
+// Plakietka data+godzina NA ZDJĘCIU — nie wpływa na wysokość karty, bo
+// obszar zdjęcia ma stałą wysokość (aspect-[16/10]) niezależnie od treści.
+// Kolor = pilność (dziś/jutro/cykliczne/później), niezależny od koloru kategorii.
 type UrgencyBadge = { label: string | null; color: string; icon: "today" | "tomorrow" | "recurring" | "later" }
 
 function getUrgencyBadge(start_date?: string, schedule_type?: string): UrgencyBadge {
@@ -133,34 +126,36 @@ export function EventCard({ event, initialGoing = false }: { event: EventData; i
           )}
         </div>
 
-        <div className="flex flex-1 flex-col p-4">
-        <h3 className="line-clamp-2 min-h-[1.7em] text-base font-semibold leading-snug text-card-foreground transition-colors group-hover:text-primary">
+        {/* Treść skompresowana: mniejszy padding (p-3 zamiast p-4), lokalizacja
+            i cena w JEDNYM rzędzie (justify-between) zamiast dwóch osobnych
+            linii, węższa stopka (mniejszy przycisk, mniej odstępu). */}
+        <div className="flex flex-1 flex-col p-3">
+        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-card-foreground transition-colors group-hover:text-primary">
             {event.title}
           </h3>
 
-          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-            <MapPin className="size-3.5 text-primary/70" />
-            <span>{capitalizeCity(event.city)}</span>
-          </div>
-
-          {event.price && (
-            <div className="mt-2">
-              <span className="rounded-md bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+              <MapPin className="size-3.5 text-primary/70 flex-shrink-0" />
+              <span className="truncate">{capitalizeCity(event.city)}</span>
+            </div>
+            {event.price && (
+              <span className="flex-shrink-0 rounded-md bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
                 {event.price}
               </span>
-            </div>
-          )}
+            )}
+          </div>
 
-<div className="mt-auto flex items-center justify-end border-t border-border/50 pt-4 mt-4 min-h-[44px]">
+<div className="mt-2 flex items-center justify-end border-t border-border/50 pt-2">
             {/* Licznik „zainteresowanych" (RSVP) UKRYTY — wymaga kont (tier D). */}
             {posterImg && (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPosterSrc(posterImg) }}
-                className="rounded-lg text-xs font-semibold border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
+                className="h-7 rounded-lg text-[11px] font-semibold border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
               >
-                <Eye className="size-3.5 mr-1" />
+                <Eye className="size-3 mr-1" />
                 Plakat
               </Button>
             )}
