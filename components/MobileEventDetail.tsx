@@ -11,7 +11,8 @@ import EventSchedule from '@/components/EventSchedule'
 import { useFavorites } from '@/hooks/useFavorites'
 import { getEventWithDates } from '@/lib/getEventWithDates'
 import EventDatesList from '@/components/EventDatesList'
-import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, nextTermInfo, linkify, downloadIcs } from '@/lib/eventFormat'
+import AddToCalendarButton from '@/components/AddToCalendarButton'
+import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, nextTermInfo, linkify } from '@/lib/eventFormat'
 import { normalizeCategory, CATEGORY_LABELS, CATEGORY_BADGE_CLASSES, type CategoryKey } from '@/lib/eventCategory'
 
 const EventMap = dynamic(() => import('@/components/event-map').then(m => m.EventMap), { ssr: false })
@@ -244,12 +245,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
 
             {/* Kalendarz — w treści, przewija się ze stroną (jak karta organizatora).
                 Udostępnianie jest w hero (prawy górny róg), więc tu tylko kalendarz. */}
-            <button
-              onClick={() => downloadIcs(event)}
-              className="mt-5 w-full py-3.5 rounded-2xl text-[14px] font-black flex items-center justify-center gap-2 bg-green-500 text-black"
-            >
-              📅 Dodaj do kalendarza
-            </button>
+            <AddToCalendarButton event={event} variant="dark" />
           </div>
         )}
 

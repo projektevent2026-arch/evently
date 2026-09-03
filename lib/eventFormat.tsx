@@ -16,6 +16,12 @@
 // isThisWeekend — dopasowywała KAŻDĄ sobotę/niedzielę w przyszłości, nie
 // tylko najbliższy weekend, więc filtr "Weekend" działał tam inaczej niż na
 // reszcie strony. Skonsolidowane poniżej naprawia to przy okazji.
+// 2026-09-03: ten sam wzorzec bugu znaleziony w downloadIcs() — czytała
+// surowe events.start_date/start_time zamiast najbliższego terminu z
+// event_dates (patrz nextOccurrence() niżej), plus event.start_time w ogóle
+// nie istnieje jako kolumna na events (godzina jest w start_date jako
+// timestamptz) — więc export do kalendarza prawdopodobnie zawsze wychodził
+// jako wydarzenie całodniowe, bez godziny.
 //
 // Nazwy dat wejściowych to zwykle pełny timestamp albo sama data
 // "YYYY-MM-DD" — funkcje tu operują na sufiksie .slice(0,10) i kotwiczą
@@ -201,6 +207,59 @@ export function durationLabel(startTs?: string | null, endTs?: string | null): s
   return `${h} h ${m} min`
 }
 
+// ── Najbliższy termin Z GODZINĄ (do eksportu do kalendarza) ──────────────
+// Podobne do effectiveStartDate(), ale zwraca też start_time/end_time z
+// KONKRETNEGO wiersza event_dates najbliższego terminu — nie surowe
+// events.start_date/end_date, które dla wydarzenia cyklicznego trzymają
+// pierwszy, historyczny termin całej serii (z potencjalnie nieaktualną
+// godziną). Gdy event nie ma w ogóle wierszy w event_dates, godzina jest
+// wyciągana z events.start_date/end_date przez fmtClock() — NIE z
+// event.start_time/event.end_time, bo tych kolumn nie ma w tabeli events
+// (godzina żyje w start_date jako timestamptz, patrz nagłówek pliku).
+// Używane przez downloadIcs(), googleCalendarUrl() i outlookCalendarUrl(),
+// żeby wszystkie trzy formaty liczyły ten sam, poprawny termin.
+interface Occurrence { date: string; startTime: string; endTime: string }
+
+export function nextOccurrence(event: any): Occurrence {
+  const eventDates: EventDateRow[] | undefined = event?.event_dates
+  if (eventDates && eventDates.length > 0) {
+    const today = todayStr()
+    const sorted = [...eventDates].sort((a, b) => a.date.localeCompare(b.date))
+    const upcoming = sorted.filter(d => d.date.slice(0, 10) >= today)
+    const chosen = upcoming.length > 0 ? upcoming[0] : sorted[sorted.length - 1]
+    return {
+      date: chosen.date.slice(0, 10),
+      startTime: (chosen.start_time || "").slice(0, 5),
+      endTime: (chosen.end_time || "").slice(0, 5),
+    }
+  }
+  return {
+    date: (event?.start_date || "").slice(0, 10),
+    startTime: fmtClock(event?.start_date),
+    endTime: fmtClock(event?.end_date),
+  }
+}
+
+// Koniec terminu do kalendarza: jeśli jest osobna godzina końca, użyj jej;
+// jeśli jest tylko start, dodaj 2h (to samo założenie co dawniej w .ics:
+// DURATION:PT2H), z poprawnym przejściem na następny dzień gdy start jest
+// późno wieczorem (np. 22:00 + 2h = 00:00 następnego dnia — realny
+// przypadek, nie teoretyczny, patrz przykładowy event ATB o 22:00).
+// Współdzielone przez downloadIcs(), googleCalendarUrl() i
+// outlookCalendarUrl(), żeby czas trwania nie rozjeżdżał się między
+// trzema formatami.
+function resolveEnd(date: string, startTime: string, endTime: string): { date: string; time: string } {
+  if (endTime) return { date, time: endTime }
+  const [h, m] = startTime.split(":").map(Number)
+  const totalMin = h * 60 + m + 120
+  const dayOverflow = Math.floor(totalMin / 1440)
+  const minsInDay = totalMin % 1440
+  const eh = String(Math.floor(minsInDay / 60)).padStart(2, "0")
+  const em = String(minsInDay % 60).padStart(2, "0")
+  const endDate = dayOverflow > 0 ? addDaysStr(date, dayOverflow) : date
+  return { date: endDate, time: `${eh}:${em}` }
+}
+
 // ── Odległość (Haversine) ─────────────────────────────────────────────────
 // Wcześniej zduplikowane pod dwiema nazwami: haversine() w MobileHome.tsx i
 // haversineKm() w EventMap.tsx — identyczna matematyka. formatDist() też
@@ -258,24 +317,30 @@ export function icsEscape(s: string) {
     .replace(/\r?\n/g, "\\n")
 }
 
+// ── Linki do dodania w kalendarzu (Google / Outlook / .ics) ──────────────
+// Wszystkie trzy liczą termin przez nextOccurrence() — patrz komentarz przy
+// tej funkcji dla wyjaśnienia dlaczego to jest ważne dla wydarzeń
+// cyklicznych i dlaczego godzina NIE jest brana z event.start_time.
+
 // Generuje i pobiera plik .ics. Na telefonie tapnięcie od razu otwiera
 // Kalendarz (Google/Apple) z gotowym wpisem = darmowe przypomnienie bez push.
 export function downloadIcs(event: any) {
-  const startDate = (event.start_date || "").slice(0, 10).replace(/-/g, "")
-  if (!startDate) return
-  const startT = (event.start_time || "").slice(0, 5).replace(":", "")
-  const endDate = (event.end_date || event.start_date || "").slice(0, 10).replace(/-/g, "")
-  const endT = (event.end_time || "").slice(0, 5).replace(":", "")
+  const occ = nextOccurrence(event)
+  if (!occ.date) return
+  const startDate = occ.date.replace(/-/g, "")
+  const startT = occ.startTime.replace(":", "")
 
   const dtstamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")
 
   let timeLines: string[]
-  if (startT) {
-    timeLines = [`DTSTART:${startDate}T${startT}00`]
-    if (endT) timeLines.push(`DTEND:${endDate}T${endT}00`)
-    else timeLines.push("DURATION:PT2H")
+  if (occ.startTime) {
+    const end = resolveEnd(occ.date, occ.startTime, occ.endTime)
+    const endDate = end.date.replace(/-/g, "")
+    const endT = end.time.replace(":", "")
+    timeLines = [`DTSTART:${startDate}T${startT}00`, `DTEND:${endDate}T${endT}00`]
   } else {
-    timeLines = [`DTSTART;VALUE=DATE:${startDate}`, "DURATION:P1D"]
+    const endDate = addDaysStr(occ.date, 1).replace(/-/g, "")
+    timeLines = [`DTSTART;VALUE=DATE:${startDate}`, `DTEND;VALUE=DATE:${endDate}`]
   }
 
   const loc = [event.venue_name, event.address, event.city].filter(Boolean).join(", ")
@@ -306,4 +371,62 @@ export function downloadIcs(event: any) {
   a.click()
   document.body.removeChild(a)
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+// Link do dodania wydarzenia w Google Calendar (otwiera stronę Google z
+// gotowym formularzem w nowej karcie — bez OAuth, bez backendu).
+export function googleCalendarUrl(event: any): string {
+  const occ = nextOccurrence(event)
+  if (!occ.date) return ""
+  const loc = [event.venue_name, event.address, event.city].filter(Boolean).join(", ")
+  const details = String(event.short_description || event.description || "").slice(0, 500)
+  const d = occ.date.replace(/-/g, "")
+
+  let datesParam: string
+  if (occ.startTime) {
+    const end = resolveEnd(occ.date, occ.startTime, occ.endTime)
+    datesParam = `${d}T${occ.startTime.replace(":", "")}00/${end.date.replace(/-/g, "")}T${end.time.replace(":", "")}00`
+  } else {
+    // Cały dzień: Google traktuje datę końca jako WYŁĄCZNĄ, stąd +1 dzień.
+    const endD = addDaysStr(occ.date, 1).replace(/-/g, "")
+    datesParam = `${d}/${endD}`
+  }
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: event.title || "",
+    dates: datesParam,
+    details,
+    location: loc,
+  })
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}
+
+// Link do dodania wydarzenia w Outlook (kalendarz webowy) — ten sam
+// mechanizm co Google, prefilled URL bez backendu/OAuth.
+export function outlookCalendarUrl(event: any): string {
+  const occ = nextOccurrence(event)
+  if (!occ.date) return ""
+  const loc = [event.venue_name, event.address, event.city].filter(Boolean).join(", ")
+  const details = String(event.short_description || event.description || "").slice(0, 500)
+
+  const params = new URLSearchParams({
+    path: "/calendar/action/compose",
+    rru: "addevent",
+    subject: event.title || "",
+    location: loc,
+    body: details,
+  })
+
+  if (occ.startTime) {
+    const end = resolveEnd(occ.date, occ.startTime, occ.endTime)
+    params.set("startdt", `${occ.date}T${occ.startTime}:00`)
+    params.set("enddt", `${end.date}T${end.time}:00`)
+  } else {
+    params.set("allday", "true")
+    params.set("startdt", occ.date)
+    params.set("enddt", addDaysStr(occ.date, 1))
+  }
+
+  return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`
 }

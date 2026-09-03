@@ -9,10 +9,11 @@ import { supabase } from "@/lib/supabase"
 import { getEventWithDates } from "@/lib/getEventWithDates"
 import EventDatesList from "@/components/EventDatesList"
 import { EventCard, type EventData } from "@/components/event-card"
+import AddToCalendarButton from "@/components/AddToCalendarButton"
 import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
-import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, nextTermInfo, linkify, downloadIcs, effectiveStartDate, isToday, isTomorrow } from "@/lib/eventFormat"
+import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, nextTermInfo, linkify, effectiveStartDate, isToday, isTomorrow } from "@/lib/eventFormat"
 import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
 
 const EventMap = dynamic(() => import("@/components/event-map").then(m => m.EventMap), { ssr: false })
@@ -276,9 +277,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
                   Kup bilety
                 </a>
               )}
-              <button onClick={() => downloadIcs(event)} style={{flex:1,padding:"13px 16px",background:"white",border:"none",borderRadius:14,fontSize:14,color:"#374151",cursor:"pointer",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxShadow:"0 2px 8px rgba(0,0,0,0.07)",minWidth:160}}>
-                Dodaj do kalendarza
-              </button>
+              <AddToCalendarButton event={event} variant="light" />
             </div>
           </div>
 
