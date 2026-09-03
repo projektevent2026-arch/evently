@@ -6,6 +6,9 @@
 // kopii tej samej logiki dropdownu/outside-click — patrz historia
 // PosterModal (2026-08-21), który był zduplikowany w 3 miejscach i przez to
 // bug musiał być naprawiany osobno w każdym.
+//
+// Dropdown otwiera się W DÓŁ (top-full), nie w górę — wcześniejsza wersja
+// (bottom-full) nachodziła na opis wydarzenia nad przyciskiem.
 
 import { useState, useRef, useEffect } from "react"
 import { Calendar } from "lucide-react"
@@ -55,7 +58,7 @@ export default function AddToCalendarButton({ event, variant = "light" }: { even
           📅 Dodaj do kalendarza
         </button>
         {open && (
-          <div className="absolute left-0 right-0 bottom-full mb-2 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl z-20">
+          <div className="absolute left-0 right-0 top-full mt-2 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl z-20">
             {options.map(opt => (
               <button
                 key={opt.label}
@@ -81,7 +84,7 @@ export default function AddToCalendarButton({ event, variant = "light" }: { even
         Dodaj do kalendarza
       </button>
       {open && (
-        <div style={{position:"absolute",bottom:"calc(100% + 8px)",left:0,right:0,background:"white",borderRadius:14,boxShadow:"0 8px 24px rgba(0,0,0,0.15)",overflow:"hidden",zIndex:20,border:"1px solid #e5e7eb"}}>
+        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,right:0,background:"white",borderRadius:14,boxShadow:"0 8px 24px rgba(0,0,0,0.15)",overflow:"hidden",zIndex:20,border:"1px solid #e5e7eb"}}>
           {options.map(opt => (
             <button
               key={opt.label}
