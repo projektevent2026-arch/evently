@@ -7,8 +7,10 @@
 // PosterModal (2026-08-21), który był zduplikowany w 3 miejscach i przez to
 // bug musiał być naprawiany osobno w każdym.
 //
-// Dropdown otwiera się W DÓŁ (top-full), nie w górę — wcześniejsza wersja
-// (bottom-full) nachodziła na opis wydarzenia nad przyciskiem.
+// Dropdown otwiera się W DÓŁ (top-full). Przy otwarciu strona sam
+// scrolluje się tak, żeby przycisk + dropdown wylądowały na środku
+// widoku (scrollIntoView block:"center") — bez tego dropdown mógł wyjść
+// poza dolną krawędź ekranu, gdy przycisk był nisko na stronie.
 
 import { useState, useRef, useEffect } from "react"
 import { Calendar } from "lucide-react"
@@ -25,6 +27,20 @@ export default function AddToCalendarButton({ event, variant = "light" }: { even
     }
     document.addEventListener("mousedown", onClick)
     return () => document.removeEventListener("mousedown", onClick)
+  }, [open])
+
+  // Wyśrodkowanie w widoku przy otwarciu — dropdown renderuje się dopiero
+  // po tym samym re-renderze co ustawienie open=true, więc scrollIntoView
+  // wywołane w tym samym evencie łapie jeszcze starą wysokość kontenera.
+  // Mikroopóźnienie (0ms, po następnej klatce) czeka aż DOM się zaktualizuje.
+  useEffect(() => {
+    if (open && ref.current) {
+      const el = ref.current
+      const id = requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "center" })
+      })
+      return () => cancelAnimationFrame(id)
+    }
   }, [open])
 
   const options = [
