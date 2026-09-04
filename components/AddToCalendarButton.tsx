@@ -7,20 +7,24 @@
 // PosterModal (2026-08-21), który był zduplikowany w 3 miejscach i przez to
 // bug musiał być naprawiany osobno w każdym.
 //
-// Dropdown otwiera się W DÓŁ (top-full). Dwie poprzednie próby naprawy
-// "ucinania" na mobile (scrollIntoView center, potem scroll z hardcoded
-// 112px rezerwy) nie działały z dwóch powodów naraz:
-//   1. BottomNav.tsx ma z-50 (fixed), a dropdown miał z-20 — pasek
-//      nawigacji renderował się NAD dropdownem niezależnie od scrolla,
-//      bo to fixed vs fixed w tej samej strefie ekranu.
-//   2. Rezerwa 112px była zgadywanką. Realna wysokość paska to h-14 (56px)
-//      + env(safe-area-inset-bottom), które różni się między telefonami
-//      (gesty vs przyciski systemowe — widać to na screenach: osobny biały
-//      pasek OS pod ciemnym paskiem apki).
-// Naprawa: (a) dropdown ma teraz z-[60], wyżej niż BottomNav (z-50) — więc
-// nawet gdyby się nałożyły, dropdown wygrywa; (b) wysokość rezerwy jest
-// MIERZONA z realnego elementu #app-bottom-nav w DOM (BottomNav.tsx), nie
-// zgadywana na sztywno.
+// Historia trzech nieudanych prób naprawy "ucinania" dropdownu na mobile,
+// zanim znalazł się prawdziwy powód:
+//   1. scrollIntoView({block:"center"}) — nie wiedziało o fixed BottomNav.
+//   2. scroll z hardcoded 112px rezerwy — liczba zgadywana, do tego...
+//   3. ...BottomNav ma z-50, dropdown miał z-20 — nawet poprawny scroll
+//      nic by nie dał, bo pasek renderował się NAD dropdownem zawsze.
+//   4. Po podniesieniu z-index dropdownu nad pasek (z-[60]): dropdown stał
+//      się w pełni widoczny, ale ZAKRYWAŁ pasek nawigacji zamiast się nad
+//      nim zmieścić — bo strona i tak nie miała gdzie się przewinąć.
+//      PRAWDZIWA przyczyna: dropdown jest position:absolute, więc mimo że
+//      wizualnie wystaje poza koniec strony, NIE powiększa realnej,
+//      scrollowalnej wysokości dokumentu — scrollBy nie ma czego przewinąć.
+// Naprawa (variant="dark" — jedyny z fixed BottomNav): przy otwarciu dodaje
+// się niewidoczny spacer o wysokości dropdownu, w normalnym flow strony,
+// zaraz pod przyciskiem — to daje dokumentowi realne dodatkowe miejsce do
+// przewinięcia, dopiero wtedy liczony jest scroll. z-[60] zostaje jako
+// zabezpieczenie na wypadek skrajnie małych ekranów, ale w normalnym
+// użyciu nie powinien już być potrzebny.
 
 import { useState, useRef, useEffect } from "react"
 import { Calendar } from "lucide-react"
@@ -38,7 +42,9 @@ function getBottomNavReserve(): number {
 
 export default function AddToCalendarButton({ event, variant = "light" }: { event: any; variant?: "light" | "dark" }) {
   const [open, setOpen] = useState(false)
+  const [spacerHeight, setSpacerHeight] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -49,25 +55,37 @@ export default function AddToCalendarButton({ event, variant = "light" }: { even
     return () => document.removeEventListener("mousedown", onClick)
   }, [open])
 
-  // Doprzewinięcie przy otwarciu — dokładnie tyle, żeby dół dropdownu
-  // wylądował nad rzeczywistą wysokością #app-bottom-nav (0 gdy pasek jest
-  // ukryty, np. na desktopie). RAF czeka aż DOM odda finalną wysokość
-  // dropdownu po tym samym renderze, w którym open zmieniło się na true.
+  // Dwuetapowo, w dwóch kolejnych klatkach:
+  // 1) zmierz wysokość dropdownu i wstaw spacer tej wysokości pod
+  //    przyciskiem — to fizycznie wydłuża stronę, żeby było gdzie scrollować;
+  // 2) dopiero gdy spacer jest już w DOM (druga klatka), policz właściwy
+  //    scroll względem realnej, rozszerzonej wysokości dokumentu.
   useEffect(() => {
-    if (!open || !ref.current) return
-    const el = ref.current
-    const id = requestAnimationFrame(() => {
-      const reserve = getBottomNavReserve()
-      const rect = el.getBoundingClientRect()
-      const safeBottom = window.innerHeight - reserve
-      if (rect.bottom > safeBottom) {
-        window.scrollBy({ top: rect.bottom - safeBottom + 12, behavior: "smooth" })
-      } else if (rect.top < 0) {
-        window.scrollBy({ top: rect.top - 12, behavior: "smooth" })
-      }
+    if (!open || variant !== "dark") {
+      setSpacerHeight(0)
+      return
+    }
+    let innerId = 0
+    const outerId = requestAnimationFrame(() => {
+      const menuH = menuRef.current?.getBoundingClientRect().height ?? 0
+      setSpacerHeight(menuH)
+      innerId = requestAnimationFrame(() => {
+        if (!ref.current) return
+        const reserve = getBottomNavReserve()
+        const rect = ref.current.getBoundingClientRect()
+        const safeBottom = window.innerHeight - reserve
+        if (rect.bottom > safeBottom) {
+          window.scrollBy({ top: rect.bottom - safeBottom + 12, behavior: "smooth" })
+        } else if (rect.top < 0) {
+          window.scrollBy({ top: rect.top - 12, behavior: "smooth" })
+        }
+      })
     })
-    return () => cancelAnimationFrame(id)
-  }, [open])
+    return () => {
+      cancelAnimationFrame(outerId)
+      cancelAnimationFrame(innerId)
+    }
+  }, [open, variant])
 
   const options = [
     {
@@ -92,27 +110,31 @@ export default function AddToCalendarButton({ event, variant = "light" }: { even
 
   if (variant === "dark") {
     return (
-      <div ref={ref} className="relative mt-5">
-        <button
-          onClick={() => setOpen(o => !o)}
-          className="w-full py-3.5 rounded-2xl text-[14px] font-black flex items-center justify-center gap-2 bg-green-500 text-black"
-        >
-          📅 Dodaj do kalendarza
-        </button>
-        {open && (
-          <div className="absolute left-0 right-0 top-full mt-2 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl z-[60]">
-            {options.map(opt => (
-              <button
-                key={opt.label}
-                onClick={() => { opt.action(); setOpen(false) }}
-                className="w-full text-left px-4 py-3 text-[13px] text-white hover:bg-zinc-800 transition-colors border-b border-zinc-800 last:border-b-0"
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <>
+        <div ref={ref} className="relative mt-5">
+          <button
+            onClick={() => setOpen(o => !o)}
+            className="w-full py-3.5 rounded-2xl text-[14px] font-black flex items-center justify-center gap-2 bg-green-500 text-black"
+          >
+            📅 Dodaj do kalendarza
+          </button>
+          {open && (
+            <div ref={menuRef} className="absolute left-0 right-0 top-full mt-2 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl z-[60]">
+              {options.map(opt => (
+                <button
+                  key={opt.label}
+                  onClick={() => { opt.action(); setOpen(false) }}
+                  className="w-full text-left px-4 py-3 text-[13px] text-white hover:bg-zinc-800 transition-colors border-b border-zinc-800 last:border-b-0"
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Niewidoczny spacer — patrz komentarz w nagłówku pliku. */}
+        <div style={{ height: spacerHeight }} aria-hidden="true" />
+      </>
     )
   }
 
