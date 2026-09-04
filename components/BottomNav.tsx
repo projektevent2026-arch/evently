@@ -24,6 +24,7 @@ export default function BottomNav() {
 
   return (
     <nav
+      id="app-bottom-nav"
       className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#161616] border-t border-[#222]"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >

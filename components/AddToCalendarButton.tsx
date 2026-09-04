@@ -7,20 +7,34 @@
 // PosterModal (2026-08-21), który był zduplikowany w 3 miejscach i przez to
 // bug musiał być naprawiany osobno w każdym.
 //
-// Dropdown otwiera się W DÓŁ (top-full). Przy otwarciu strona doprzewija
-// się TYLKO tyle, ile trzeba, żeby CAŁY dropdown zmieścił się nad dolnym
-// paskiem nawigacji na mobile (Odkrywaj/Ulubione/Dodaj/Mapa) — zwykłe
-// scrollIntoView({block:"center"}) tego nie wie, bo pasek jest position:fixed
-// i nie liczy się do wysokości dokumentu, więc centrowanie potrafiło
-// zostawić ostatnią opcję ("Pobierz plik .ics") pod paskiem, niewidoczną.
-// 112px rezerwy = ta sama wartość co pb-28 na kontenerze w
-// MobileEventDetail.tsx (istniejąca konwencja apki na miejsce pod pasek).
+// Dropdown otwiera się W DÓŁ (top-full). Dwie poprzednie próby naprawy
+// "ucinania" na mobile (scrollIntoView center, potem scroll z hardcoded
+// 112px rezerwy) nie działały z dwóch powodów naraz:
+//   1. BottomNav.tsx ma z-50 (fixed), a dropdown miał z-20 — pasek
+//      nawigacji renderował się NAD dropdownem niezależnie od scrolla,
+//      bo to fixed vs fixed w tej samej strefie ekranu.
+//   2. Rezerwa 112px była zgadywanką. Realna wysokość paska to h-14 (56px)
+//      + env(safe-area-inset-bottom), które różni się między telefonami
+//      (gesty vs przyciski systemowe — widać to na screenach: osobny biały
+//      pasek OS pod ciemnym paskiem apki).
+// Naprawa: (a) dropdown ma teraz z-[60], wyżej niż BottomNav (z-50) — więc
+// nawet gdyby się nałożyły, dropdown wygrywa; (b) wysokość rezerwy jest
+// MIERZONA z realnego elementu #app-bottom-nav w DOM (BottomNav.tsx), nie
+// zgadywana na sztywno.
 
 import { useState, useRef, useEffect } from "react"
 import { Calendar } from "lucide-react"
 import { downloadIcs, googleCalendarUrl, outlookCalendarUrl } from "@/lib/eventFormat"
 
-const MOBILE_NAV_RESERVE_PX = 112
+function getBottomNavReserve(): number {
+  if (typeof document === "undefined") return 0
+  const nav = document.getElementById("app-bottom-nav")
+  if (!nav) return 0
+  const style = window.getComputedStyle(nav)
+  // display:none na desktopie (md:hidden) -> brak rezerwy.
+  if (style.display === "none") return 0
+  return nav.getBoundingClientRect().height
+}
 
 export default function AddToCalendarButton({ event, variant = "light" }: { event: any; variant?: "light" | "dark" }) {
   const [open, setOpen] = useState(false)
@@ -35,16 +49,15 @@ export default function AddToCalendarButton({ event, variant = "light" }: { even
     return () => document.removeEventListener("mousedown", onClick)
   }, [open])
 
-  // Doprzewinięcie przy otwarciu — nie centrowanie na sztywno, tylko
-  // dokładnie tyle, żeby dół dropdownu wylądował nad rezerwą na pasek
-  // nawigacji (na desktopie/variant="light" rezerwa = 0, bo tam nie ma
-  // stałego paska na dole). RAF czeka aż DOM faktycznie odda wysokość
+  // Doprzewinięcie przy otwarciu — dokładnie tyle, żeby dół dropdownu
+  // wylądował nad rzeczywistą wysokością #app-bottom-nav (0 gdy pasek jest
+  // ukryty, np. na desktopie). RAF czeka aż DOM odda finalną wysokość
   // dropdownu po tym samym renderze, w którym open zmieniło się na true.
   useEffect(() => {
     if (!open || !ref.current) return
     const el = ref.current
-    const reserve = variant === "dark" ? MOBILE_NAV_RESERVE_PX : 0
     const id = requestAnimationFrame(() => {
+      const reserve = getBottomNavReserve()
       const rect = el.getBoundingClientRect()
       const safeBottom = window.innerHeight - reserve
       if (rect.bottom > safeBottom) {
@@ -54,7 +67,7 @@ export default function AddToCalendarButton({ event, variant = "light" }: { even
       }
     })
     return () => cancelAnimationFrame(id)
-  }, [open, variant])
+  }, [open])
 
   const options = [
     {
@@ -87,7 +100,7 @@ export default function AddToCalendarButton({ event, variant = "light" }: { even
           📅 Dodaj do kalendarza
         </button>
         {open && (
-          <div className="absolute left-0 right-0 top-full mt-2 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl z-20">
+          <div className="absolute left-0 right-0 top-full mt-2 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl z-[60]">
             {options.map(opt => (
               <button
                 key={opt.label}
@@ -113,7 +126,7 @@ export default function AddToCalendarButton({ event, variant = "light" }: { even
         Dodaj do kalendarza
       </button>
       {open && (
-        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,right:0,background:"white",borderRadius:14,boxShadow:"0 8px 24px rgba(0,0,0,0.15)",overflow:"hidden",zIndex:20,border:"1px solid #e5e7eb"}}>
+        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,right:0,background:"white",borderRadius:14,boxShadow:"0 8px 24px rgba(0,0,0,0.15)",overflow:"hidden",zIndex:60,border:"1px solid #e5e7eb"}}>
           {options.map(opt => (
             <button
               key={opt.label}
