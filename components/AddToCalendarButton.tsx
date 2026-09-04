@@ -7,14 +7,20 @@
 // PosterModal (2026-08-21), który był zduplikowany w 3 miejscach i przez to
 // bug musiał być naprawiany osobno w każdym.
 //
-// Dropdown otwiera się W DÓŁ (top-full). Przy otwarciu strona sam
-// scrolluje się tak, żeby przycisk + dropdown wylądowały na środku
-// widoku (scrollIntoView block:"center") — bez tego dropdown mógł wyjść
-// poza dolną krawędź ekranu, gdy przycisk był nisko na stronie.
+// Dropdown otwiera się W DÓŁ (top-full). Przy otwarciu strona doprzewija
+// się TYLKO tyle, ile trzeba, żeby CAŁY dropdown zmieścił się nad dolnym
+// paskiem nawigacji na mobile (Odkrywaj/Ulubione/Dodaj/Mapa) — zwykłe
+// scrollIntoView({block:"center"}) tego nie wie, bo pasek jest position:fixed
+// i nie liczy się do wysokości dokumentu, więc centrowanie potrafiło
+// zostawić ostatnią opcję ("Pobierz plik .ics") pod paskiem, niewidoczną.
+// 112px rezerwy = ta sama wartość co pb-28 na kontenerze w
+// MobileEventDetail.tsx (istniejąca konwencja apki na miejsce pod pasek).
 
 import { useState, useRef, useEffect } from "react"
 import { Calendar } from "lucide-react"
 import { downloadIcs, googleCalendarUrl, outlookCalendarUrl } from "@/lib/eventFormat"
+
+const MOBILE_NAV_RESERVE_PX = 112
 
 export default function AddToCalendarButton({ event, variant = "light" }: { event: any; variant?: "light" | "dark" }) {
   const [open, setOpen] = useState(false)
@@ -29,19 +35,26 @@ export default function AddToCalendarButton({ event, variant = "light" }: { even
     return () => document.removeEventListener("mousedown", onClick)
   }, [open])
 
-  // Wyśrodkowanie w widoku przy otwarciu — dropdown renderuje się dopiero
-  // po tym samym re-renderze co ustawienie open=true, więc scrollIntoView
-  // wywołane w tym samym evencie łapie jeszcze starą wysokość kontenera.
-  // Mikroopóźnienie (0ms, po następnej klatce) czeka aż DOM się zaktualizuje.
+  // Doprzewinięcie przy otwarciu — nie centrowanie na sztywno, tylko
+  // dokładnie tyle, żeby dół dropdownu wylądował nad rezerwą na pasek
+  // nawigacji (na desktopie/variant="light" rezerwa = 0, bo tam nie ma
+  // stałego paska na dole). RAF czeka aż DOM faktycznie odda wysokość
+  // dropdownu po tym samym renderze, w którym open zmieniło się na true.
   useEffect(() => {
-    if (open && ref.current) {
-      const el = ref.current
-      const id = requestAnimationFrame(() => {
-        el.scrollIntoView({ behavior: "smooth", block: "center" })
-      })
-      return () => cancelAnimationFrame(id)
-    }
-  }, [open])
+    if (!open || !ref.current) return
+    const el = ref.current
+    const reserve = variant === "dark" ? MOBILE_NAV_RESERVE_PX : 0
+    const id = requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect()
+      const safeBottom = window.innerHeight - reserve
+      if (rect.bottom > safeBottom) {
+        window.scrollBy({ top: rect.bottom - safeBottom + 12, behavior: "smooth" })
+      } else if (rect.top < 0) {
+        window.scrollBy({ top: rect.top - 12, behavior: "smooth" })
+      }
+    })
+    return () => cancelAnimationFrame(id)
+  }, [open, variant])
 
   const options = [
     {
