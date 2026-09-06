@@ -7,24 +7,20 @@
 // PosterModal (2026-08-21), który był zduplikowany w 3 miejscach i przez to
 // bug musiał być naprawiany osobno w każdym.
 //
-// Historia trzech nieudanych prób naprawy "ucinania" dropdownu na mobile,
-// zanim znalazł się prawdziwy powód:
+// Historia nieudanych prób naprawy "ucinania" dropdownu na mobile:
 //   1. scrollIntoView({block:"center"}) — nie wiedziało o fixed BottomNav.
-//   2. scroll z hardcoded 112px rezerwy — liczba zgadywana, do tego...
-//   3. ...BottomNav ma z-50, dropdown miał z-20 — nawet poprawny scroll
-//      nic by nie dał, bo pasek renderował się NAD dropdownem zawsze.
-//   4. Po podniesieniu z-index dropdownu nad pasek (z-[60]): dropdown stał
-//      się w pełni widoczny, ale ZAKRYWAŁ pasek nawigacji zamiast się nad
-//      nim zmieścić — bo strona i tak nie miała gdzie się przewinąć.
-//      PRAWDZIWA przyczyna: dropdown jest position:absolute, więc mimo że
-//      wizualnie wystaje poza koniec strony, NIE powiększa realnej,
-//      scrollowalnej wysokości dokumentu — scrollBy nie ma czego przewinąć.
-// Naprawa (variant="dark" — jedyny z fixed BottomNav): przy otwarciu dodaje
-// się niewidoczny spacer o wysokości dropdownu, w normalnym flow strony,
-// zaraz pod przyciskiem — to daje dokumentowi realne dodatkowe miejsce do
-// przewinięcia, dopiero wtedy liczony jest scroll. z-[60] zostaje jako
-// zabezpieczenie na wypadek skrajnie małych ekranów, ale w normalnym
-// użyciu nie powinien już być potrzebny.
+//   2. scroll z hardcoded 112px rezerwy — liczba zgadywana.
+//   3. BottomNav ma z-50, dropdown miał z-20 — pasek renderował się NAD
+//      dropdownem niezależnie od scrolla. Podniesione do z-[60].
+//   4. Dodany spacer, bo dropdown (position:absolute) fizycznie nie
+//      powiększa scrollowalnej wysokości strony — bez spacera nie ma
+//      czego scrollować.
+//   5. NADAL nie działało: scroll liczony był na podstawie `ref`
+//      (kontener przycisku), a nie samego dropdownu. getBoundingClientRect()
+//      elementu z position:absolute wewnątrz NIE wlicza się do wysokości
+//      rodzica — więc warunek "czy trzeba scrollować" sprawdzał wysokość
+//      samego przycisku (zawsze mieści się w ekranie) i scroll nigdy się
+//      nie uruchamiał. Naprawione: mierzony jest menuRef (sam dropdown).
 
 import { useState, useRef, useEffect } from "react"
 import { Calendar } from "lucide-react"
@@ -56,10 +52,11 @@ export default function AddToCalendarButton({ event, variant = "light" }: { even
   }, [open])
 
   // Dwuetapowo, w dwóch kolejnych klatkach:
-  // 1) zmierz wysokość dropdownu i wstaw spacer tej wysokości pod
+  // 1) zmierz wysokość dropdownu (menuRef) i wstaw spacer tej wysokości pod
   //    przyciskiem — to fizycznie wydłuża stronę, żeby było gdzie scrollować;
-  // 2) dopiero gdy spacer jest już w DOM (druga klatka), policz właściwy
-  //    scroll względem realnej, rozszerzonej wysokości dokumentu.
+  // 2) dopiero gdy spacer jest już w DOM (druga klatka), zmierz POŁOŻENIE
+  //    samego dropdownu (menuRef, NIE ref) i policz scroll względem niego —
+  //    to jest dokładnie ta wartość, która wcześniej była liczona źle.
   useEffect(() => {
     if (!open || variant !== "dark") {
       setSpacerHeight(0)
@@ -70,9 +67,9 @@ export default function AddToCalendarButton({ event, variant = "light" }: { even
       const menuH = menuRef.current?.getBoundingClientRect().height ?? 0
       setSpacerHeight(menuH)
       innerId = requestAnimationFrame(() => {
-        if (!ref.current) return
+        if (!menuRef.current) return
         const reserve = getBottomNavReserve()
-        const rect = ref.current.getBoundingClientRect()
+        const rect = menuRef.current.getBoundingClientRect()
         const safeBottom = window.innerHeight - reserve
         if (rect.bottom > safeBottom) {
           window.scrollBy({ top: rect.bottom - safeBottom + 12, behavior: "smooth" })
