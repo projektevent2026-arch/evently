@@ -3,24 +3,28 @@
 // Współdzielony dropdown "Dodaj do kalendarza" (Google Calendar / Outlook /
 // .ics) — używany przez EventPageClient.tsx (variant="light") i
 // MobileEventDetail.tsx (variant="dark"). Jeden komponent zamiast dwóch
-// kopii tej samej logiki dropdownu/outside-click — patrz historia
-// PosterModal (2026-08-21), który był zduplikowany w 3 miejscach i przez to
-// bug musiał być naprawiany osobno w każdym.
+// kopii tej samej logiki — patrz historia PosterModal (2026-08-21),
+// zduplikowanego w 3 miejscach.
 //
-// Historia nieudanych prób naprawy "ucinania" dropdownu na mobile:
-//   1. scrollIntoView({block:"center"}) — nie wiedziało o fixed BottomNav.
-//   2. scroll z hardcoded 112px rezerwy — liczba zgadywana.
-//   3. BottomNav ma z-50, dropdown miał z-20 — pasek renderował się NAD
-//      dropdownem niezależnie od scrolla. Podniesione do z-[60].
-//   4. Dodany spacer, bo dropdown (position:absolute) fizycznie nie
-//      powiększa scrollowalnej wysokości strony — bez spacera nie ma
-//      czego scrollować.
-//   5. NADAL nie działało: scroll liczony był na podstawie `ref`
-//      (kontener przycisku), a nie samego dropdownu. getBoundingClientRect()
-//      elementu z position:absolute wewnątrz NIE wlicza się do wysokości
-//      rodzica — więc warunek "czy trzeba scrollować" sprawdzał wysokość
-//      samego przycisku (zawsze mieści się w ekranie) i scroll nigdy się
-//      nie uruchamiał. Naprawione: mierzony jest menuRef (sam dropdown).
+// 2026-09-06: PO PIĘCIU nieudanych próbach naprawy "ucinania" dropdownu na
+// mobile przez liczenie scrolla (centrowanie, hardcoded rezerwa, z-index,
+// spacer, zła referencja przy pomiarze) — zmiana podejścia zamiast kolejnej
+// łatki. Powód wszystkich pięciu porażek naraz: mobilne przeglądarki
+// dynamicznie zmieniają window.innerHeight przy scrollowaniu (chowanie
+// paska adresu), więc JAKAKOLWIEK matematyka scrolla oparta o
+// window.innerHeight jest z natury krucha i psuje się przy kolejnym
+// scenariuszu (dalszy ręczny scroll, inny telefon, inna przeglądarka).
+//
+// Nowe podejście na mobile (variant="dark"): dropdown NIE jest już
+// doczepiony pod przyciskiem w normalnym flow strony. Jest panelem
+// position:fixed, przyklejonym na sztywno do dołu WIDOCZNEGO EKRANU (nad
+// paskiem nawigacji), z przyciemnionym tłem zamykającym po kliknięciu —
+// standardowy wzorzec "bottom sheet" (jak menu udostępniania w większości
+// appek). Nie wymaga ŻADNEGO scrolla ani liczenia pozycji względem
+// przycisku — więc cała klasa tego buga znika, a nie tylko kolejny jej
+// przypadek. Na desktopie (variant="light") zostaje zwykły dropdown pod
+// przyciskiem — tam nie ma stałego paska nawigacji, więc problem nie
+// występuje.
 
 import { useState, useRef, useEffect } from "react"
 import { Calendar } from "lucide-react"
@@ -38,50 +42,23 @@ function getBottomNavReserve(): number {
 
 export default function AddToCalendarButton({ event, variant = "light" }: { event: any; variant?: "light" | "dark" }) {
   const [open, setOpen] = useState(false)
-  const [spacerHeight, setSpacerHeight] = useState(0)
+  const [navReserve, setNavReserve] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
 
+  // Tylko dla variant="light" — na dark zamykanie obsługuje kliknięcie
+  // w przyciemnione tło (patrz JSX niżej), bo panel jest position:fixed
+  // i wizualnie zasłania resztę ekranu.
   useEffect(() => {
-    if (!open) return
+    if (!open || variant !== "light") return
     function onClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener("mousedown", onClick)
     return () => document.removeEventListener("mousedown", onClick)
-  }, [open])
+  }, [open, variant])
 
-  // Dwuetapowo, w dwóch kolejnych klatkach:
-  // 1) zmierz wysokość dropdownu (menuRef) i wstaw spacer tej wysokości pod
-  //    przyciskiem — to fizycznie wydłuża stronę, żeby było gdzie scrollować;
-  // 2) dopiero gdy spacer jest już w DOM (druga klatka), zmierz POŁOŻENIE
-  //    samego dropdownu (menuRef, NIE ref) i policz scroll względem niego —
-  //    to jest dokładnie ta wartość, która wcześniej była liczona źle.
   useEffect(() => {
-    if (!open || variant !== "dark") {
-      setSpacerHeight(0)
-      return
-    }
-    let innerId = 0
-    const outerId = requestAnimationFrame(() => {
-      const menuH = menuRef.current?.getBoundingClientRect().height ?? 0
-      setSpacerHeight(menuH)
-      innerId = requestAnimationFrame(() => {
-        if (!menuRef.current) return
-        const reserve = getBottomNavReserve()
-        const rect = menuRef.current.getBoundingClientRect()
-        const safeBottom = window.innerHeight - reserve
-        if (rect.bottom > safeBottom) {
-          window.scrollBy({ top: rect.bottom - safeBottom + 12, behavior: "smooth" })
-        } else if (rect.top < 0) {
-          window.scrollBy({ top: rect.top - 12, behavior: "smooth" })
-        }
-      })
-    })
-    return () => {
-      cancelAnimationFrame(outerId)
-      cancelAnimationFrame(innerId)
-    }
+    if (open && variant === "dark") setNavReserve(getBottomNavReserve())
   }, [open, variant])
 
   const options = [
@@ -107,31 +84,36 @@ export default function AddToCalendarButton({ event, variant = "light" }: { even
 
   if (variant === "dark") {
     return (
-      <>
-        <div ref={ref} className="relative mt-5">
-          <button
-            onClick={() => setOpen(o => !o)}
-            className="w-full py-3.5 rounded-2xl text-[14px] font-black flex items-center justify-center gap-2 bg-green-500 text-black"
-          >
-            📅 Dodaj do kalendarza
-          </button>
-          {open && (
-            <div ref={menuRef} className="absolute left-0 right-0 top-full mt-2 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl z-[60]">
+      <div className="relative flex-1">
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="w-full py-3.5 rounded-2xl text-[14px] font-black flex items-center justify-center gap-2 bg-green-500 text-black"
+        >
+          📅 Dodaj do kalendarza
+        </button>
+        {open && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/50 z-[70]"
+              onClick={() => setOpen(false)}
+            />
+            <div
+              className="fixed left-0 right-0 z-[71] bg-zinc-900 border-t border-zinc-800 rounded-t-2xl overflow-hidden shadow-xl"
+              style={{ bottom: navReserve }}
+            >
               {options.map(opt => (
                 <button
                   key={opt.label}
                   onClick={() => { opt.action(); setOpen(false) }}
-                  className="w-full text-left px-4 py-3 text-[13px] text-white hover:bg-zinc-800 transition-colors border-b border-zinc-800 last:border-b-0"
+                  className="w-full text-left px-4 py-4 text-[14px] text-white hover:bg-zinc-800 transition-colors border-b border-zinc-800 last:border-b-0"
                 >
                   {opt.label}
                 </button>
               ))}
             </div>
-          )}
-        </div>
-        {/* Niewidoczny spacer — patrz komentarz w nagłówku pliku. */}
-        <div style={{ height: spacerHeight }} aria-hidden="true" />
-      </>
+          </>
+        )}
+      </div>
     )
   }
 

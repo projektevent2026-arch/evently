@@ -245,24 +245,22 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
               </div>
             )}
 
-            {/* Kup bilety — wcześniej istniało tylko na desktopie
-                (EventPageClient.tsx), tutaj brakowało w ogóle. Ten sam
-                warunek co tam: link_url ustawiony i wydarzenie NIE jest
-                darmowe. */}
-            {event.ticket_url && !event.is_free && (
-              <a
-                href={event.ticket_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-5 w-full py-3.5 rounded-2xl text-[14px] font-black flex items-center justify-center gap-2 bg-green-500 text-black"
-              >
-                🎟️ Kup bilety
-              </a>
-            )}
-
-            {/* Kalendarz — w treści, przewija się ze stroną (jak karta organizatora).
-                Udostępnianie jest w hero (prawy górny róg), więc tu tylko kalendarz. */}
-            <AddToCalendarButton event={event} variant="dark" />
+            {/* Kup bilety + Dodaj do kalendarza obok siebie w jednym wierszu
+                (jak na desktopie) — wcześniej każdy był osobnym, pełnoszerokim
+                przyciskiem pod spodem. */}
+            <div className="mt-5 flex gap-2">
+              {event.ticket_url && !event.is_free && (
+                <a
+                  href={event.ticket_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-3.5 rounded-2xl text-[14px] font-black flex items-center justify-center gap-2 bg-green-500 text-black"
+                >
+                  🎟️ Kup bilety
+                </a>
+              )}
+              <AddToCalendarButton event={event} variant="dark" />
+            </div>
           </div>
         )}
 

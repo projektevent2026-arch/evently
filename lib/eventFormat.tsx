@@ -322,7 +322,9 @@ export function linkify(text: string, variant: "light" | "dark" = "light") {
 
   return parts.map((part, i) => {
     if (/^\*\*[^*]+\*\*$/.test(part)) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>
+      const boldStyle = variant === "light" ? { fontWeight: 800, color: "#0f172a" } : undefined
+      const boldClassName = variant === "dark" ? "font-extrabold text-white" : undefined
+      return <strong key={i} style={boldStyle} className={boldClassName}>{part.slice(2, -2)}</strong>
     }
     if (/^(https?:\/\/|www\.)/.test(part)) {
       const trailing = part.match(/[.,);]+$/)?.[0] ?? ""
