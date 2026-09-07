@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
-import { Plus, MapPin, Trash2, Edit, Copy, Check, X, Eye } from "lucide-react"
+import { Plus, MapPin, Trash2, Edit, Copy, Check, X, Eye, RotateCcw } from "lucide-react"
 
 // Sprowadza dowolną (także starą/legacy) kategorię z bazy do 4 docelowych
 function normalizeCategory(raw: string | null | undefined): string {
