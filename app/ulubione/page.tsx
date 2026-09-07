@@ -190,9 +190,11 @@ export default function UlubionePage() {
       setLoading(true)
       try {
         const { data, error } = await supabase
-          .from('events')
-          .select('*, event_dates(id, date, start_time, end_time)')
-          .in('id', favorites)
+        .from('events')
+        .select('*, event_dates(id, date, start_time, end_time)')
+        .in('id', favorites)
+        .eq('status', 'published')
+        .is('deleted_at', null)
           if (error) throw error
 
           // Sortowanie po EFEKTYWNYM terminie (nie po surowym start_date) —
