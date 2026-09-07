@@ -280,11 +280,13 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
                     🕐 {time}{event.end_time ? ` – ${event.end_time.slice(0,5)}` : ''}
                   </p>
                 )}
-                {event.is_free && (
-                  <span className="inline-block mt-1 text-[9px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-lg">
-                    Wstęp wolny
-                  </span>
-                )}
+                <span className={`inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-lg border ${
+                  event.is_free
+                    ? 'text-green-400 bg-green-500/10 border-green-500/20'
+                    : 'text-red-400 bg-red-500/10 border-red-500/20'
+                }`}>
+                  {event.is_free ? 'Wstęp wolny' : 'Wstęp płatny'}
+                </span>
               </div>
 
               {/* Zdjęcie + przycisk "Plakat" razem w prawej kolumnie, pod
