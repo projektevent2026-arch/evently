@@ -7,6 +7,7 @@ const LocationPicker = dynamic(() => import("@/components/admin/LocationPicker")
 import ImageUpload from "@/components/admin/ImageUpload"
 import ScheduleEditor from "@/components/admin/ScheduleEditor"
 import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/scheduleType"
+import { toggleBoldSelection } from "@/lib/eventFormat"
 
 const CATEGORIES = ["festyny","kultura","muzyka","sport"]
 const CATEGORY_LABELS: Record<string,string> = {
@@ -122,6 +123,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
   const [currentVariant, setCurrentVariant] = useState<"concise" | "rich" | "original" | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
+  const descriptionRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     if (eventId) loadEvent(eventId)
@@ -220,6 +222,23 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
           .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"")
       } : {}),
     }))
+  }
+
+  // Otacza zaznaczony fragment opisu znacznikami **pogrubienia** (albo je
+  // zdejmuje, jeśli zaznaczenie jest już otoczone) i przywraca zaznaczenie
+  // w textarea po re-renderze — ten sam mechanizm co w dodaj-wydarzenie/page.tsx,
+  // dzięki toggleBoldSelection() w lib/eventFormat.tsx oba miejsca piszą
+  // ten sam format znaczników, który linkify() jednolicie odczytuje.
+  const handleBold = () => {
+    const el = descriptionRef.current
+    if (!el) return
+    const result = toggleBoldSelection(form.description, el.selectionStart, el.selectionEnd)
+    if (result.text === form.description) return // nic nie było zaznaczone
+    setForm(prev => ({ ...prev, description: result.text }))
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(result.start, result.end)
+    })
   }
 
   const handleGeocode = async () => {
@@ -797,19 +816,31 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
               <div>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
                   <label style={{ fontSize:13, fontWeight:500, color:"#374151" }}>Opis wydarzenia</label>
-                  <button type="button" onClick={handleImproveDescription}
-                    disabled={improvingDesc || !form.description.trim()}
-                    style={{
-                      display:"flex", alignItems:"center", gap:4, padding:"4px 10px",
-                      border:"1px solid #bbf7d0", borderRadius:20, background:"#f0fdf4",
-                      color:"#16a34a", fontSize:12, fontWeight:600, fontFamily:"inherit",
-                      cursor: improvingDesc || !form.description.trim() ? "default" : "pointer",
-                      opacity: improvingDesc || !form.description.trim() ? 0.5 : 1,
-                    }}>
-                    {improveButtonLabel}
-                  </button>
+                  <div style={{ display:"flex", gap:6 }}>
+                    <button type="button" onClick={handleBold}
+                      title="Zaznacz fragment tekstu i kliknij, żeby go pogrubić"
+                      style={{
+                        display:"flex", alignItems:"center", gap:4, padding:"4px 10px",
+                        border:"1px solid #e5e7eb", borderRadius:20, background:"white",
+                        color:"#374151", fontSize:12, fontWeight:700, fontFamily:"inherit",
+                        cursor:"pointer",
+                      }}>
+                      𝐁 Pogrub
+                    </button>
+                    <button type="button" onClick={handleImproveDescription}
+                      disabled={improvingDesc || !form.description.trim()}
+                      style={{
+                        display:"flex", alignItems:"center", gap:4, padding:"4px 10px",
+                        border:"1px solid #bbf7d0", borderRadius:20, background:"#f0fdf4",
+                        color:"#16a34a", fontSize:12, fontWeight:600, fontFamily:"inherit",
+                        cursor: improvingDesc || !form.description.trim() ? "default" : "pointer",
+                        opacity: improvingDesc || !form.description.trim() ? 0.5 : 1,
+                      }}>
+                      {improveButtonLabel}
+                    </button>
+                  </div>
                 </div>
-                <textarea name="description" value={form.description} onChange={handleChange} placeholder="Opisz wydarzenie — pierwsze zdania pokażą się na liście i mapie..." style={{ ...inp, height:160, resize:"vertical" }} maxLength={2000} />
+                <textarea ref={descriptionRef} name="description" value={form.description} onChange={handleChange} placeholder="Opisz wydarzenie — pierwsze zdania pokażą się na liście i mapie..." style={{ ...inp, height:160, resize:"vertical" }} maxLength={2000} />
                 {improveError && (
                   <div style={{ fontSize:12, color:"#ef4444", marginTop:4 }}>⚠️ {improveError}</div>
                 )}

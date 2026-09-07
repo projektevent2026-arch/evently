@@ -22,6 +22,10 @@
 // nie istnieje jako kolumna na events (godzina jest w start_date jako
 // timestamptz) — więc export do kalendarza prawdopodobnie zawsze wychodził
 // jako wydarzenie całodniowe, bez godziny.
+// 2026-09-06: dopisane toggleBoldSelection() i rozszerzone linkify() o
+// **pogrubienie** — wspólny mechanizm dla przycisku "Pogrub" w formularzu
+// dodawania i edycji (AdminWydarzenie.tsx), żeby oba pisały/czytały ten sam
+// format znaczników.
 //
 // Nazwy dat wejściowych to zwykle pełny timestamp albo sama data
 // "YYYY-MM-DD" — funkcje tu operują na sufiksie .slice(0,10) i kotwiczą
@@ -278,19 +282,48 @@ export function formatDist(km: number): string {
   return km < 1 ? `${Math.round(km * 1000)} m od Ciebie` : `${km.toFixed(1)} km od Ciebie`
 }
 
-// Zamienia URL-e w tekście na klikalne linki. Reszta tekstu (w tym akapity
-// dzięki whitespace-pre-line w otaczającym <p>) zostaje bez zmian. Końcowa
-// interpunkcja (., ,) nie wpada do linka.
+// ── Pogrubienie w opisie (**tekst**) ──────────────────────────────────────
+
+// Otacza zaznaczony fragment znacznikami **pogrubienia** (albo je zdejmuje,
+// jeśli zaznaczenie jest już otoczone) — używane przez przycisk "Pogrub" w
+// obu formularzach (dodaj-wydarzenie i edycja w AdminWydarzenie.tsx), żeby
+// oba pisały ten sam format i linkify() (niżej) mógł go jednolicie
+// odczytać przy wyświetlaniu. Zwraca nowy tekst + pozycję zaznaczenia do
+// przywrócenia w textarea, żeby dało się kliknąć drugi raz i zdjąć
+// pogrubienie z tego samego fragmentu bez ponownego zaznaczania.
+export function toggleBoldSelection(text: string, start: number, end: number): { text: string; start: number; end: number } {
+  if (start === end) return { text, start, end } // nic nie zaznaczono — nic nie rób
+
+  const before = text.slice(0, start)
+  const selected = text.slice(start, end)
+  const after = text.slice(end)
+
+  const alreadyWrapped = before.endsWith("**") && after.startsWith("**")
+  if (alreadyWrapped) {
+    const newText = before.slice(0, -2) + selected + after.slice(2)
+    return { text: newText, start: start - 2, end: end - 2 }
+  }
+
+  const newText = before + "**" + selected + "**" + after
+  return { text: newText, start: start + 2, end: end + 2 }
+}
+
+// Zamienia URL-e w tekście na klikalne linki i **tekst** na pogrubienie.
+// Reszta tekstu (w tym akapity dzięki whitespace-pre-line w otaczającym
+// <p>) zostaje bez zmian. Końcowa interpunkcja (., ,) nie wpada do linka.
 // variant="light" -> inline style (EventPageClient/desktop, jasne tło),
 // variant="dark" -> tailwind className (MobileEventDetail, ciemne tło).
 export function linkify(text: string, variant: "light" | "dark" = "light") {
-  const parts = text.split(/(https?:\/\/[^\s]+|www\.[^\s]+)/g)
+  const parts = text.split(/(\*\*[^*]+\*\*|https?:\/\/[^\s]+|www\.[^\s]+)/g)
   const linkStyle = variant === "light"
     ? { color: "#16a34a", textDecoration: "underline", wordBreak: "break-all" as const }
     : undefined
   const linkClassName = variant === "dark" ? "text-green-400 underline break-all" : undefined
 
   return parts.map((part, i) => {
+    if (/^\*\*[^*]+\*\*$/.test(part)) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>
+    }
     if (/^(https?:\/\/|www\.)/.test(part)) {
       const trailing = part.match(/[.,);]+$/)?.[0] ?? ""
       const clean = trailing ? part.slice(0, part.length - trailing.length) : part

@@ -153,7 +153,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
           },
           { icon: '⏰', value: timeLabel || '—', subtext: !isMultiDay(event.start_date, event.end_date) ? durationLabel(event.start_date, event.end_date) : '' },
           { icon: '📍', value: event.city || event.address || '—' },
-          { icon: '🎟️', value: event.is_free ? 'Wolny' : event.price_from ? `Od ${event.price_from} PLN` : '—', green: event.is_free },
+          { icon: '🎟️', value: event.is_free ? 'Wolny' : event.price_from ? `Od ${event.price_from} PLN` : 'Płatne', green: event.is_free },
         ].map((item, i) => (
           <div key={i} className="flex items-center gap-1.5 px-2 py-1.5 border-r border-zinc-800 flex-shrink-0 last:border-r-0">
             <div className="w-6 h-6 rounded-lg bg-zinc-800 flex items-center justify-center text-[10px] flex-shrink-0">
@@ -221,13 +221,15 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
             )}
 
             {/* Organizer */}
-            {event.organizer_name && (
+            {(event.organizer_name || event.website_url) && (
               <div className="mt-5 flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl p-3">
                 <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-xl flex-shrink-0">
                   🏛️
                 </div>
                 <div className="flex-1">
-                  <div className="text-[12px] font-bold text-white">{event.organizer_name}</div>
+                  {event.organizer_name && (
+                    <div className="text-[12px] font-bold text-white">{event.organizer_name}</div>
+                  )}
                   {event.website_url && (
                     
                      <a href={event.website_url}
@@ -241,6 +243,21 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                 </div>
                 {/* „Obserwuj" UKRYTE — wymaga kont + push (tier D). */}
               </div>
+            )}
+
+            {/* Kup bilety — wcześniej istniało tylko na desktopie
+                (EventPageClient.tsx), tutaj brakowało w ogóle. Ten sam
+                warunek co tam: link_url ustawiony i wydarzenie NIE jest
+                darmowe. */}
+            {event.ticket_url && !event.is_free && (
+              <a
+                href={event.ticket_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-5 w-full py-3.5 rounded-2xl text-[14px] font-black flex items-center justify-center gap-2 bg-green-500 text-black"
+              >
+                🎟️ Kup bilety
+              </a>
             )}
 
             {/* Kalendarz — w treści, przewija się ze stroną (jak karta organizatora).

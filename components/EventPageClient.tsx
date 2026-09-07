@@ -210,7 +210,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </div>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:event.is_free?"#16a34a":"#111827"}}>
-              {event.is_free || !event.price_from || event.price_from === 0 ? "Wolny" : `Od ${event.price_from} PLN`}
+              {event.is_free ? "Wolny" : (event.price_from ? `Od ${event.price_from} PLN` : "Płatne")}
             </div>
           </div>
         </div>
@@ -305,7 +305,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
               )}
             </div>
 
-            {event.organizer_name && (
+            {(event.organizer_name || event.website_url) && (
               <div style={{background:"white",borderRadius:18,padding:"20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
                 <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:0.5,marginBottom:14}}>Organizator</div>
                 <div style={{display:"flex",alignItems:"center",gap:14}}>
@@ -313,7 +313,9 @@ export default function EventPageClient({ slug }: { slug: string }) {
                     <Building2 size={22} color="#16a34a" />
                   </div>
                   <div>
-                    <div style={{fontSize:15,fontWeight:700,color:"#111827"}}>{event.organizer_name}</div>
+                    {event.organizer_name && (
+                      <div style={{fontSize:15,fontWeight:700,color:"#111827"}}>{event.organizer_name}</div>
+                    )}
                     {event.website_url && (
                       <a href={event.website_url} target="_blank" rel="noopener noreferrer" style={{fontSize:13,color:"#16a34a",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>
                         ↗ Strona organizatora

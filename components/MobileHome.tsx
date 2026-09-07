@@ -287,23 +287,32 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
                 )}
               </div>
 
+              {/* Zdjęcie + przycisk "Plakat" razem w prawej kolumnie, pod
+                  miniaturką — wcześniej "Plakat" był osobnym, pełnoszerokim
+                  wierszem na samym dole karty, wizualnie oderwanym od
+                  "Wstęp wolny" w lewej kolumnie. Teraz oba lądują na
+                  podobnej wysokości, blisko siebie. */}
               {img && (
-                <div className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-zinc-700">
-                  <Image src={img} alt={event.title} fill sizes="80px" className="object-cover" />
+                <div className="flex-shrink-0 w-20 flex flex-col gap-1.5">
+                  <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-zinc-700">
+                    <Image src={img} alt={event.title} fill sizes="80px" className="object-cover" />
+                  </div>
+                  {posterImg && (
+                    <button
+                      onClick={e => { e.preventDefault(); setPosterSrc(posterImg) }}
+                      className="w-full flex items-center justify-center gap-1 text-[9px] font-bold text-green-400 border border-green-500/30 bg-green-500/10 px-1 py-1.5 rounded-lg">
+                      👁 Plakat
+                    </button>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Akcje karty — „Idę" ukryte (RSVP nie dziala bez kont, wraca w tier D) */}
-            <div className="flex items-center gap-2 mt-3">
-              {posterImg && (
-                <button
-                  onClick={e => { e.preventDefault(); setPosterSrc(posterImg) }}
-                  className="flex items-center gap-1.5 text-[11px] font-bold text-green-400 border border-green-500/30 bg-green-500/10 px-4 py-2 rounded-xl">
-                  👁 Plakat
-                </button>
-              )}
-              <div className="ml-auto text-zinc-600 text-lg">›</div>
+            {/* Akcje karty — „Idę" ukryte (RSVP nie dziala bez kont, wraca w tier D).
+                Przycisk "Plakat" przeniesiony wyżej pod miniaturkę — tu zostaje
+                tylko strzałka jako subtelna wskazówka "tapnij, żeby zobaczyć więcej". */}
+            <div className="flex items-center justify-end mt-3">
+              <div className="text-zinc-600 text-lg">›</div>
             </div>
           </div>
         </div>

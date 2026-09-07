@@ -4,11 +4,12 @@ import PosterScanner from "@/components/admin/PosterScanner"
 import ImageUpload from "@/components/admin/ImageUpload"
 import ScheduleEditor from "@/components/admin/ScheduleEditor"
 import dynamic from "next/dynamic"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { MapPin, ChevronRight, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/scheduleType"
+import { toggleBoldSelection } from "@/lib/eventFormat"
 
 const LocationPicker = dynamic(
   () => import("@/components/admin/LocationPicker"),
@@ -65,6 +66,7 @@ export default function DodajWydarzenie() {
   const [conciseVariant, setConciseVariant] = useState<string | null>(null)
   const [richVariant, setRichVariant] = useState<string | null>(null)
   const [currentVariant, setCurrentVariant] = useState<"concise" | "rich" | "original" | null>(null)
+  const descriptionRef = useRef<HTMLTextAreaElement>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -74,6 +76,22 @@ export default function DodajWydarzenie() {
       [name]: type === "checkbox" ? checked : value,
       ...(name === "is_free" && checked ? { price_from: "0" } : {}),
     }))
+  }
+
+  // Otacza zaznaczony fragment opisu znacznikami **pogrubienia** (albo je
+  // zdejmuje, jeśli zaznaczenie jest już otoczone) i przywraca zaznaczenie
+  // w textarea po re-renderze — żeby dało się kliknąć drugi raz i zdjąć
+  // pogrubienie bez ponownego zaznaczania tego samego fragmentu.
+  const handleBold = () => {
+    const el = descriptionRef.current
+    if (!el) return
+    const result = toggleBoldSelection(form.description, el.selectionStart, el.selectionEnd)
+    if (result.text === form.description) return // nic nie było zaznaczone
+    setForm(prev => ({ ...prev, description: result.text }))
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(result.start, result.end)
+    })
   }
 
   const handleGeocode = async () => {
@@ -490,19 +508,31 @@ try {
               <div>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
                   <label style={{...lbl,marginBottom:0}}>Pełny opis</label>
-                  <button type="button" onClick={handleImproveDescription}
-                    disabled={improvingDesc || !form.description.trim()}
-                    style={{
-                      display:"flex",alignItems:"center",gap:4,padding:"4px 10px",
-                      border:"1px solid #bbf7d0",borderRadius:20,background:"#f0fdf4",
-                      color:"#16a34a",fontSize:"0.75rem",fontWeight:600,fontFamily:"inherit",
-                      cursor: improvingDesc || !form.description.trim() ? "default" : "pointer",
-                      opacity: improvingDesc || !form.description.trim() ? 0.5 : 1,
-                    }}>
-                    {improveButtonLabel}
-                  </button>
+                  <div style={{display:"flex",gap:6}}>
+                    <button type="button" onClick={handleBold}
+                      title="Zaznacz fragment tekstu i kliknij, żeby go pogrubić"
+                      style={{
+                        display:"flex",alignItems:"center",gap:4,padding:"4px 10px",
+                        border:"1px solid #e5e7eb",borderRadius:20,background:"white",
+                        color:"#374151",fontSize:"0.75rem",fontWeight:700,fontFamily:"inherit",
+                        cursor:"pointer",
+                      }}>
+                      𝐁 Pogrub
+                    </button>
+                    <button type="button" onClick={handleImproveDescription}
+                      disabled={improvingDesc || !form.description.trim()}
+                      style={{
+                        display:"flex",alignItems:"center",gap:4,padding:"4px 10px",
+                        border:"1px solid #bbf7d0",borderRadius:20,background:"#f0fdf4",
+                        color:"#16a34a",fontSize:"0.75rem",fontWeight:600,fontFamily:"inherit",
+                        cursor: improvingDesc || !form.description.trim() ? "default" : "pointer",
+                        opacity: improvingDesc || !form.description.trim() ? 0.5 : 1,
+                      }}>
+                      {improveButtonLabel}
+                    </button>
+                  </div>
                 </div>
-                <textarea name="description" value={form.description} onChange={handleChange}
+                <textarea ref={descriptionRef} name="description" value={form.description} onChange={handleChange}
                   placeholder="Opisz szczegóły, atrakcje, program..." style={{...inp,height:140,resize:"vertical"}} maxLength={2000} />
                 {improveError && (
                   <div style={{fontSize:"0.78rem",color:"#ef4444",marginTop:4}}>⚠️ {improveError}</div>
