@@ -390,7 +390,10 @@ export default function AdminPage() {
                     <button onClick={() => handleEdit(event)} title="Edytuj" style={actBtn}><Edit size={16} /></button>
                     <button onClick={() => handleDuplicate(event)} title="Duplikuj" style={actBtn}><Copy size={16} /></button>
                     {filterStatus === "trash" ? (
-                      <button onClick={() => handlePermanentDelete(event.id)} title="Usuń na stałe" style={{ ...actBtn, color: "#ef4444" }}><Trash2 size={16} /></button>
+                      <>
+                        <button onClick={() => handleRestore(event.id)} title="Przywróć" style={{ ...actBtn, color: "#16a34a" }}><RotateCcw size={16} /></button>
+                        <button onClick={() => handlePermanentDelete(event.id)} title="Usuń na stałe" style={{ ...actBtn, color: "#ef4444" }}><Trash2 size={16} /></button>
+                      </>
                     ) : (
                       <button onClick={() => handleDelete(event.id)} title="Przenieś do kosza" style={{ ...actBtn, color: "#ef4444" }}><Trash2 size={16} /></button>
                     )}
