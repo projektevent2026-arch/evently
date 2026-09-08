@@ -310,12 +310,10 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
               )}
             </div>
 
-            {/* Akcje karty — „Idę" ukryte (RSVP nie dziala bez kont, wraca w tier D).
-                Przycisk "Plakat" przeniesiony wyżej pod miniaturkę — tu zostaje
-                tylko strzałka jako subtelna wskazówka "tapnij, żeby zobaczyć więcej". */}
-            <div className="flex items-center justify-end mt-3">
-              <div className="text-zinc-600 text-lg">›</div>
-            </div>
+            {/* Osobny wiersz ze strzałką ">" usunięty — cała karta jest i tak
+                klikalna (owinięta w <Link>), a ten wiersz tylko generował
+                pusty pas pod przyciskiem "Plakat" bez żadnej dodatkowej
+                funkcji. */}
           </div>
         </div>
       </Link>
