@@ -12,6 +12,15 @@
 //   się wywala; .maybeSingle() zwraca null czysto
 // - terminy sortowane jawnie w JS po dacie+godzinie, nie polegamy na
 //   kolejności zwróconej przez zapytanie
+//
+// 2026-09-06: dopisany filtr deleted_at — bez niego usunięte (soft-delete)
+// wydarzenie nadal otwierało się pod swoim bezpośrednim linkiem (stary
+// bookmark, wynik wyszukiwarki, udostępniony URL), mimo że zniknęło już
+// z list i "Podobnych wydarzeń" po wcześniejszych poprawkach tego samego
+// dnia (widok published_events_with_next_date, zapytanie w /ulubione,
+// zapytanie "Podobne wydarzenia" w EventPageClient.tsx) — to czwarte i
+// najważniejsze miejsce z tym samym przeoczeniem, bo to strona, na którą
+// realnie ktoś kliknie.
 
 import { supabase } from "@/lib/supabase"
 
@@ -38,15 +47,15 @@ export async function getEventWithDates(slug: string, isPreview: boolean = false
     `)
     .eq(isUUID ? "id" : "slug", slug)
 
-  if (!isPreview) query = query.eq("status", "published")
+  if (!isPreview) query = query.eq("status", "published").is("deleted_at", null)
 
   const { data, error } = await query.maybeSingle()
   if (error || !data) return null
 
   // Zabezpieczenie analogiczne do tego już istniejącego w EventPageClient:
   // nawet gdyby zapytanie z jakiegoś powodu zwróciło rekord niepublikowany
-  // mimo filtra, nie zwracamy go dalej.
-  if (!isPreview && data.status !== "published") return null
+  // albo usunięty mimo filtra, nie zwracamy go dalej.
+  if (!isPreview && (data.status !== "published" || data.deleted_at)) return null
 
   const sortedDates: EventDateRow[] = [...(data.event_dates ?? [])].sort((a, b) => {
     const aVal = `${a.date}T${a.start_time ?? "00:00"}`
