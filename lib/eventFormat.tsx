@@ -153,11 +153,11 @@ export function effectiveStartDate(eventDates: EventDateRow[] | undefined | null
 
 // ── Formatowanie dat/godzin do wyświetlania ───────────────────────────────
 
-// "2026-09-06..." -> "6 września 2026"
+// "2026-09-06..." -> "6 wrz 2026"
 export function fmtDate(d?: string | null): string {
   if (!d) return ""
   const dt = new Date(d.slice(0, 10) + "T12:00:00")
-  return dt.toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" })
+  return `${dt.getDate()} ${MONTH_PL_SHORT[dt.getMonth()].toLowerCase()} ${dt.getFullYear()}`
 }
 
 // "2026-09-06..." -> "niedziela"
@@ -194,11 +194,12 @@ export function fmtClock(ts?: string | null): string {
   return m ? `${m[1]}:${m[2]}` : ""
 }
 
-// Czas trwania z godzin start/end: "1 h 30 min", samo "2 h" gdy pełne
-// godziny, puste gdy brak jednej z godzin albo end <= start.
-export function durationLabel(startTs?: string | null, endTs?: string | null): string {
-  const s = fmtClock(startTs)
-  const e = fmtClock(endTs)
+// Różnica czasu trwania między dwiema GOTOWYMI godzinami "HH:MM" — używane
+// bezpośrednio tam, gdzie godziny już pochodzą z nextOccurrence() (per
+// najbliższy termin cyklu), nie z surowych timestampów.
+export function durationBetween(startClock?: string | null, endClock?: string | null): string {
+  const s = startClock || ""
+  const e = endClock || ""
   if (!s || !e) return ""
   const [sh, sm] = s.split(":").map(Number)
   const [eh, em] = e.split(":").map(Number)
@@ -209,6 +210,15 @@ export function durationLabel(startTs?: string | null, endTs?: string | null): s
   if (h === 0) return `${m} min`
   if (m === 0) return `${h} h`
   return `${h} h ${m} min`
+}
+
+// Czas trwania z surowych timestampów start/end — wyciąga godziny przez
+// fmtClock() i deleguje do durationBetween(). Zostaje dla miejsc, które
+// wciąż operują na pełnych events.start_date/end_date (np. panel
+// "Szczegóły", gdzie celowo pokazujemy pełny zakres serii, nie najbliższy
+// termin — patrz komentarz przy tym panelu w EventPageClient.tsx).
+export function durationLabel(startTs?: string | null, endTs?: string | null): string {
+  return durationBetween(fmtClock(startTs), fmtClock(endTs))
 }
 
 // ── Najbliższy termin Z GODZINĄ (do eksportu do kalendarza) ──────────────

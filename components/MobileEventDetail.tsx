@@ -12,7 +12,7 @@ import { useFavorites } from '@/hooks/useFavorites'
 import { getEventWithDates } from '@/lib/getEventWithDates'
 import EventDatesList from '@/components/EventDatesList'
 import AddToCalendarButton from '@/components/AddToCalendarButton'
-import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, nextTermInfo, linkify } from '@/lib/eventFormat'
+import { dateRange, isMultiDay, weekdayName, fmtClock, durationBetween, nextTermInfo, nextOccurrence, linkify } from '@/lib/eventFormat'
 import { normalizeCategory, CATEGORY_LABELS, CATEGORY_BADGE_CLASSES, type CategoryKey } from '@/lib/eventCategory'
 
 const EventMap = dynamic(() => import('@/components/event-map').then(m => m.EventMap), { ssr: false })
@@ -77,11 +77,12 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
   const hasTabs = event.schedule && event.schedule.length > 0
   const tabs = hasTabs ? TABS : ['O wydarzeniu', 'Lokalizacja']
 
-  // Godzina ze start_date/end_date (tam jest zapisana). Koniec tylko gdy istnieje i różni się od startu.
-  const startClock = fmtClock(event.start_date)
-  const endClock = fmtClock(event.end_date)
-  const timeLabel = startClock
-    ? (endClock && endClock !== startClock ? `${startClock}–${endClock}` : startClock)
+  // Godzina w pasku info: z NAJBLIŻSZEGO terminu (nextOccurrence), nie z
+  // surowych start_date/end_date — patrz komentarz w EventPageClient.tsx
+  // przy tej samej poprawce.
+  const occ = nextOccurrence(event)
+  const timeLabel = occ.startTime
+    ? (occ.endTime && occ.endTime !== occ.startTime ? `${occ.startTime}–${occ.endTime}` : occ.startTime)
     : ''
 
   const nextTerm = nextTermInfo(event.event_dates)
@@ -151,7 +152,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
               ? (nextTerm.remaining > 0 ? `+ ${nextTerm.remaining} ${nextTerm.remaining === 1 ? 'kolejny termin' : 'kolejne terminy'}` : '')
               : (!isMultiDay(event.start_date, event.end_date) ? weekdayName(event.start_date) : ''),
           },
-          { icon: '⏰', value: timeLabel || '—', subtext: !isMultiDay(event.start_date, event.end_date) ? durationLabel(event.start_date, event.end_date) : '' },
+          { icon: '⏰', value: timeLabel || '—', subtext: !isMultiDay(event.start_date, event.end_date) ? durationBetween(occ.startTime, occ.endTime) : '' },
           { icon: '📍', value: event.city || event.address || '—' },
           { icon: '🎟️', value: event.is_free ? 'Wolny' : event.price_from ? `Od ${event.price_from} PLN` : 'Płatne', green: event.is_free },
         ].map((item, i) => (

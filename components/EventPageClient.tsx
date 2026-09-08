@@ -13,7 +13,7 @@ import AddToCalendarButton from "@/components/AddToCalendarButton"
 import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
-import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, nextTermInfo, linkify, effectiveStartDate, isToday, isTomorrow } from "@/lib/eventFormat"
+import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, durationBetween, nextTermInfo, nextOccurrence, linkify, effectiveStartDate, isToday, isTomorrow } from "@/lib/eventFormat"
 import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
 
 const EventMap = dynamic(() => import("@/components/event-map").then(m => m.EventMap), { ssr: false })
@@ -82,12 +82,14 @@ export default function EventPageClient({ slug }: { slug: string }) {
   const dateBadge = isToday(badgeDate) ? "DZIS" : isTomorrow(badgeDate) ? "JUTRO" : null
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.address,event.city].filter(Boolean).join(", "))}`
   const hasTabs = event.schedule && event.schedule.length > 0
-  const timeLabel = (() => {
-    const s = fmtClock(event?.start_date)
-    const e = fmtClock(event?.end_date)
-    if (!s) return ""
-    return (e && e !== s) ? `${s} - ${e}` : s
-  })()
+  // Godzina w pasku info: z NAJBLIŻSZEGO terminu (nextOccurrence), nie z
+  // surowych events.start_date/end_date — dla cyklu te pola to sklejenie
+  // godziny startu PIERWSZEGO terminu z godziną końca OSTATNIEGO, więc jeśli
+  // ostatni termin miał puste "Do godziny", cały zakres i czas trwania znikały.
+  const occ = nextOccurrence(event)
+  const timeLabel = occ.startTime
+    ? (occ.endTime && occ.endTime !== occ.startTime ? `${occ.startTime} - ${occ.endTime}` : occ.startTime)
+    : ""
 
   return (
     <main style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"system-ui,sans-serif"}}>
@@ -190,8 +192,8 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </div>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{timeLabel || "—"}</div>
-            {durationLabel(event.start_date, event.end_date) && (
-              <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>{durationLabel(event.start_date, event.end_date)}</div>
+            {durationBetween(occ.startTime, occ.endTime) && (
+              <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>{durationBetween(occ.startTime, occ.endTime)}</div>
             )}
           </div>
         </div>
