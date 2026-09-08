@@ -36,6 +36,15 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
   archived:  { label: "Archiwum",     color: "#9ca3af", bg: "#f9fafb" },
 }
 
+// Skąd wzięło się wydarzenie — dodane ręcznie przez Ciebie w panelu, czy
+// przysłane przez kogoś innego przez publiczny formularz /dodaj-wydarzenie.
+// Ustawiane raz przy tworzeniu (AdminWydarzenie.tsx / dodaj-wydarzenie/page.tsx),
+// edycja istniejącego wydarzenia tego nie zmienia.
+const SOURCE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  admin:  { label: "Admin",     color: "#6b7280", bg: "#f3f4f6" },
+  public: { label: "Formularz", color: "#2563eb", bg: "#eff6ff" },
+}
+
 export default function AdminPage() {
   const [events, setEvents] = useState<any[]>([])
   const [dateFrom, setDateFrom] = useState("")
@@ -373,6 +382,11 @@ export default function AdminPage() {
                     {cat && (
                       <span style={{ padding: "2px 9px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 600, background: CAT_COLOR[cat], color: "white" }}>
                         {CAT_LABEL[cat]}
+                      </span>
+                    )}
+                    {event.source && SOURCE_LABELS[event.source] && (
+                      <span style={{ padding: "2px 9px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 600, background: SOURCE_LABELS[event.source].bg, color: SOURCE_LABELS[event.source].color }}>
+                        {SOURCE_LABELS[event.source].label}
                       </span>
                     )}
                   </div>

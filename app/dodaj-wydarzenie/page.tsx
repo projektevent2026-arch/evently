@@ -275,6 +275,7 @@ try {
       location_notes: form.location_notes.trim() || null,
       schedule: form.schedule && form.schedule.length ? form.schedule : null,
       status: "pending",
+      source: "public",
     }]).select("id").single()
 
     if (supabaseError) {
