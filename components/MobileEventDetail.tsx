@@ -152,7 +152,20 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
               ? (nextTerm.remaining > 0 ? `+ ${nextTerm.remaining} ${nextTerm.remaining === 1 ? 'kolejny termin' : 'kolejne terminy'}` : '')
               : (!isMultiDay(event.start_date, event.end_date) ? weekdayName(event.start_date) : ''),
           },
-          { icon: '⏰', value: timeLabel || '—', subtext: !isMultiDay(event.start_date, event.end_date) ? durationBetween(occ.startTime, occ.endTime) : '' },
+          {
+            icon: '⏰',
+            value: timeLabel || '—',
+            // Dla wydarzeń z event_dates (cykliczne) czas trwania liczymy
+            // zawsze z konkretnego terminu (occ) — każdy wiersz w event_dates
+            // to jeden dzień, więc "wielodniowość" CAŁEJ serii (pierwszy
+            // termin vs ostatni, różne daty) nie ma tu znaczenia. isMultiDay
+            // na surowych start_date/end_date zostaje tylko dla wydarzeń BEZ
+            // event_dates, gdzie start_date/end_date faktycznie mogą
+            // opisywać jedno, naprawdę wielodniowe wydarzenie.
+            subtext: ((event.event_dates && event.event_dates.length > 0) || !isMultiDay(event.start_date, event.end_date))
+              ? durationBetween(occ.startTime, occ.endTime)
+              : '',
+          },
           { icon: '📍', value: event.city || event.address || '—' },
           { icon: '🎟️', value: event.is_free ? 'Wolny' : event.price_from ? `Od ${event.price_from} PLN` : 'Płatne', green: event.is_free },
         ].map((item, i) => (
