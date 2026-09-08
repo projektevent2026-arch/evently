@@ -14,6 +14,7 @@ import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
 import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, durationBetween, nextTermInfo, nextOccurrence, linkify, effectiveStartDate, isToday, isTomorrow } from "@/lib/eventFormat"
+import { publishedFilter } from "@/lib/publishedFilter"
 import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
 
 const EventMap = dynamic(() => import("@/components/event-map").then(m => m.EventMap), { ssr: false })
@@ -32,7 +33,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
       const data = await getEventWithDates(slug, isPreview)
       if (data) {
         setEvent(data)
-        const { data: similar } = await supabase.from("events").select("*").eq("status","published").is("deleted_at", null).neq("id", data.id).limit(4)
+        const { data: similar } = await publishedFilter(supabase.from("events").select("*")).neq("id", data.id).limit(4)
         // Mapowanie na EventData — TEN SAM kształt i TA SAMA karta (EventCard),
         // której używa strona główna. Wcześniej ta sekcja renderowała własny,
         // ręcznie napisany blok JSX (inny styl, brak koloru pilności, brak

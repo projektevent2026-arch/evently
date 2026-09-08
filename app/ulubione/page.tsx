@@ -1,5 +1,6 @@
 'use client'
 
+import { publishedFilter } from '@/lib/publishedFilter'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -189,12 +190,10 @@ export default function UlubionePage() {
       }
       setLoading(true)
       try {
-        const { data, error } = await supabase
-        .from('events')
-        .select('*, event_dates(id, date, start_time, end_time)')
-        .in('id', favorites)
-        .eq('status', 'published')
-        .is('deleted_at', null)
+        const { data, error } = await publishedFilter(supabase
+          .from('events')
+          .select('*, event_dates(id, date, start_time, end_time)')
+          .in('id', favorites))
           if (error) throw error
 
           // Sortowanie po EFEKTYWNYM terminie (nie po surowym start_date) —

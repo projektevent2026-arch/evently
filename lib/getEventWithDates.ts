@@ -22,6 +22,7 @@
 // najważniejsze miejsce z tym samym przeoczeniem, bo to strona, na którą
 // realnie ktoś kliknie.
 
+import { publishedFilter } from "@/lib/publishedFilter"
 import { supabase } from "@/lib/supabase"
 
 export type EventDateRow = {
@@ -47,7 +48,7 @@ export async function getEventWithDates(slug: string, isPreview: boolean = false
     `)
     .eq(isUUID ? "id" : "slug", slug)
 
-  if (!isPreview) query = query.eq("status", "published").is("deleted_at", null)
+  if (!isPreview) query = publishedFilter(query)
 
   const { data, error } = await query.maybeSingle()
   if (error || !data) return null
