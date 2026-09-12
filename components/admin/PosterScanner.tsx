@@ -75,6 +75,11 @@ export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
       setStatus('Błąd połączenia z AI')
     }
     setScanning(false)
+    // Bez tego wybranie DOKŁADNIE TEGO SAMEGO pliku drugi raz (np. po
+    // nieudanym skanie) nie odpala onChange, bo wartość inputa się nie
+    // zmieniła — przycisk wygląda, jakby nic nie robił. Ten sam fix już
+    // jest w AdminWydarzenie.tsx, tu go brakowało.
+    if (e.target) e.target.value = ''
   }
 
   return (
