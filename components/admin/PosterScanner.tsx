@@ -12,6 +12,7 @@ interface ScanResult {
   end_date?: string
   end_time?: string
   dates?: { date: string; start_time: string | null; end_time: string | null }[]
+  schedule?: { day?: number; time: string; title: string; description?: string }[]
   description?: string
   organizer_name?: string
   category?: string

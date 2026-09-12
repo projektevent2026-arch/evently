@@ -399,10 +399,10 @@ try {
                         // nigdy ich nie przepisywał do form.schedule, w przeciwieństwie
                         // do AdminWydarzenie.tsx, gdzie ta sama logika grupowania
                         // po dniu już istniała.
-                        schedule: (data as any).schedule?.length
+                        schedule: data.schedule?.length
                           ? (() => {
                               const days: Record<number, any[]> = {}
-                              ;(data as any).schedule.forEach((item: any) => {
+                              data.schedule.forEach((item: any) => {
                                 const d = item.day || 1
                                 if (!days[d]) days[d] = []
                                 days[d].push({ time: item.time, title: item.title, description: item.description })
