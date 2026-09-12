@@ -80,14 +80,14 @@ export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
   return (
     <div style={{ marginBottom: 16 }}>
       <style>{`
-        .scanner-gallery-btn { width: 100%; }
-        .scanner-camera-btn { display: flex; }
+        .scanner-primary-btn { width: 100%; }
+        .scanner-secondary-btn { display: flex; }
         @media (hover: hover) {
-          .scanner-gallery-btn { width: 100%; }
-          .scanner-camera-btn { display: none; }
+          .scanner-primary-btn { width: 100%; }
+          .scanner-secondary-btn { display: none; }
         }
         @media (hover: none) {
-          .scanner-gallery-btn { flex: 1; }
+          .scanner-primary-btn { flex: 1; }
         }
       `}</style>
 
@@ -99,7 +99,7 @@ export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
         <div style={{ display: 'flex', gap: 8 }}>
          <button
   type="button"
-  className="scanner-gallery-btn"
+  className="scanner-primary-btn"
   onClick={() => cameraRef.current?.click()}
   style={{ padding: '0.75rem', border: '2px dashed #16a34a', borderRadius: 10, background: 'white', cursor: 'pointer', fontSize: '0.875rem', color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
 >
@@ -107,7 +107,7 @@ export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
 </button>
 <button
   type="button"
-  className="scanner-camera-btn"
+  className="scanner-secondary-btn"
   onClick={() => inputRef.current?.click()}
   style={{ flex: 1, padding: '0.75rem', border: '2px dashed #16a34a', borderRadius: 10, background: 'white', cursor: 'pointer', fontSize: '0.875rem', color: '#16a34a', fontWeight: 600, alignItems: 'center', justifyContent: 'center', gap: 8 }}
 >
