@@ -6,6 +6,16 @@ export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname
   const isAdminPath = path.startsWith("/admin")
   const isAddPath = path.startsWith("/dodaj-wydarzenie")
+  const isRegisterPath = path.startsWith("/register")
+
+  // Rejestracja wyłączona na razie — strona (app/register/page.tsx) zostaje
+  // w kodzie na przyszłość (konta organizatorów), ale dziś apka nie ma dla
+  // zwykłego konta żadnej funkcji, więc nikt nie powinien się przez nią
+  // rejestrować. Usunięcie TEJ reguły (nie pliku) włączy stronę z powrotem,
+  // gdy będzie już czemu służyć.
+  if (isRegisterPath) {
+    return NextResponse.redirect(new URL("/", req.url))
+  }
 
   if (!isAdminPath && !isAddPath) {
     return NextResponse.next()
@@ -62,5 +72,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/dodaj-wydarzenie/:path*", "/dodaj-wydarzenie"],
+  matcher: ["/admin/:path*", "/dodaj-wydarzenie/:path*", "/dodaj-wydarzenie", "/register"],
 }

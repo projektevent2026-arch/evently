@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isAllowedOrigin } from '@/lib/verifyOrigin'
 
 const CONCISE_RULES = `- 2-4 zdania, płynną polszczyzną, w trzeciej osobie — zwarta proza, NIE lista punktów ani osobne sekcje.
 - Możesz użyć 1, maksymalnie 2 dobrze dobranych emoji, tylko jeśli naturalnie pasują do treści (np. przy nazwie muzyki/tańca/rodzaju wydarzenia) — nie przy każdym zdaniu, nie jako czysta ozdoba. Jeśli nie masz dobrego pomysłu na emoji, nie dodawaj żadnego — lepiej zero niż wciśnięte na siłę.`
@@ -20,6 +21,10 @@ Szykuje się muzyczny wieczór dla całej rodziny! 🎉
 Zapraszamy całe rodziny! 🙌`
 
 export async function POST(req: NextRequest) {
+  if (!isAllowedOrigin(req)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const { text, style } = await req.json()
 
   if (!text || !text.trim()) {

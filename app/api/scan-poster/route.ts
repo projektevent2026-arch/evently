@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isAllowedOrigin } from '@/lib/verifyOrigin'
 
 // ── Walidacja daty po skanie (pas bezpieczeństwa) ──────────────────────────
 // Nawet z datą w promcie AI potrafi zwrócić rok z przeszłości, gdy plakat nie
@@ -60,6 +61,10 @@ function deriveStartEnd(dates: any[]): { start_date: string | null; start_time: 
 }
 
 export async function POST(req: NextRequest) {
+  if (!isAllowedOrigin(req)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const { imageBase64, mediaType } = await req.json()
 
   // Dzisiejsza data wstrzykiwana do promptu, żeby AI nie zgadywało roku.

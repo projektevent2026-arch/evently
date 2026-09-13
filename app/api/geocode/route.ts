@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isAllowedOrigin } from '@/lib/verifyOrigin'
 
 const NOMINATIM_HEADERS = {
   'User-Agent': 'Evently/1.0 (kontakt@evently.pl)',
@@ -63,6 +64,10 @@ async function askNominatim(query: string) {
 }
 
 export async function GET(req: NextRequest) {
+  if (!isAllowedOrigin(req)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const query = req.nextUrl.searchParams.get('q')
 
   if (!query || query.trim().length < 2) {
