@@ -22,20 +22,39 @@ export default function UstawHaslo() {
   const [done, setDone] = useState(false)
 
   useEffect(() => {
+    async function init() {
+      // Klient używa domyślnego flowType dla @supabase/ssr, czyli "pkce" —
+      // link z zaproszenia/resetu przychodzi jako ?code=... w adresie,
+      // NIE jako #access_token=... (to była pierwotna, błędna obsługa
+      // tylko starszego formatu). Trzeba jawnie wymienić kod na sesję.
+      const params = new URLSearchParams(window.location.search)
+      const code = params.get("code")
+
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+        if (exchangeError) {
+          setChecking(false)
+          return
+        }
+        setSessionOk(true)
+        setChecking(false)
+        return
+      }
+
+      // Zostaje jako zabezpieczenie na wypadek starszego formatu linku
+      // (#access_token=...), który klient i tak przetwarza automatycznie.
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) setSessionOk(true)
+      setChecking(false)
+    }
+    init()
+
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setSessionOk(true)
         setChecking(false)
       }
     })
-
-    // Na wypadek gdyby zdarzenie zdążyło się odpalić zanim zdążyliśmy
-    // się na nie zapisać — sprawdzamy też stan wprost.
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) setSessionOk(true)
-      setChecking(false)
-    })
-
     return () => { sub.subscription.unsubscribe() }
   }, [])
 
