@@ -9,7 +9,7 @@ export async function GET() {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
-  const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers()
+  const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
   if (authError) {
     return NextResponse.json({ error: authError.message }, { status: 500 })
   }
