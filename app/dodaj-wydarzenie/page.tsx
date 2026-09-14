@@ -4,7 +4,7 @@ import PosterScanner from "@/components/admin/PosterScanner"
 import ImageUpload from "@/components/admin/ImageUpload"
 import ScheduleEditor from "@/components/admin/ScheduleEditor"
 import dynamic from "next/dynamic"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { MapPin, ChevronRight, CheckCircle } from "lucide-react"
 import Link from "next/link"
@@ -66,6 +66,90 @@ export default function DodajWydarzenie() {
   const [conciseVariant, setConciseVariant] = useState<string | null>(null)
   const [richVariant, setRichVariant] = useState<string | null>(null)
   const [currentVariant, setCurrentVariant] = useState<"concise" | "rich" | "original" | null>(null)
+
+  // Rola organizatora: jeśli zalogowany i profiles.role === "organizer",
+  // formularz publikuje od razu (status published, source organizer)
+  // zamiast trafiać do kolejki "Oczekujące". editId obecny = edycja
+  // WŁASNEGO istniejącego wydarzenia (?edit=<id> w adresie) zamiast
+  // dodawania nowego — sprawdzane przez created_by przy wczytywaniu,
+  // nie ma tu żadnego zaufania samej obecności parametru w adresie.
+  const [userId, setUserId] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
+  // Bez tego: jeśli ktoś wypełni i wyśle formularz ZANIM asynchroniczne
+  // sprawdzenie roli (poniżej, w init()) zdąży się zakończyć, kod widzi
+  // jeszcze pustą, początkową wartość userRole i traktuje zalogowanego
+  // organizatora jak anonimowe zgłoszenie publiczne — dokładnie to
+  // wydarzyło się przy pierwszym teście. Przycisk "Wyślij" zostaje
+  // zablokowany, dopóki roleChecked nie jest true.
+  const [roleChecked, setRoleChecked] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editNotAllowed, setEditNotAllowed] = useState(false)
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const params = new URLSearchParams(window.location.search)
+        const editParam = params.get("edit")
+
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        setUserId(user.id)
+        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+        setUserRole(profile?.role || null)
+
+        if (editParam) {
+          const { data: existing, error: fetchError } = await supabase
+            .from("events")
+            .select("*, event_dates(date, start_time, end_time)")
+            .eq("id", editParam)
+            .single()
+
+          // Sprawdzenie po stronie apki, nie tylko RLS — jeśli to nie jego
+          // wydarzenie, w ogóle nie wczytujemy cudzych danych do formularza.
+          if (fetchError || !existing || existing.created_by !== user.id) {
+            setEditNotAllowed(true)
+            return
+          }
+
+          setEditId(editParam)
+          setForm({
+            title: existing.title || "",
+            description: existing.description || "",
+            city: existing.city || "",
+            address: existing.address || "",
+            venue_name: existing.venue_name || "",
+            category: existing.category || "",
+            cover_image_url: existing.cover_image_url || "",
+            image_url: existing.image_url || "",
+            ticket_url: existing.ticket_url || "",
+            website_url: existing.website_url || "",
+            organizer_name: existing.organizer_name || "",
+            organizer_email: existing.organizer_email || "",
+            price_from: existing.price_from != null ? String(existing.price_from) : "0",
+            is_free: existing.is_free,
+            latitude: existing.latitude != null ? String(existing.latitude) : "",
+            longitude: existing.longitude != null ? String(existing.longitude) : "",
+            location_notes: existing.location_notes || "",
+            schedule: existing.schedule || [],
+          })
+          if (existing.event_dates && existing.event_dates.length > 0) {
+            setDates(existing.event_dates.map((d: any) => ({
+              date: d.date,
+              from: d.start_time ? String(d.start_time).slice(0, 5) : "",
+              to: d.end_time ? String(d.end_time).slice(0, 5) : "",
+            })))
+          }
+        }
+      } finally {
+        // Niezależnie od tego, którą ścieżką funkcja się zakończyła
+        // (brak logowania, błąd edycji, czy pełny sukces) — sprawdzenie
+        // jest już zrobione, można bezpiecznie odblokować przycisk.
+        setRoleChecked(true)
+      }
+    }
+    init()
+  }, [])
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>) => {
@@ -250,7 +334,13 @@ try {
     ? (last.from ? last.date + "T" + last.from : last.date)
     : null
 
-    const { data: savedEvent, error: supabaseError } = await supabase.from("events").insert([{
+  const isOrganizer = userRole === "organizer"
+
+  if (isOrganizer && editId) {
+    // Edycja WŁASNEGO, już istniejącego wydarzenia — UPDATE, nie INSERT.
+    // Dostęp do tego wydarzenia był już zweryfikowany przy wczytywaniu
+    // (created_by === user.id), RLS to samo wymusza jeszcze raz po stronie bazy.
+    const { error: updateError } = await supabase.from("events").update({
       title: form.title,
       slug: generateSlug(form.title),
       description: form.description || null,
@@ -274,9 +364,67 @@ try {
       longitude: form.longitude ? parseFloat(form.longitude) : null,
       location_notes: form.location_notes.trim() || null,
       schedule: form.schedule && form.schedule.length ? form.schedule : null,
-      status: "pending",
-      source: "public",
-    }]).select("id").single()
+    }).eq("id", editId)
+
+    if (updateError) {
+      setError("Błąd zapisu: " + updateError.message)
+      setSubmitting(false)
+      return
+    }
+
+    // Terminy: prościej usunąć stare i wstawić nowe niż dopasowywać
+    // różnice wiersz po wierszu — liczba terminów mogła się zmienić.
+    await supabase.from("event_dates").delete().eq("event_id", editId)
+    const editRows = sortedDates.map(d => ({
+      event_id: editId,
+      date: d.date,
+      start_time: d.from || null,
+      end_time: d.to || null,
+      starts_at: d.from ? `${d.date}T${d.from}:00` : `${d.date}T00:00:00`,
+    }))
+    const { error: editDatesError } = await supabase.from("event_dates").insert(editRows)
+    if (editDatesError) {
+      setError("Zapisano zmiany, ale wystąpił błąd zapisu terminów: " + editDatesError.message)
+      setSubmitting(false)
+      return
+    }
+
+    setSubmitted(true)
+    setSubmitting(false)
+    return
+  }
+
+  // Nowe wydarzenie — formularz publiczny (status pending, source public)
+  // albo organizator dodający coś nowego (status published od razu,
+  // source organizer, created_by ustawiony żeby mógł to później edytować).
+  const { data: savedEvent, error: supabaseError } = await supabase.from("events").insert([{
+    title: form.title,
+    slug: generateSlug(form.title),
+    description: form.description || null,
+    short_description: generateShortDescription(form.description) || null,
+    start_date: start,
+    end_date: end,
+    schedule_type: scheduleType,
+    city: form.city,
+    address: form.address || null,
+    venue_name: form.venue_name || null,
+    category: form.category,
+    cover_image_url: form.cover_image_url || null,
+    image_url: form.image_url || null,
+    ticket_url: form.ticket_url || null,
+    website_url: form.website_url || null,
+    organizer_name: form.organizer_name || null,
+    organizer_email: form.organizer_email || null,
+    is_free: form.is_free,
+    price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
+    latitude: form.latitude ? parseFloat(form.latitude) : null,
+    longitude: form.longitude ? parseFloat(form.longitude) : null,
+    location_notes: form.location_notes.trim() || null,
+    schedule: form.schedule && form.schedule.length ? form.schedule : null,
+    status: isOrganizer ? "published" : "pending",
+    source: isOrganizer ? "organizer" : "public",
+    created_by: userId || null,
+  }]).select("id").single()
 
     if (supabaseError) {
       setError("Błąd zapisu: " + supabaseError.message)
@@ -308,6 +456,22 @@ try {
   }
 }
 
+  if (editNotAllowed) {
+    return (
+      <div style={{minHeight:"100vh",background:"#f9fafb",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"sans-serif",padding:20}}>
+        <div style={{background:"white",borderRadius:16,padding:"3rem 2.5rem",maxWidth:480,width:"100%",textAlign:"center",boxShadow:"0 4px 24px rgba(0,0,0,0.08)"}}>
+          <h1 style={{fontSize:"1.5rem",fontWeight:800,color:"#111827",marginBottom:12}}>Brak dostępu</h1>
+          <p style={{color:"#6b7280",lineHeight:1.6,marginBottom:24}}>
+            To wydarzenie nie istnieje albo nie masz uprawnień, żeby je edytować.
+          </p>
+          <Link href="/moje-wydarzenia" style={{display:"inline-block",background:"#16a34a",color:"white",padding:"0.75rem 2rem",borderRadius:10,fontWeight:700,textDecoration:"none",fontSize:"0.95rem"}}>
+            Wróć do moich wydarzeń
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   if (submitted) {
     return (
       <div style={{minHeight:"100vh",background:"#f9fafb",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"sans-serif",padding:20}}>
@@ -317,7 +481,9 @@ try {
           </div>
           <h1 style={{fontSize:"1.5rem",fontWeight:800,color:"#111827",marginBottom:12}}>Dziękujemy!</h1>
           <p style={{color:"#6b7280",lineHeight:1.6,marginBottom:24}}>
-            Twoje wydarzenie zostało przesłane do weryfikacji. Nasz zespół sprawdzi je i opublikuje w ciągu 24 godzin.
+            {userRole === "organizer"
+              ? (editId ? "Zmiany zostały zapisane." : "Twoje wydarzenie zostało opublikowane.")
+              : "Twoje wydarzenie zostało przesłane do weryfikacji. Nasz zespół sprawdzi je i opublikuje w ciągu 24 godzin."}
           </p>
           <Link href="/" style={{display:"inline-block",background:"#16a34a",color:"white",padding:"0.75rem 2rem",borderRadius:10,fontWeight:700,textDecoration:"none",fontSize:"0.95rem"}}>
             Wróć do strony głównej
@@ -351,8 +517,14 @@ try {
       <div style={{maxWidth:760,margin:"2rem auto",padding:"0 1rem",paddingBottom:"calc(6rem + env(safe-area-inset-bottom))"}}>
 
         <div style={{marginBottom:"1.5rem"}}>
-          <h1 style={{fontSize:"1.75rem",fontWeight:800,color:"#111827",margin:"0 0 6px"}}>Dodaj wydarzenie</h1>
-          <p style={{color:"#6b7280",margin:0}}>Wypełnij formularz — opublikujemy je bezpłatnie po weryfikacji.</p>
+          <h1 style={{fontSize:"1.75rem",fontWeight:800,color:"#111827",margin:"0 0 6px"}}>
+            {editId ? "Edytuj wydarzenie" : "Dodaj wydarzenie"}
+          </h1>
+          <p style={{color:"#6b7280",margin:0}}>
+            {userRole === "organizer"
+              ? (editId ? "Zmiany zapiszą się od razu, bez kolejki." : "Twoje wydarzenie zostanie opublikowane od razu, bez kolejki.")
+              : "Wypełnij formularz — opublikujemy je bezpłatnie po weryfikacji."}
+          </p>
         </div>
 
         <div style={{background:"white",borderRadius:16,boxShadow:"0 2px 12px rgba(0,0,0,0.07)",overflow:"hidden"}}>
@@ -704,13 +876,19 @@ try {
 
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:"0.5rem",borderTop:"1px solid #f3f4f6"}}>
                 <button type="button" onClick={() => setActiveTab("location")} style={backBtn}>← Wstecz</button>
-                <button type="submit" disabled={submitting} style={{
+                <button type="submit" disabled={submitting || !roleChecked} style={{
                   display:"flex",alignItems:"center",gap:8,
                   padding:"0.8rem 2rem",background:"#16a34a",color:"white",
                   border:"none",borderRadius:10,cursor:"pointer",
                   fontWeight:700,fontSize:"1rem",opacity:submitting ? 0.7 : 1,
                 }}>
-                  {submitting ? "Wysyłanie..." : "✅ Wyślij do weryfikacji"}
+                  {!roleChecked
+                    ? "Sprawdzanie..."
+                    : submitting
+                      ? "Wysyłanie..."
+                      : userRole === "organizer"
+                        ? (editId ? "💾 Zapisz zmiany" : "✅ Opublikuj wydarzenie")
+                        : "✅ Wyślij do weryfikacji"}
                 </button>
               </div>
             </>}
