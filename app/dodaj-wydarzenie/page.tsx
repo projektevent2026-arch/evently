@@ -876,6 +876,11 @@ try {
 
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:"0.5rem",borderTop:"1px solid #f3f4f6"}}>
                 <button type="button" onClick={() => setActiveTab("location")} style={backBtn}>← Wstecz</button>
+                {roleChecked && (
+                  <p style={{fontSize:11, color:"#9ca3af", margin:"0 0 6px", fontFamily:"monospace"}}>
+                    debug: zalogowany={userId ? "TAK (" + userId.slice(0,8) + "...)" : "NIE"} · rola={userRole || "brak"}
+                  </p>
+                )}
                 <button type="submit" disabled={submitting || !roleChecked} style={{
                   display:"flex",alignItems:"center",gap:8,
                   padding:"0.8rem 2rem",background:"#16a34a",color:"white",
