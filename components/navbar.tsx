@@ -10,6 +10,9 @@ import { useFavorites } from "@/hooks/useFavorites"
 export function Navbar() {
   const [user, setUser] = useState<any>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  // Osobna flaga od isAdmin — organizator dostaje inny link ("Moje
+  // wydarzenia" zamiast "Panel"), bo nie ma dostępu do pełnego /admin.
+  const [isOrganizer, setIsOrganizer] = useState(false)
   // Ulubione na localStorage — NIE wymagają konta. Licznik zsynchronizowany z sercami.
   const { count } = useFavorites()
 
@@ -24,13 +27,17 @@ export function Navbar() {
           .single()
           .then(({ data: profile }) => {
             setIsAdmin(profile?.role === "admin" || profile?.role === "moderator")
+            setIsOrganizer(profile?.role === "organizer")
           })
       }
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null)
-      if (!session?.user) setIsAdmin(false)
+      if (!session?.user) {
+        setIsAdmin(false)
+        setIsOrganizer(false)
+      }
     })
 
     return () => listener.subscription.unsubscribe()
@@ -84,6 +91,15 @@ export function Navbar() {
               className="hidden sm:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               Panel
+            </Link>
+          )}
+
+          {user && isOrganizer && (
+            <Link
+              href="/moje-wydarzenia"
+              className="hidden sm:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Moje wydarzenia
             </Link>
           )}
 
