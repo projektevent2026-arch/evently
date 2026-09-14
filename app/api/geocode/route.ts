@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAllowedOrigin } from '@/lib/verifyOrigin'
+import { geocodeRateLimit, getClientIp } from '@/lib/rateLimit'
 
 const NOMINATIM_HEADERS = {
   'User-Agent': 'Evently/1.0 (kontakt@evently.pl)',
@@ -66,6 +67,11 @@ async function askNominatim(query: string) {
 export async function GET(req: NextRequest) {
   if (!isAllowedOrigin(req)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const { success } = await geocodeRateLimit.limit(getClientIp(req))
+  if (!success) {
+    return NextResponse.json({ error: 'Zbyt wiele zapytań. Spróbuj za kilka minut.' }, { status: 429 })
   }
 
   const query = req.nextUrl.searchParams.get('q')

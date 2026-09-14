@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAllowedOrigin } from '@/lib/verifyOrigin'
+import { aiRateLimit, getClientIp } from '@/lib/rateLimit'
 
 // ── Walidacja daty po skanie (pas bezpieczeństwa) ──────────────────────────
 // Nawet z datą w promcie AI potrafi zwrócić rok z przeszłości, gdy plakat nie
@@ -63,6 +64,11 @@ function deriveStartEnd(dates: any[]): { start_date: string | null; start_time: 
 export async function POST(req: NextRequest) {
   if (!isAllowedOrigin(req)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const { success } = await aiRateLimit.limit(getClientIp(req))
+  if (!success) {
+    return NextResponse.json({ error: 'Zbyt wiele zapytań. Spróbuj za kilka minut.' }, { status: 429 })
   }
 
   const { imageBase64, mediaType } = await req.json()
@@ -139,7 +145,7 @@ Jeśli w stopce jest kilka podmiotów, wybierz ten najbardziej wyeksponowany (na
 - NIE POMIJAJ punktu tylko dlatego, że nie ma przy nim godziny. Ustaw "time": null i zachowaj punkt.
 - Jeśli plakat ma sekcję typu "ATRAKCJE DLA KAŻDEGO" albo listę z ikonkami — każda pozycja z tej listy to osobny punkt programu z "time": null.
 - Każdy punkt z godziną ma DOKŁADNIE JEDNĄ godzinę (zwykle napisaną przed nim).
-- Jeśli tytuł punktu zawija się na dwie linie (np. "16:45 – Szkoła dziecięca\\npod opieką Pani X"), to JEDEN punkt, nie dwa. Połącz w jeden "title".
+- Jeśli tytuł punktu zawija się na dwie linie (np. "16:45 – Szkoła dziecięca\npod opieką Pani X"), to JEDEN punkt, nie dwa. Połącz w jeden "title".
 - NIGDY nie zwracaj "00:00" jako zgadywanej godziny. "00:00" tylko jeśli plakat dosłownie pokazuje punkt o północy.
 
 ═══ TERMINY — znajdź WSZYSTKIE daty na plakacie ═══
