@@ -43,6 +43,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
 const SOURCE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   admin:  { label: "Admin",     color: "#6b7280", bg: "#f3f4f6" },
   public: { label: "Formularz", color: "#2563eb", bg: "#eff6ff" },
+  organizer: { label: "Organizator", color: "#7c3aed", bg: "#f5f3ff" },
 }
 
 export default function AdminPage() {
@@ -255,6 +256,7 @@ export default function AdminPage() {
         <a href="/" style={navItem(false)}>Panel główny</a>
         <a href="/admin" style={navItem(true)}>Wydarzenia</a>
         <a href="/admin/wydarzenia" style={navItem(false)}>Dodaj wydarzenie</a>
+        <a href="/admin/uzytkownicy" style={navItem(false)}>Użytkownicy</a>
       </aside>
 
       {/* LISTA */}
