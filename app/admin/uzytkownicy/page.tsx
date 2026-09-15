@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { MapPin } from "lucide-react"
 
 const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
@@ -93,7 +94,14 @@ export default function AdminUzytkownicy() {
               return (
                 <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid #f3f4f6" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "0.9rem", color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div>
+                    <Link
+                      href={`/admin/organizator/${u.id}`}
+                      style={{ fontSize: "0.9rem", color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", textDecoration: "none" }}
+                      onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")}
+                      onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}
+                    >
+                      {u.email}
+                    </Link>
                     <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>Dołączył {fmtDate(u.created_at)}</div>
                   </div>
                   <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: "0.75rem", fontWeight: 600, background: current.bg, color: current.color, flexShrink: 0 }}>

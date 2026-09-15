@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { Plus, MapPin, Trash2, Edit, Copy, Check, X, Eye, RotateCcw } from "lucide-react"
 
@@ -387,9 +388,19 @@ export default function AdminPage() {
                       </span>
                     )}
                     {event.source && SOURCE_LABELS[event.source] && (
-                      <span style={{ padding: "2px 9px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 600, background: SOURCE_LABELS[event.source].bg, color: SOURCE_LABELS[event.source].color }}>
-                        {SOURCE_LABELS[event.source].label}
-                      </span>
+                      event.created_by ? (
+                        <Link
+                          href={`/admin/organizator/${event.created_by}`}
+                          onClick={e => e.stopPropagation()}
+                          style={{ padding: "2px 9px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 600, background: SOURCE_LABELS[event.source].bg, color: SOURCE_LABELS[event.source].color, textDecoration: "none" }}
+                        >
+                          {SOURCE_LABELS[event.source].label}
+                        </Link>
+                      ) : (
+                        <span style={{ padding: "2px 9px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 600, background: SOURCE_LABELS[event.source].bg, color: SOURCE_LABELS[event.source].color }}>
+                          {SOURCE_LABELS[event.source].label}
+                        </span>
+                      )
                     )}
                   </div>
 
