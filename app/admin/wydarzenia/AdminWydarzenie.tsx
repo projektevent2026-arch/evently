@@ -520,9 +520,20 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     const scheduleType = classifySchedule(dates)
     const payloadWithType = { ...payload, schedule_type: scheduleType }
 
+    // created_by tylko przy TWORZENIU nowego wydarzenia — dzięki temu badge
+    // "Admin"/"Organizator" na liście da się kliknąć i zobaczyć kto je dodał.
+    // Przy EDYCJI świadomie tego nie ruszamy: jeśli admin poprawia wydarzenie
+    // dodane wcześniej przez organizatora, własność (created_by) ma zostać
+    // przy oryginalnym autorze, nie przeskoczyć na edytującego admina.
+    let insertPayload: typeof payloadWithType & { created_by?: string | null } = payloadWithType
+    if (!eventId) {
+      const { data: { user } } = await supabase.auth.getUser()
+      insertPayload = { ...payloadWithType, created_by: user?.id || null }
+    }
+
     const { data: savedEvent, error } = eventId
       ? await supabase.from("events").update(payloadWithType).eq("id", eventId).select("id").single()
-      : await supabase.from("events").insert([payloadWithType]).select("id").single()
+      : await supabase.from("events").insert([insertPayload]).select("id").single()
 
     if (error) {
       setMsg("Błąd: " + error.message)
