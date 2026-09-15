@@ -9,15 +9,22 @@ export async function GET() {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
-  const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+  // Te dwa zapytania nie zależą od siebie nawzajem (jedno pyta Supabase
+  // Auth o konta, drugie bazę o role) — dotąd czekały jedno na drugie bez
+  // potrzeby. Autoryzacja (requireAdmin powyżej) zostaje sekwencyjna i
+  // pierwsza — to jedyna część, która MUSI skończyć się przed dotknięciem
+  // service_role.
+  const [
+    { data: authUsers, error: authError },
+    { data: profiles, error: profilesError },
+  ] = await Promise.all([
+    supabaseAdmin.auth.admin.listUsers(),
+    supabaseAdmin.from("profiles").select("id, role"),
+  ])
+
   if (authError) {
     return NextResponse.json({ error: authError.message }, { status: 500 })
   }
-
-  const { data: profiles, error: profilesError } = await supabaseAdmin
-    .from("profiles")
-    .select("id, role")
-
   if (profilesError) {
     return NextResponse.json({ error: profilesError.message }, { status: 500 })
   }
