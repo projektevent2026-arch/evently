@@ -16,6 +16,7 @@ interface ImageUploadProps {
 const MAX_DIMENSION = 1400
 const WEBP_QUALITY = 0.82
 const COMPRESSION_TIMEOUT_MS = 20000
+const UPLOAD_TIMEOUT_MS = 45000
 
 // Niektóre przeglądarki mobilne (starsze WebView, przeglądarki wbudowane
 // w inne aplikacje jak Messenger/Facebook) potrafią NIGDY nie wywołać
@@ -114,15 +115,26 @@ export default function ImageUpload({ onUploadComplete, currentUrl }: ImageUploa
         setInfo('Kompresja niedostępna w tej przeglądarce — wysyłam oryginalne zdjęcie (może być wolniej).')
       }
 
-      // 2) Upload skompresowanego (albo oryginału, jeśli krok 1 zawiódł)
+      // 2) Upload skompresowanego (albo oryginału, jeśli krok 1 zawiódł) —
+      // też z limitem czasu. Duży oryginał na słabym mobilnym łączu (fallback
+      // z kroku 1) mógłby wisieć bardzo długo bez żadnego komunikatu.
       const fileName = `event_${Date.now()}.${ext}`
-      const { data, error: uploadError } = await supabase.storage
-        .from('event-images')
-        .upload(fileName, blob, {
-          upsert: true,
-          contentType: blob.type || file.type,
-          cacheControl: '31536000', // 1 rok — plakaty się nie zmieniają
-        })
+      let uploadResult
+      try {
+        uploadResult = await withTimeout(
+          supabase.storage.from('event-images').upload(fileName, blob, {
+            upsert: true,
+            contentType: blob.type || file.type,
+            cacheControl: '31536000', // 1 rok — plakaty się nie zmieniają
+          }),
+          UPLOAD_TIMEOUT_MS
+        )
+      } catch (uploadTimeoutErr) {
+        setError('Wysyłanie trwało zbyt długo. Sprawdź połączenie internetowe i spróbuj ponownie (albo mniejszym zdjęciem).')
+        setUploading(false)
+        return
+      }
+      const { data, error: uploadError } = uploadResult
 
       if (uploadError) {
         setError('Upload nieudany: ' + uploadError.message)
