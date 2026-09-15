@@ -15,6 +15,25 @@ interface ImageUploadProps {
 // Efekt: plakat 800 kB -> ~120 kB. Strona główna schudnie z ~16 MB do ~2-3 MB.
 const MAX_DIMENSION = 1400
 const WEBP_QUALITY = 0.82
+const COMPRESSION_TIMEOUT_MS = 20000
+
+// Niektóre przeglądarki mobilne (starsze WebView, przeglądarki wbudowane
+// w inne aplikacje jak Messenger/Facebook) potrafią NIGDY nie wywołać
+// callbacku canvas.toBlob('image/webp', ...) — nie rzucają błędu, po
+// prostu wiszą w nieskończoność. Bez limitu czasu użytkownik widzi
+// "Kompresja i wysyłanie..." na zawsze, bez żadnego komunikatu.
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('Kompresja trwała zbyt długo (przekroczono limit czasu).')),
+      ms
+    )
+    promise.then(
+      value => { clearTimeout(timer); resolve(value) },
+      err => { clearTimeout(timer); reject(err) }
+    )
+  })
+}
 
 async function compressToWebP(file: File): Promise<{ blob: Blob; ext: string }> {
   // Wczytaj obraz
@@ -79,16 +98,29 @@ export default function ImageUpload({ onUploadComplete, currentUrl }: ImageUploa
     try {
       const before = file.size
 
-      // 1) Kompresja (WebP, max 1400px)
-      const { blob, ext } = await compressToWebP(file)
+      // 1) Kompresja (WebP, max 1400px) — z limitem czasu. Jeśli przeglądarka
+      // nigdy nie wywoła callbacku toBlob (znany problem w niektórych WebView),
+      // po COMPRESSION_TIMEOUT_MS lecimy do fallbacku zamiast wisieć w nieskończoność.
+      let blob: Blob
+      let ext: string
+      try {
+        const result = await withTimeout(compressToWebP(file), COMPRESSION_TIMEOUT_MS)
+        blob = result.blob
+        ext = result.ext
+      } catch (compressErr) {
+        console.warn('[Evently] Kompresja nieudana/timeout, wysyłam oryginał bez kompresji:', compressErr)
+        blob = file
+        ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+        setInfo('Kompresja niedostępna w tej przeglądarce — wysyłam oryginalne zdjęcie (może być wolniej).')
+      }
 
-      // 2) Upload skompresowanego
+      // 2) Upload skompresowanego (albo oryginału, jeśli krok 1 zawiódł)
       const fileName = `event_${Date.now()}.${ext}`
       const { data, error: uploadError } = await supabase.storage
         .from('event-images')
         .upload(fileName, blob, {
           upsert: true,
-          contentType: blob.type,
+          contentType: blob.type || file.type,
           cacheControl: '31536000', // 1 rok — plakaty się nie zmieniają
         })
 
@@ -103,7 +135,9 @@ export default function ImageUpload({ onUploadComplete, currentUrl }: ImageUploa
         .getPublicUrl(data.path)
 
       const kb = (n: number) => Math.round(n / 1024)
-      setInfo(`Skompresowano: ${kb(before)} kB → ${kb(blob.size)} kB`)
+      if (blob !== (file as Blob)) {
+        setInfo(`Skompresowano: ${kb(before)} kB → ${kb(blob.size)} kB`)
+      }
 
       onUploadComplete(urlData.publicUrl)
     } catch (err: any) {
