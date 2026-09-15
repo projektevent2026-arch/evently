@@ -367,7 +367,7 @@ export default function AdminPage() {
               <input type="checkbox" checked={selected.has(event.id)} onChange={() => toggleSelect(event.id)}
                 style={{ width: 18, height: 18, marginTop: 4, flexShrink: 0, cursor: "pointer" }} />
               <img src={event.cover_image_url || event.image_url || "/images/event-concert.jpg"} alt=""
-                onClick={() => handleEdit(event)}
+                onClick={() => setPreviewEvent(event)}
                 style={{ width: 60, height: 78, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "#f3f4f6", cursor: "pointer" }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div onClick={() => handleEdit(event)} style={{ cursor: "pointer" }}>
