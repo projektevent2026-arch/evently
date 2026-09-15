@@ -22,7 +22,7 @@ export default function MojeWydarzenia() {
 
       const { data } = await supabase
         .from("events")
-        .select("id, slug, title, start_date, status")
+        .select("id, slug, title, start_date, status, cover_image_url, image_url, category, city")
         .eq("created_by", user.id)
         .order("start_date", { ascending: false })
 
@@ -97,12 +97,28 @@ export default function MojeWydarzenia() {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {events.map(event => (
               <div key={event.id} style={{ background: "#161616", border: "1px solid #262626", borderRadius: 12, padding: "1rem 1.1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {event.title}
-                  </div>
-                  <div style={{ fontSize: "0.8rem", color: "#9ca3af" }}>
-                    📅 {fmtDate(event.start_date)} · {event.status === "published" ? "Opublikowane" : event.status}
+                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                  {event.cover_image_url || event.image_url ? (
+                    <img
+                      src={event.cover_image_url || event.image_url}
+                      alt=""
+                      style={{ width: 56, height: 56, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "#1f1f1f" }}
+                    />
+                  ) : (
+                    <div style={{ width: 56, height: 56, borderRadius: 8, background: "#1f1f1f", flexShrink: 0 }} />
+                  )}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {event.title}
+                    </div>
+                    <div style={{ fontSize: "0.8rem", color: "#9ca3af" }}>
+                      📅 {fmtDate(event.start_date)} · {event.status === "published" ? "Opublikowane" : event.status}
+                    </div>
+                    {(event.city || event.category) && (
+                      <div style={{ fontSize: "0.78rem", color: "#6b7280", marginTop: 2 }}>
+                        {[event.city, event.category].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
