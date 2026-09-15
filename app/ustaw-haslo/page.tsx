@@ -66,6 +66,10 @@ export default function UstawHaslo() {
       setError("Hasło musi mieć co najmniej 8 znaków.")
       return
     }
+    if (!/[A-Z]/.test(password)) {
+      setError("Hasło musi zawierać przynajmniej jedną wielką literę.")
+      return
+    }
     if (password !== password2) {
       setError("Hasła nie są takie same.")
       return
