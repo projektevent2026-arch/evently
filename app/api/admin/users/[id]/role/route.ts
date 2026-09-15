@@ -23,6 +23,16 @@ export async function PATCH(
     return NextResponse.json({ error: "Nieprawidłowa rola." }, { status: 400 })
   }
 
+  // Nie pozwalamy zalogowanemu adminowi/moderatorowi odebrać samemu
+  // sobie dostępu do panelu z tego panelu — jedyny sposób cofnięcia
+  // takiej pomyłki byłby wtedy ręcznie, przez dashboard Supabase.
+  if (id === auth.userId && !["admin", "moderator"].includes(newRole)) {
+    return NextResponse.json(
+      { error: "Nie możesz odebrać samemu sobie roli administratora/moderatora z tego panelu." },
+      { status: 400 }
+    )
+  }
+
   const { error } = await supabaseAdmin
     .from("profiles")
     .update({ role: newRole })
