@@ -364,15 +364,18 @@ export default function AdminPage() {
             const st = STATUS_LABELS[event.status]
             return (
               <div key={event.id} style={{ background: "white", border: selected.has(event.id) ? "1px solid #16a34a" : "1px solid #e5e7eb", borderRadius: 12, padding: 12, display: "flex", gap: 12 }}>
-                <input type="checkbox" checked={selected.has(event.id)} onChange={() => toggleSelect(event.id)}
-                  style={{ width: 18, height: 18, marginTop: 4, flexShrink: 0, cursor: "pointer" }} />
-                <img src={event.cover_image_url || event.image_url || "/images/event-concert.jpg"} alt=""
-                  style={{ width: 60, height: 78, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "#f3f4f6" }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
+              <input type="checkbox" checked={selected.has(event.id)} onChange={() => toggleSelect(event.id)}
+                style={{ width: 18, height: 18, marginTop: 4, flexShrink: 0, cursor: "pointer" }} />
+              <img src={event.cover_image_url || event.image_url || "/images/event-concert.jpg"} alt=""
+                onClick={() => handleEdit(event)}
+                style={{ width: 60, height: 78, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "#f3f4f6", cursor: "pointer" }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div onClick={() => handleEdit(event)} style={{ cursor: "pointer" }}>
                   <div style={{ fontWeight: 600, fontSize: "0.98rem", lineHeight: 1.3, marginBottom: 4, color: "#111827" }}>{event.title}</div>
                   <div style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📍 {event.address || event.city || "—"}</div>
                   <div style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 8 }}>📅 {fmtDate(event.start_date)}</div>
-                  {event.deleted_at && (
+                </div>
+                {event.deleted_at && (
                     <div style={{ fontSize: "0.8rem", color: "#ef4444", marginBottom: 8, fontWeight: 600 }}>
                       🗑️ Usunięto {fmtDate(event.deleted_at)} — na stałe za {daysUntilPurge(event.deleted_at)} {daysUntilPurge(event.deleted_at) === 1 ? "dzień" : "dni"}
                     </div>
