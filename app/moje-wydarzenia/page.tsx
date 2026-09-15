@@ -24,6 +24,7 @@ export default function MojeWydarzenia() {
         .from("events")
         .select("id, slug, title, start_date, status, cover_image_url, image_url, category, city")
         .eq("created_by", user.id)
+        .is("deleted_at", null)
         .order("start_date", { ascending: false })
 
       setEvents(data || [])
