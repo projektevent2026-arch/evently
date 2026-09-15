@@ -49,6 +49,8 @@ const SOURCE_LABELS: Record<string, { label: string; color: string; bg: string }
 
 export default function AdminPage() {
   const [events, setEvents] = useState<any[]>([])
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [onlyMine, setOnlyMine] = useState(false)
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
@@ -59,6 +61,10 @@ export default function AdminPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   useEffect(() => { fetchEvents() }, [])
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setCurrentUserId(user?.id || null))
+  }, [])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -83,6 +89,7 @@ export default function AdminPage() {
     s.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
 
   const filtered = events
+    .filter(e => !onlyMine || e.created_by === currentUserId)
     .filter(e => filterStatus === "trash" ? e.deleted_at !== null : e.deleted_at === null)
     .filter(e => filterStatus === "all" || filterStatus === "trash" || e.status === filterStatus)
     .filter(e => catFilter === "all" || normalizeCategory(e.category) === catFilter)
@@ -214,13 +221,14 @@ export default function AdminPage() {
     fetchEvents()
   }
 
+  const countBase = onlyMine ? events.filter(e => e.created_by === currentUserId) : events
   const counts = {
-    all: events.filter(e => e.deleted_at === null).length,
-    pending: events.filter(e => e.status === "pending" && e.deleted_at === null).length,
-    published: events.filter(e => e.status === "published" && e.deleted_at === null).length,
-    draft: events.filter(e => e.status === "draft" && e.deleted_at === null).length,
-    archived: events.filter(e => e.status === "archived" && e.deleted_at === null).length,
-    trash: events.filter(e => e.deleted_at !== null).length,
+    all: countBase.filter(e => e.deleted_at === null).length,
+    pending: countBase.filter(e => e.status === "pending" && e.deleted_at === null).length,
+    published: countBase.filter(e => e.status === "published" && e.deleted_at === null).length,
+    draft: countBase.filter(e => e.status === "draft" && e.deleted_at === null).length,
+    archived: countBase.filter(e => e.status === "archived" && e.deleted_at === null).length,
+    trash: countBase.filter(e => e.deleted_at !== null).length,
   }
 
   const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" }) : "—"
@@ -255,7 +263,8 @@ export default function AdminPage() {
           <span style={{ fontWeight: 700, fontSize: "1.1rem", color: "#16a34a" }}>evently</span>
         </div>
         <a href="/" style={navItem(false)}>Panel główny</a>
-        <a href="/admin" style={navItem(true)}>Wydarzenia</a>
+        <button onClick={() => setOnlyMine(false)} style={{ ...navItem(!onlyMine), width: "100%", textAlign: "left", border: "none", background: !onlyMine ? "#f0fdf4" : "transparent" }}>Wydarzenia</button>
+        <button onClick={() => setOnlyMine(true)} style={{ ...navItem(onlyMine), width: "100%", textAlign: "left", border: "none", background: onlyMine ? "#f0fdf4" : "transparent" }}>Moje wydarzenia</button>
         <a href="/admin/wydarzenia" style={navItem(false)}>Dodaj wydarzenie</a>
         <a href="/admin/uzytkownicy" style={navItem(false)}>Użytkownicy</a>
       </aside>
@@ -267,8 +276,8 @@ export default function AdminPage() {
         <div className="admin-list-pad">
           <div className="admin-list-head" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: "1.25rem" }}>
             <div>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: 800, margin: 0, color: "#111827" }}>Wydarzenia</h1>
-              <p style={{ color: "#6b7280", fontSize: "0.9rem", margin: "4px 0 0" }}>Zarządzaj wszystkimi wydarzeniami</p>
+            <h1 style={{ fontSize: "1.5rem", fontWeight: 800, margin: 0, color: "#111827" }}>{onlyMine ? "Moje wydarzenia" : "Wydarzenia"}</h1>
+              <p style={{ color: "#6b7280", fontSize: "0.9rem", margin: "4px 0 0" }}>{onlyMine ? "Wydarzenia, które dodałeś jako admin" : "Zarządzaj wszystkimi wydarzeniami"}</p>
             </div>
             <a href="/admin/wydarzenia" className="admin-add-btn" style={{ display: "flex", alignItems: "center", gap: 6, background: "#16a34a", color: "white", borderRadius: 10, padding: "0.75rem 1.1rem", fontWeight: 600, fontSize: "0.95rem", textDecoration: "none", whiteSpace: "nowrap" }}>
               <Plus size={18} /> Dodaj wydarzenie
@@ -332,7 +341,7 @@ export default function AdminPage() {
               <option value="title">Nazwa A-Z</option>
             </select>
           </div>
-          <p style={{ fontSize: "0.8rem", color: "#6b7280", margin: "0 0 12px" }}>{filtered.length} z {events.length}</p>
+          <p style={{ fontSize: "0.8rem", color: "#6b7280", margin: "0 0 12px" }}>{filtered.length} z {countBase.length}</p>
           {selected.size > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, marginBottom: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#166534" }}>{selected.size} zaznaczonych</span>
@@ -364,18 +373,18 @@ export default function AdminPage() {
             const st = STATUS_LABELS[event.status]
             return (
               <div key={event.id} style={{ background: "white", border: selected.has(event.id) ? "1px solid #16a34a" : "1px solid #e5e7eb", borderRadius: 12, padding: 12, display: "flex", gap: 12 }}>
-              <input type="checkbox" checked={selected.has(event.id)} onChange={() => toggleSelect(event.id)}
-                style={{ width: 18, height: 18, marginTop: 4, flexShrink: 0, cursor: "pointer" }} />
-              <img src={event.cover_image_url || event.image_url || "/images/event-concert.jpg"} alt=""
-                onClick={() => setPreviewEvent(event)}
-                style={{ width: 60, height: 78, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "#f3f4f6", cursor: "pointer" }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div onClick={() => handleEdit(event)} style={{ cursor: "pointer" }}>
-                  <div style={{ fontWeight: 600, fontSize: "0.98rem", lineHeight: 1.3, marginBottom: 4, color: "#111827" }}>{event.title}</div>
-                  <div style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📍 {event.address || event.city || "—"}</div>
-                  <div style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 8 }}>📅 {fmtDate(event.start_date)}</div>
-                </div>
-                {event.deleted_at && (
+                <input type="checkbox" checked={selected.has(event.id)} onChange={() => toggleSelect(event.id)}
+                  style={{ width: 18, height: 18, marginTop: 4, flexShrink: 0, cursor: "pointer" }} />
+                <img src={event.cover_image_url || event.image_url || "/images/event-concert.jpg"} alt=""
+                  onClick={() => setPreviewEvent(event)}
+                  style={{ width: 60, height: 78, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "#f3f4f6", cursor: "pointer" }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div onClick={() => setPreviewEvent(event)} style={{ cursor: "pointer" }}>
+                    <div style={{ fontWeight: 600, fontSize: "0.98rem", lineHeight: 1.3, marginBottom: 4, color: "#111827" }}>{event.title}</div>
+                    <div style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📍 {event.address || event.city || "—"}</div>
+                    <div style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 8 }}>📅 {fmtDate(event.start_date)}</div>
+                  </div>
+                  {event.deleted_at && (
                     <div style={{ fontSize: "0.8rem", color: "#ef4444", marginBottom: 8, fontWeight: 600 }}>
                       🗑️ Usunięto {fmtDate(event.deleted_at)} — na stałe za {daysUntilPurge(event.deleted_at)} {daysUntilPurge(event.deleted_at) === 1 ? "dzień" : "dni"}
                     </div>
