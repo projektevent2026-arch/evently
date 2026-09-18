@@ -191,7 +191,7 @@ export default function UlubionePage() {
       setLoading(true)
       try {
         const { data, error } = await publishedFilter(supabase
-          .from('events')
+          .from('public_events')
           .select('*, event_dates(id, date, start_time, end_time)')
           .in('id', favorites))
           if (error) throw error

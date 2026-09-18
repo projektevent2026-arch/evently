@@ -21,6 +21,12 @@
 // zapytanie "Podobne wydarzenia" w EventPageClient.tsx) — to czwarte i
 // najważniejsze miejsce z tym samym przeoczeniem, bo to strona, na którą
 // realnie ktoś kliknie.
+//
+// 2026-09-19: przepięte z surowej tabeli events na widok public_events
+// (bez organizer_email) — anon nie ma już pełnego SELECT na events,
+// tylko na wąski zestaw kolumn + na ten widok. RLS (status/deleted_at)
+// nadal egzekwowane przez security_invoker na widoku, więc publishedFilter
+// poniżej działa identycznie jak wcześniej.
 
 import { publishedFilter } from "@/lib/publishedFilter"
 import { supabase } from "@/lib/supabase"
@@ -36,7 +42,7 @@ export async function getEventWithDates(slug: string, isPreview: boolean = false
   const isUUID = /^[0-9a-f-]{36}$/i.test(slug)
 
   let query = supabase
-    .from("events")
+    .from("public_events")
     .select(`
       *,
       event_dates (

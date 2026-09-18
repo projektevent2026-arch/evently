@@ -33,7 +33,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
       const data = await getEventWithDates(slug, isPreview)
       if (data) {
         setEvent(data)
-        const { data: similar } = await publishedFilter(supabase.from("events").select("*")).neq("id", data.id).limit(4)
+        const { data: similar } = await publishedFilter(supabase.from("public_events").select("*")).neq("id", data.id).limit(4)
         // Mapowanie na EventData — TEN SAM kształt i TA SAMA karta (EventCard),
         // której używa strona główna. Wcześniej ta sekcja renderowała własny,
         // ręcznie napisany blok JSX (inny styl, brak koloru pilności, brak
