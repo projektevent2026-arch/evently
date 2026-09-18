@@ -214,7 +214,13 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     setForm(prev => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
-      ...(name === "title" ? {
+      // Slug podąża za tytułem TYLKO przy tworzeniu nowego wydarzenia.
+      // Przy edycji istniejącego (eventId) zmiana tytułu (np. poprawka
+      // literówki) nie może cichcem zmieniać adresu URL — łamałoby to
+      // każdy udostępniony/zapisany link, a bez sufiksu czasowego (jak
+      // w formularzu organizatora) dwa wydarzenia o tym samym tytule
+      // dostałyby identyczny slug.
+      ...(name === "title" && !eventId ? {
         slug: value.toLowerCase()
           .replace(/ą/g,"a").replace(/ę/g,"e").replace(/ó/g,"o")
           .replace(/ś/g,"s").replace(/ł/g,"l").replace(/ż/g,"z")
@@ -398,11 +404,15 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
         setForm(prev => ({
           ...prev,
           title: data.title || prev.title,
-          slug: (data.title || "").toLowerCase()
-            .replace(/ą/g,"a").replace(/ę/g,"e").replace(/ó/g,"o")
-            .replace(/ś/g,"s").replace(/ł/g,"l").replace(/ż/g,"z")
-            .replace(/ź/g,"z").replace(/ć/g,"c").replace(/ń/g,"n")
-            .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,""),
+          // Tak samo jak przy ręcznym wpisywaniu tytułu — slug zmienia
+          // się tylko dla nowego wydarzenia, nigdy przy edycji istniejącego.
+          slug: !eventId
+            ? (data.title || "").toLowerCase()
+              .replace(/ą/g,"a").replace(/ę/g,"e").replace(/ó/g,"o")
+              .replace(/ś/g,"s").replace(/ł/g,"l").replace(/ż/g,"z")
+              .replace(/ź/g,"z").replace(/ć/g,"c").replace(/ń/g,"n")
+              .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"")
+            : prev.slug,
           city: data.city || prev.city,
           address: data.address || prev.address,
           venue_name: data.venue_name || prev.venue_name,
