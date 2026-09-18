@@ -342,7 +342,6 @@ try {
     // (created_by === user.id), RLS to samo wymusza jeszcze raz po stronie bazy.
     const { error: updateError } = await supabase.from("events").update({
       title: form.title,
-      slug: generateSlug(form.title),
       description: form.description || null,
       short_description: generateShortDescription(form.description) || null,
       start_date: start,
