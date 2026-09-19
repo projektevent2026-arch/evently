@@ -822,14 +822,20 @@ try {
                   currentUrl={form.cover_image_url}
                   onUploadComplete={(url) => setForm(prev => ({ ...prev, cover_image_url: url }))}
                 />
-                <div style={{display:"flex",alignItems:"center",gap:8,margin:"10px 0"}}>
-                  <div style={{flex:1,height:1,background:"#e5e7eb"}} />
-                  <span style={{fontSize:"0.75rem",color:"#9ca3af"}}>albo</span>
-                  <div style={{flex:1,height:1,background:"#e5e7eb"}} />
-                </div>
-                <input name="cover_image_url" value={form.cover_image_url} onChange={handleChange}
-                  placeholder="Wklej link https://..." style={inp} />
-                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Wgraj zdjęcie z dysku (max 5MB) lub wklej bezpośredni link.</div>
+                {userRole === "organizer" ? (
+                  <>
+                    <div style={{display:"flex",alignItems:"center",gap:8,margin:"10px 0"}}>
+                      <div style={{flex:1,height:1,background:"#e5e7eb"}} />
+                      <span style={{fontSize:"0.75rem",color:"#9ca3af"}}>albo</span>
+                      <div style={{flex:1,height:1,background:"#e5e7eb"}} />
+                    </div>
+                    <input name="cover_image_url" value={form.cover_image_url} onChange={handleChange}
+                      placeholder="Wklej link https://..." style={inp} />
+                    <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Wgraj zdjęcie z dysku (max 5MB) lub wklej bezpośredni link.</div>
+                  </>
+                ) : (
+                  <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Wgraj zdjęcie z dysku (max 5MB).</div>
+                )}
               </div>
 
               {form.cover_image_url && (
@@ -843,14 +849,20 @@ try {
                   currentUrl={form.image_url}
                   onUploadComplete={(url) => setForm(prev => ({ ...prev, image_url: url }))}
                 />
-                <div style={{display:"flex",alignItems:"center",gap:8,margin:"10px 0"}}>
-                  <div style={{flex:1,height:1,background:"#e5e7eb"}} />
-                  <span style={{fontSize:"0.75rem",color:"#9ca3af"}}>albo</span>
-                  <div style={{flex:1,height:1,background:"#e5e7eb"}} />
-                </div>
-                <input name="image_url" value={form.image_url} onChange={handleChange}
-                  placeholder="Wklej link https://..." style={inp} />
-                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Jeśli nie dodasz, w przycisku "Plakat" pokaże się zdjęcie powyżej.</div>
+                {userRole === "organizer" ? (
+                  <>
+                    <div style={{display:"flex",alignItems:"center",gap:8,margin:"10px 0"}}>
+                      <div style={{flex:1,height:1,background:"#e5e7eb"}} />
+                      <span style={{fontSize:"0.75rem",color:"#9ca3af"}}>albo</span>
+                      <div style={{flex:1,height:1,background:"#e5e7eb"}} />
+                    </div>
+                    <input name="image_url" value={form.image_url} onChange={handleChange}
+                      placeholder="Wklej link https://..." style={inp} />
+                    <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Jeśli nie dodasz, w przycisku "Plakat" pokaże się zdjęcie powyżej.</div>
+                  </>
+                ) : (
+                  <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Jeśli nie dodasz, w przycisku "Plakat" pokaże się zdjęcie powyżej.</div>
+                )}
               </div>
 
               {form.image_url && (
