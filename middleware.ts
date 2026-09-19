@@ -7,6 +7,7 @@ export async function middleware(req: NextRequest) {
   const isAdminPath = path.startsWith("/admin")
   const isAddPath = path.startsWith("/dodaj-wydarzenie")
   const isRegisterPath = path.startsWith("/register")
+  const isMojeWydarzeniaPath = path.startsWith("/moje-wydarzenia")
 
   // Rejestracja wyłączona na razie — strona (app/register/page.tsx) zostaje
   // w kodzie na przyszłość (konta organizatorów), ale dziś apka nie ma dla
@@ -17,7 +18,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/", req.url))
   }
 
-  if (!isAdminPath && !isAddPath) {
+  if (!isAdminPath && !isAddPath && !isMojeWydarzeniaPath) {
     return NextResponse.next()
   }
 
@@ -35,6 +36,18 @@ export async function middleware(req: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
+
+  // /moje-wydarzenia: komentarz w page.tsx od dawna twierdził, że middleware
+  // wymaga logowania tutaj — nieprawda, tej ścieżki nigdy nie było w
+  // matcherze poniżej. Anonim nie widział cudzych danych (zapytanie o
+  // wydarzenia i tak wymaga zalogowania), ale trafiał na mylącą pustą
+  // stronę zamiast przekierowania do logowania. Żadna konkretna rola nie
+  // jest tu wymagana — każdy zalogowany zobaczy tylko WŁASNE wydarzenia
+  // (filtr po created_by w samej stronie).
+  if (isMojeWydarzeniaPath) {
+    if (!user) return NextResponse.redirect(new URL("/login", req.url))
+    return res
+  }
 
   // /dodaj-wydarzenie: publiczne dla wszystkich, ale admin leci do panelu.
   if (isAddPath) {
@@ -72,5 +85,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/dodaj-wydarzenie/:path*", "/dodaj-wydarzenie", "/register"],
+  matcher: ["/admin/:path*", "/dodaj-wydarzenie/:path*", "/dodaj-wydarzenie", "/register", "/moje-wydarzenia/:path*", "/moje-wydarzenia"],
 }
