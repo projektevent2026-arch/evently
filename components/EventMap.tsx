@@ -53,10 +53,8 @@ function escapeHtml(s: string): string {
 }
 
 async function searchNominatim(query: string): Promise<GeoResult[]> {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=pl&accept-language=pl`
-  const res = await fetch(url, {
-    headers: { 'Accept-Language': 'pl', 'User-Agent': 'Evently/1.0 (evently-silk-omega.vercel.app)' },
-  })
+  const url = `/api/nominatim?op=search&q=${encodeURIComponent(query)}&limit=5`
+  const res = await fetch(url)
   const data = await res.json()
   return (data as any[]).map(item => ({
     lat: parseFloat(item.lat),

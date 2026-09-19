@@ -21,13 +21,10 @@ interface GeoResult {
 // Sortowanie po place_rank stawia większe miasta wyżej (Suwałki przed wsią Suwałki-kolonia).
 async function searchNominatim(query: string): Promise<GeoResult[]> {
   const url =
-    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}` +
-    `&format=json&limit=8&countrycodes=pl&accept-language=pl` +
-    `&featureType=settlement&addressdetails=1`
+    `/api/nominatim?op=search&q=${encodeURIComponent(query)}` +
+    `&limit=8&featureType=settlement&addressdetails=1`
 
-  const res = await fetch(url, {
-    headers: { "Accept-Language": "pl", "User-Agent": "Evently/1.0 (evently-silk-omega.vercel.app)" },
-  })
+  const res = await fetch(url)
   const data = await res.json()
 
   return (data as any[])
@@ -67,10 +64,7 @@ export function LocationSidebar() {
         const { latitude, longitude } = pos.coords
         let cityName = "Moja lokalizacja"
         try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=pl`,
-            { headers: { "Accept-Language": "pl", "User-Agent": "Evently/1.0" } }
-          )
+          const res = await fetch(`/api/nominatim?op=reverse&lat=${latitude}&lon=${longitude}`)
           const data = await res.json()
           cityName = data.address?.city || data.address?.town || data.address?.village || "Moja lokalizacja"
         } catch {}

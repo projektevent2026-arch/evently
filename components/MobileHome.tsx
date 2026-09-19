@@ -99,12 +99,8 @@ async function fetchEventsWithRetry(): Promise<Event[]> {
 // nie dostawało współrzędnych -> brak dystansu i filtra promienia.
 async function geocodeCity(query: string): Promise<[number, number] | null> {
   try {
-    const url =
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}` +
-      `&format=json&limit=1&countrycodes=pl&accept-language=pl`
-    const res = await fetch(url, {
-      headers: { 'Accept-Language': 'pl', 'User-Agent': 'Evently/1.0 (evently-silk-omega.vercel.app)' },
-    })
+    const url = `/api/nominatim?op=search&q=${encodeURIComponent(query)}&limit=1`
+    const res = await fetch(url)
     const data = await res.json()
     if (Array.isArray(data) && data[0]) {
       const lat = parseFloat(data[0].lat)
@@ -381,10 +377,7 @@ export function MobileHome() {
     localStorage.setItem('evently_lat', String(lat))
     localStorage.setItem('evently_lon', String(lon))
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pl`,
-        { headers: { 'User-Agent': 'Evently/1.0' } }
-      )
+      const res = await fetch(`/api/nominatim?op=reverse&lat=${lat}&lon=${lon}`)
       const data = await res.json()
       const name = data.address?.city || data.address?.town || data.address?.village || 'Moja lokalizacja'
       setCity(name)
