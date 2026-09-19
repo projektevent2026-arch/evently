@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   const res = await fetch(
     `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
-    { headers: { 'User-Agent': 'Evently/1.0' } }
+    { headers: { 'User-Agent': 'Evently/1.0 (projektevent2026@gmail.com)' } }
   )
   const data = await res.json()
   return NextResponse.json(data)

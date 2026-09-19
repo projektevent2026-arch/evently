@@ -3,7 +3,7 @@ import { isAllowedOrigin } from '@/lib/verifyOrigin'
 import { geocodeRateLimit, getClientIp } from '@/lib/rateLimit'
 
 const NOMINATIM_HEADERS = {
-  'User-Agent': 'Evently/1.0 (kontakt@evently.pl)',
+  'User-Agent': 'Evently/1.0 (projektevent2026@gmail.com)',
   'Accept-Language': 'pl',
 }
 
