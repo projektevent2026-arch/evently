@@ -53,9 +53,18 @@ export default function MojeWydarzenia() {
       return
     }
 
-    const { error: eventError } = await supabase.from("events").delete().eq("id", id)
+    // .select("id") po delete — bez tego RLS mógł po cichu zablokować
+    // usunięcie (np. próba usunięcia nie-swojego wydarzenia), zero błędu
+    // z Postgresa, a UI i tak usuwał pozycję z lokalnej listy — po
+    // odświeżeniu strony wydarzenie by "wróciło", bo nigdy nie zniknęło z bazy.
+    const { data: deletedEvent, error: eventError } = await supabase.from("events").delete().eq("id", id).select("id")
     if (eventError) {
       setDeleteError("Nie udało się usunąć: " + eventError.message)
+      setDeletingId(null)
+      return
+    }
+    if (!deletedEvent || deletedEvent.length === 0) {
+      setDeleteError("Nie udało się usunąć — brak uprawnień do tego wydarzenia.")
       setDeletingId(null)
       return
     }

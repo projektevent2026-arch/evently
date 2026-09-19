@@ -127,17 +127,26 @@ export default function AdminPage() {
         return
       }
     }
-    await supabase.from("events").update({ status: "published" }).eq("id", id)
+    // .select("id") po update — bez tego RLS mógł po cichu zablokować
+    // zmianę (0 wierszy, ZERO błędu z Postgresa) i UI i tak pokazywało
+    // sukces. To dotyczy każdego update/delete w tym pliku, nie tylko tu.
+    const { data, error } = await supabase.from("events").update({ status: "published" }).eq("id", id).select("id")
+    if (error) { alert("Błąd zatwierdzania: " + error.message); return }
+    if (!data || data.length === 0) { alert("Nie udało się zatwierdzić — brak uprawnień albo wydarzenie już nie istnieje."); return }
     fetchEvents()
   }
   const handleReject = async (id: string) => {
     if (!confirm("Odrzucić i usunąć to zgłoszenie?")) return
-    await supabase.from("events").delete().eq("id", id)
+    const { data, error } = await supabase.from("events").delete().eq("id", id).select("id")
+    if (error) { alert("Błąd odrzucania: " + error.message); return }
+    if (!data || data.length === 0) { alert("Nie udało się odrzucić — brak uprawnień albo zgłoszenie już nie istnieje."); return }
     fetchEvents()
   }
   const handleDelete = async (id: string) => {
     if (!confirm("Przenieść wydarzenie do kosza?")) return
-    await supabase.from("events").update({ deleted_at: new Date().toISOString() }).eq("id", id)
+    const { data, error } = await supabase.from("events").update({ deleted_at: new Date().toISOString() }).eq("id", id).select("id")
+    if (error) { alert("Błąd przenoszenia do kosza: " + error.message); return }
+    if (!data || data.length === 0) { alert("Nie udało się przenieść do kosza — brak uprawnień albo wydarzenie już nie istnieje."); return }
     fetchEvents()
   }
   const handleDuplicate = async (event: any) => {
@@ -172,40 +181,59 @@ export default function AdminPage() {
       alert("Liczba się nie zgadza — nic nie przeniesiono.")
       return
     }
-    await supabase.from("events").update({ deleted_at: new Date().toISOString() }).in("id", Array.from(selected))
+    const ids = Array.from(selected)
+    const { data, error } = await supabase.from("events").update({ deleted_at: new Date().toISOString() }).in("id", ids).select("id")
+    if (error) alert("Błąd przenoszenia do kosza: " + error.message)
+    else if (!data || data.length < ids.length) alert(`Przeniesiono do kosza tylko ${data?.length ?? 0} z ${ids.length} — sprawdź uprawnienia do pozostałych.`)
     clearSelection()
     fetchEvents()
   }
   const handleBulkArchive = async () => {
     if (!confirm(`Przenieść ${selected.size} wydarzeń do archiwum?`)) return
-    await supabase.from("events").update({ status: "archived" }).in("id", Array.from(selected))
+    const ids = Array.from(selected)
+    const { data, error } = await supabase.from("events").update({ status: "archived" }).in("id", ids).select("id")
+    if (error) alert("Błąd archiwizacji: " + error.message)
+    else if (!data || data.length < ids.length) alert(`Zarchiwizowano tylko ${data?.length ?? 0} z ${ids.length} — sprawdź uprawnienia do pozostałych.`)
     clearSelection()
     fetchEvents()
   }
   const handleBulkApprove = async () => {
     if (!confirm(`Zatwierdzić ${selected.size} wydarzeń?`)) return
-    await supabase.from("events").update({ status: "published" }).in("id", Array.from(selected))
+    const ids = Array.from(selected)
+    const { data, error } = await supabase.from("events").update({ status: "published" }).in("id", ids).select("id")
+    if (error) alert("Błąd zatwierdzania: " + error.message)
+    else if (!data || data.length < ids.length) alert(`Zatwierdzono tylko ${data?.length ?? 0} z ${ids.length} — sprawdź uprawnienia do pozostałych.`)
     clearSelection()
     fetchEvents()
   }
   const handleBulkRestore = async () => {
     if (!confirm(`Przywrócić ${selected.size} wydarzeń z archiwum?`)) return
-    await supabase.from("events").update({ status: "published" }).in("id", Array.from(selected))
+    const ids = Array.from(selected)
+    const { data, error } = await supabase.from("events").update({ status: "published" }).in("id", ids).select("id")
+    if (error) alert("Błąd przywracania: " + error.message)
+    else if (!data || data.length < ids.length) alert(`Przywrócono tylko ${data?.length ?? 0} z ${ids.length} — sprawdź uprawnienia do pozostałych.`)
     clearSelection()
     fetchEvents()
   }
 
   const handleRestore = async (id: string) => {
-    await supabase.from("events").update({ deleted_at: null }).eq("id", id)
+    const { data, error } = await supabase.from("events").update({ deleted_at: null }).eq("id", id).select("id")
+    if (error) { alert("Błąd przywracania: " + error.message); return }
+    if (!data || data.length === 0) { alert("Nie udało się przywrócić — brak uprawnień albo wydarzenie już nie istnieje."); return }
     fetchEvents()
   }
   const handlePermanentDelete = async (id: string) => {
     if (!confirm("Usunąć na stałe? Tej operacji NIE da się cofnąć.")) return
-    await supabase.from("events").delete().eq("id", id)
+    const { data, error } = await supabase.from("events").delete().eq("id", id).select("id")
+    if (error) { alert("Błąd usuwania: " + error.message); return }
+    if (!data || data.length === 0) { alert("Nie udało się usunąć — brak uprawnień albo wydarzenie już nie istnieje."); return }
     fetchEvents()
   }
   const handleBulkRestoreFromTrash = async () => {
-    await supabase.from("events").update({ deleted_at: null }).in("id", Array.from(selected))
+    const ids = Array.from(selected)
+    const { data, error } = await supabase.from("events").update({ deleted_at: null }).in("id", ids).select("id")
+    if (error) alert("Błąd przywracania: " + error.message)
+    else if (!data || data.length < ids.length) alert(`Przywrócono tylko ${data?.length ?? 0} z ${ids.length} — sprawdź uprawnienia do pozostałych.`)
     clearSelection()
     fetchEvents()
   }
@@ -216,7 +244,10 @@ export default function AdminPage() {
       alert("Liczba się nie zgadza — nic nie usunięto.")
       return
     }
-    await supabase.from("events").delete().in("id", Array.from(selected))
+    const ids = Array.from(selected)
+    const { data, error } = await supabase.from("events").delete().in("id", ids).select("id")
+    if (error) alert("Błąd usuwania: " + error.message)
+    else if (!data || data.length < ids.length) alert(`Usunięto na stałe tylko ${data?.length ?? 0} z ${ids.length} — sprawdź uprawnienia do pozostałych.`)
     clearSelection()
     fetchEvents()
   }
