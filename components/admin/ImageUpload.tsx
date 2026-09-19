@@ -118,12 +118,12 @@ export default function ImageUpload({ onUploadComplete, currentUrl }: ImageUploa
       // 2) Upload skompresowanego (albo oryginału, jeśli krok 1 zawiódł) —
       // też z limitem czasu. Duży oryginał na słabym mobilnym łączu (fallback
       // z kroku 1) mógłby wisieć bardzo długo bez żadnego komunikatu.
-      const fileName = `event_${Date.now()}.${ext}`
+      const fileName = `event_${crypto.randomUUID()}.${ext}`
       let uploadResult
       try {
         uploadResult = await withTimeout(
           supabase.storage.from('event-images').upload(fileName, blob, {
-            upsert: true,
+            upsert: false,
             contentType: blob.type || file.type,
             cacheControl: '31536000', // 1 rok — plakaty się nie zmieniają
           }),

@@ -376,10 +376,10 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     const uploadPromise = (async () => {
       try {
         const ext = file.name.split(".").pop() || "jpg"
-        const fileName = `event_${Date.now()}.${ext}`
+        const fileName = `event_${crypto.randomUUID()}.${ext}`
         const { data, error: uploadError } = await supabase.storage
           .from("event-images")
-          .upload(fileName, file, { upsert: true })
+          .upload(fileName, file, { upsert: false })
         if (uploadError || !data) return null
         const { data: urlData } = supabase.storage
           .from("event-images")
