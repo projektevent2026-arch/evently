@@ -37,6 +37,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Brak tekstu do poprawienia' }, { status: 400 })
   }
 
+  // Formularz ogranicza pole opisu do 2000 znaków (maxLength w textarea),
+  // ale to tylko UI — ktoś wołający ten endpoint bezpośrednio mógł wysłać
+  // dowolnie długi tekst. Rate limiter ogranicza LICZBĘ zapytań, nie ich
+  // ROZMIAR — jedno bardzo długie zapytanie to i tak realny koszt.
+  if (text.length > 2000) {
+    return NextResponse.json({ error: 'Tekst jest za długi (maksymalnie 2000 znaków).' }, { status: 400 })
+  }
+
   const styleRules = style === 'rich' ? RICH_RULES : CONCISE_RULES
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
