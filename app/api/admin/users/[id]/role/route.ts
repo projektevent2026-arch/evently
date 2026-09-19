@@ -33,6 +33,31 @@ export async function PATCH(
     )
   }
 
+  // Moderator ma dziś te same uprawnienia co admin w całej reszcie apki,
+  // ale zarządzanie RÓLAMI świadomie zostaje wyłącznie po stronie admina:
+  // moderator nie rusza konta admina, i nie mianuje nowego moderatora.
+  if (auth.role === "moderator") {
+    if (newRole === "moderator") {
+      return NextResponse.json(
+        { error: "Tylko admin może nadać rolę moderatora." },
+        { status: 403 }
+      )
+    }
+
+    const { data: targetProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("role")
+      .eq("id", id)
+      .single()
+
+    if (targetProfile?.role === "admin") {
+      return NextResponse.json(
+        { error: "Moderator nie może zmieniać roli administratora." },
+        { status: 403 }
+      )
+    }
+  }
+
   const { error } = await supabaseAdmin
     .from("profiles")
     .update({ role: newRole })
