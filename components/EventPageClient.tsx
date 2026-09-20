@@ -130,8 +130,11 @@ export default function EventPageClient({ slug }: { slug: string }) {
       <EventHero src={event.cover_image_url || "/images/event-concert.jpg"} alt={event.title} />
 
         <div style={{position:"absolute",top:0,left:0,right:0,padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <Link href="/" style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",padding:"8px 16px",borderRadius:24,fontSize:13,fontWeight:600,textDecoration:"none",border:"1px solid rgba(255,255,255,0.15)"}}>
-            Wróc
+        <Link href="/" style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",padding:"7px 16px 7px 10px",borderRadius:24,fontSize:14,fontWeight:700,textDecoration:"none",border:"1px solid rgba(255,255,255,0.15)"}}>
+            <span style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,borderRadius:7,background:"#16a34a",flexShrink:0}}>
+              <MapPin size={13} color="white" />
+            </span>
+            evently
           </Link>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {dateBadge && <span style={{background:"#16a34a",color:"white",fontSize:12,fontWeight:700,padding:"5px 14px",borderRadius:20,letterSpacing:0.3}}>{dateBadge}</span>}

@@ -5,6 +5,7 @@ import EventHero from '@/components/EventHero'
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { MapPin } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 import EventSchedule from '@/components/EventSchedule'
@@ -101,12 +102,15 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
       <EventHero src={event.cover_image_url || event.image_url} alt={event.title} />
         {/* Top bar */}
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
-          <button
-            onClick={() => router.back()}
-            className="w-8 h-8 rounded-full bg-black/55 border border-white/18 flex items-center justify-center text-white text-sm"
+        <Link
+            href="/"
+            className="h-8 pl-1.5 pr-3 rounded-full bg-black/55 border border-white/18 flex items-center gap-1.5 text-white text-xs font-bold"
           >
-            ←
-          </button>
+            <span className="w-5 h-5 rounded-md bg-green-600 flex items-center justify-center flex-shrink-0">
+              <MapPin size={11} color="white" />
+            </span>
+            evently
+          </Link>
           <div className="flex gap-2">
             <button
               onClick={() => toggleFavorite(event.id)}
