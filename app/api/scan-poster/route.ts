@@ -73,6 +73,14 @@ export async function POST(req: NextRequest) {
 
   const { imageBase64, mediaType } = await req.json()
 
+  // mediaType leciał prosto z przeglądarki do API Anthropic bez sprawdzenia —
+  // ktoś mógł wysłać dowolny string w tym polu. Anthropic i tak by to pewnie
+  // odrzucił, ale odrzucamy to wcześniej, jawnie, zamiast liczyć na to.
+  const ALLOWED_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+  if (!ALLOWED_MEDIA_TYPES.includes(mediaType)) {
+    return NextResponse.json({ error: 'Nieobsługiwany typ obrazka.' }, { status: 400 })
+  }
+
   // Dzisiejsza data wstrzykiwana do promptu, żeby AI nie zgadywało roku.
   const today = new Date()
   const todayISO = today.toISOString().slice(0, 10) // YYYY-MM-DD
