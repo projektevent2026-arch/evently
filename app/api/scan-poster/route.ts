@@ -73,6 +73,20 @@ export async function POST(req: NextRequest) {
 
   const { imageBase64, mediaType } = await req.json()
 
+  // Kompresja do 1200px w przeglądarce (compressImage()) to zabezpieczenie
+  // TYLKO dla kogoś, kto faktycznie korzysta z formularza — ktoś wołający
+  // ten endpoint bezpośrednio mógł ją całkowicie ominąć i wysłać dowolnie
+  // wielki base64. Rate limiter (15/h) chroni przed liczbą zapytań, nie
+  // przed jednym bardzo dużym. ~8MB base64 to ok. 6MB oryginalnego pliku —
+  // z zapasem ponad to, co realistyczny, nieskompresowany plakat waży.
+  const MAX_BASE64_LENGTH = 8_000_000
+  if (typeof imageBase64 !== 'string' || imageBase64.length === 0) {
+    return NextResponse.json({ error: 'Brak obrazka.' }, { status: 400 })
+  }
+  if (imageBase64.length > MAX_BASE64_LENGTH) {
+    return NextResponse.json({ error: 'Obrazek jest za duży.' }, { status: 400 })
+  }
+
   // mediaType leciał prosto z przeglądarki do API Anthropic bez sprawdzenia —
   // ktoś mógł wysłać dowolny string w tym polu. Anthropic i tak by to pewnie
   // odrzucił, ale odrzucamy to wcześniej, jawnie, zamiast liczyć na to.

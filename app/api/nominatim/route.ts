@@ -22,6 +22,9 @@ const NOMINATIM_HEADERS = {
 // więc Nominatim i tak widział prawdziwą przeglądarkę odwiedzającego,
 // nie "Evently/1.0 (...)", co łamie ich regulamin (wymaga wiarygodnej
 // identyfikacji aplikacji). Ten proxy naprawia oba na raz.
+//
+// 2026-09-20 (2): dodane realne zakresy lat/lon, limit q i limit(1-10) —
+// bez tego dało się wysłać np. lat=999999 albo limit=999999.
 export async function GET(req: NextRequest) {
   if (!isAllowedOrigin(req)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -42,6 +45,11 @@ export async function GET(req: NextRequest) {
       if (!lat || !lon) {
         return NextResponse.json({ error: 'Brak lat/lon' }, { status: 400 })
       }
+      const latNum = parseFloat(lat)
+      const lonNum = parseFloat(lon)
+      if (!isFinite(latNum) || !isFinite(lonNum) || latNum < -90 || latNum > 90 || lonNum < -180 || lonNum > 180) {
+        return NextResponse.json({ error: 'Nieprawidłowe współrzędne' }, { status: 400 })
+      }
 
       const url = `https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&format=json&accept-language=pl`
       const res = await fetch(url, { headers: NOMINATIM_HEADERS, signal: AbortSignal.timeout(5000) })
@@ -57,16 +65,18 @@ export async function GET(req: NextRequest) {
       if (!q || q.trim().length < 2) {
         return NextResponse.json([])
       }
+      if (q.length > 200) {
+        return NextResponse.json({ error: 'Zapytanie zbyt długie' }, { status: 400 })
+      }
 
-      // Biała lista parametrów — nic innego z zapytania nie jest
-      // przepuszczane dalej do Nominatim bez kontroli.
-      const limit = params.get('limit') || '5'
+      const limitRaw = parseInt(params.get('limit') || '5', 10)
+      const limit = Math.min(Math.max(isNaN(limitRaw) ? 5 : limitRaw, 1), 10)
       const featureType = params.get('featureType')
       const addressdetails = params.get('addressdetails')
 
       let url =
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}` +
-        `&format=json&limit=${encodeURIComponent(limit)}&countrycodes=pl&accept-language=pl`
+        `&format=json&limit=${limit}&countrycodes=pl&accept-language=pl`
       if (featureType) url += `&featureType=${encodeURIComponent(featureType)}`
       if (addressdetails) url += `&addressdetails=${encodeURIComponent(addressdetails)}`
 

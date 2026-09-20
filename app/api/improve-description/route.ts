@@ -33,7 +33,9 @@ export async function POST(req: NextRequest) {
 
   const { text, style } = await req.json()
 
-  if (!text || !text.trim()) {
+  // typeof PRZED .trim() — {"text": 123} albo brak pola w ogóle rzucało
+  // dotąd niezłapanym błędem 500 zamiast czytelnego 400.
+  if (typeof text !== 'string' || !text.trim()) {
     return NextResponse.json({ error: 'Brak tekstu do poprawienia' }, { status: 400 })
   }
 
