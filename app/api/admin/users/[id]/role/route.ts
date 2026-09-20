@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAdmin } from "@/lib/requireAdmin"
+import { requireStaff } from "@/lib/requireStaff"
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
 
 const ALLOWED_ROLES = ["admin", "moderator", "organizer", "user"]
@@ -10,7 +10,7 @@ export async function PATCH(
 ) {
   // Autoryzacja PIERWSZA, tak samo jak w GET — nigdy nie ufamy
   // temu, co przysyła frontend o tym, kim jest wywołujący.
-  const auth = await requireAdmin()
+  const auth = await requireStaff()
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }

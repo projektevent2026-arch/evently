@@ -3,14 +3,20 @@ import { cookies } from "next/headers"
 import { createServerClient } from "@supabase/ssr"
 
 // ============================================================
-// Weryfikacja "czy to naprawdę zalogowany admin/moderator" — na
-// podstawie PRAWDZIWEJ sesji z ciasteczek, nie na podstawie tego,
-// co frontend twierdzi że jest prawdą. Zwykły klient (ANON_KEY,
-// respektujący RLS), nie supabaseAdmin — to świadome, service_role
-// pojawia się dopiero PO tym sprawdzeniu, w samym route handlerze,
-// nigdy jako mechanizm autoryzacji sam w sobie.
+// Weryfikacja "czy to naprawdę zalogowany PRACOWNIK (admin LUB
+// moderator)" — na podstawie PRAWDZIWEJ sesji z ciasteczek, nie na
+// podstawie tego, co frontend twierdzi że jest prawdą. Zwykły klient
+// (ANON_KEY, respektujący RLS), nie supabaseAdmin — to świadome,
+// service_role pojawia się dopiero PO tym sprawdzeniu, w samym route
+// handlerze, nigdy jako mechanizm autoryzacji sam w sobie.
+//
+// 2026-09-20: plik i funkcja przemianowane z requireAdmin() —
+// nazwa myliła, bo faktycznie wpuszczała admina ORAZ moderatora.
+// Endpoint zmiany ról (jedyne miejsce wymagające ŚCIŚLE samego admina)
+// ma teraz własny, dodatkowy, jawny warunek na to nad tą funkcją —
+// requireStaff() nigdy sam w sobie nie oznacza "tylko admin".
 // ============================================================
-export async function requireAdmin() {
+export async function requireStaff() {
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

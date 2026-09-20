@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
-import { requireAdmin } from "@/lib/requireAdmin"
+import { requireStaff } from "@/lib/requireStaff"
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
 
 export async function GET() {
   // Autoryzacja PIERWSZA — zanim cokolwiek dotknie supabaseAdmin.
-  const auth = await requireAdmin()
+  const auth = await requireStaff()
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
