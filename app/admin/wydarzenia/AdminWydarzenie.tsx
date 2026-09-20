@@ -226,6 +226,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
           .replace(/ś/g,"s").replace(/ł/g,"l").replace(/ż/g,"z")
           .replace(/ź/g,"z").replace(/ć/g,"c").replace(/ń/g,"n")
           .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"")
+          + "-" + Date.now().toString(36)
       } : {}),
     }))
   }
@@ -412,6 +413,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
               .replace(/ś/g,"s").replace(/ł/g,"l").replace(/ż/g,"z")
               .replace(/ź/g,"z").replace(/ć/g,"c").replace(/ń/g,"n")
               .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"")
+              + "-" + Date.now().toString(36)
             : prev.slug,
           city: data.city || prev.city,
           address: data.address || prev.address,
