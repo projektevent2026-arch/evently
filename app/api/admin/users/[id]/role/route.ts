@@ -23,9 +23,9 @@ export async function PATCH(
     return NextResponse.json({ error: "Nieprawidłowa rola." }, { status: 400 })
   }
 
-  // Nie pozwalamy zalogowanemu adminowi/moderatorowi odebrać samemu
-  // sobie dostępu do panelu z tego panelu — jedyny sposób cofnięcia
-  // takiej pomyłki byłby wtedy ręcznie, przez dashboard Supabase.
+  // Nie pozwalamy zalogowanemu adminowi odebrać samemu sobie dostępu do
+  // panelu z tego panelu — jedyny sposób cofnięcia takiej pomyłki byłby
+  // wtedy ręcznie, przez dashboard Supabase.
   if (id === auth.userId && !["admin", "moderator"].includes(newRole)) {
     return NextResponse.json(
       { error: "Nie możesz odebrać samemu sobie roli administratora/moderatora z tego panelu." },
@@ -34,28 +34,18 @@ export async function PATCH(
   }
 
   // Moderator ma dziś te same uprawnienia co admin w całej reszcie apki,
-  // ale zarządzanie RÓLAMI świadomie zostaje wyłącznie po stronie admina:
-  // moderator nie rusza konta admina, i nie mianuje nowego moderatora.
+  // ale zarządzanie RÓLAMI jest wyłącznie po stronie admina — PEŁNY zakaz,
+  // nie kolejny przypadek szczególny. Wcześniejsza wersja blokowała tylko
+  // "nadaj rolę moderatora" i "dotknij istniejącego admina", ale przepuszczała
+  // moderatora zmieniającego SAMEGO SIEBIE na admina (jego własna rola w
+  // momencie sprawdzenia to jeszcze "moderator", nie "admin", więc żaden z
+  // tamtych dwóch warunków tego nie łapał). Zamiast dorzucać trzeci
+  // przypadek szczególny — moderator po prostu nie ma tu nic do roboty.
   if (auth.role === "moderator") {
-    if (newRole === "moderator") {
-      return NextResponse.json(
-        { error: "Tylko admin może nadać rolę moderatora." },
-        { status: 403 }
-      )
-    }
-
-    const { data: targetProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("role")
-      .eq("id", id)
-      .single()
-
-    if (targetProfile?.role === "admin") {
-      return NextResponse.json(
-        { error: "Moderator nie może zmieniać roli administratora." },
-        { status: 403 }
-      )
-    }
+    return NextResponse.json(
+      { error: "Tylko administrator może zarządzać rolami." },
+      { status: 403 }
+    )
   }
 
   const { error } = await supabaseAdmin
