@@ -43,7 +43,15 @@ export function EventMap({ city, location, latitude, longitude }: EventMapProps)
         map.setView([latitude, longitude], 16)
         L.marker([latitude, longitude], { icon }).addTo(map).bindPopup(label).openPopup()
       } else {
-        fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(label)}&format=json&limit=1`)
+        // 2026-09-20: to samo co w MobileHome.tsx / location-sidebar.tsx /
+        // EventMap.tsx (/mapa) — request szedł wprost z przeglądarki do
+        // Nominatim, z pominięciem rate limitera i bez działającego
+        // User-Agent (przeglądarki i tak go nadpisują). Ten plik umknął przy
+        // pierwszej poprawce, bo nazwa różni się od EventMap.tsx tylko
+        // wielkością liter i myślnikiem — a jest używany na KAŻDEJ stronie
+        // pojedynczego wydarzenia (desktop i mobile), więc częściej niż
+        // tamten.
+        fetch(`/api/nominatim?op=search&q=${encodeURIComponent(label)}&limit=1`)
           .then((r) => r.json())
           .then((data) => {
             if (data[0]) {
