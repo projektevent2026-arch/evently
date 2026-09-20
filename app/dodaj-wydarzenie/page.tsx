@@ -6,6 +6,7 @@ import ScheduleEditor from "@/components/admin/ScheduleEditor"
 import dynamic from "next/dynamic"
 import { useState, useRef, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
+import { safeUrl } from "@/lib/safeUrl"
 import { MapPin, ChevronRight, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/scheduleType"
@@ -353,8 +354,8 @@ try {
       category: form.category,
       cover_image_url: form.cover_image_url || null,
       image_url: form.image_url || null,
-      ticket_url: form.ticket_url || null,
-      website_url: form.website_url || null,
+      ticket_url: safeUrl(form.ticket_url),
+      website_url: safeUrl(form.website_url),
       organizer_name: form.organizer_name || null,
       organizer_email: form.organizer_email || null,
       is_free: form.is_free,
@@ -410,8 +411,8 @@ try {
     category: form.category,
     cover_image_url: form.cover_image_url || null,
     image_url: form.image_url || null,
-    ticket_url: form.ticket_url || null,
-    website_url: form.website_url || null,
+    ticket_url: safeUrl(form.ticket_url),
+    website_url: safeUrl(form.website_url),
     organizer_name: form.organizer_name || null,
     organizer_email: form.organizer_email || null,
     is_free: form.is_free,

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { supabase } from "@/lib/supabase"
+import { safeUrl } from "@/lib/safeUrl"
 import dynamic from "next/dynamic"
 const LocationPicker = dynamic(() => import("@/components/admin/LocationPicker"), { ssr: false })
 import ImageUpload from "@/components/admin/ImageUpload"
