@@ -65,8 +65,15 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
   )
 
   if (!event) return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-5 px-6 text-center">
+      <Link href="/" className="inline-flex items-center gap-2 text-white text-lg font-bold no-underline">
+        <span className="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center flex-shrink-0">
+          <MapPin size={18} color="white" />
+        </span>
+        evently
+      </Link>
       <div className="text-zinc-500 text-sm">Nie znaleziono wydarzenia.</div>
+      <Link href="/" className="text-green-500 font-semibold text-sm no-underline">Zobacz wszystkie wydarzenia →</Link>
     </div>
   )
 

@@ -72,7 +72,18 @@ export default function EventPageClient({ slug }: { slug: string }) {
   const nextTerm = nextTermInfo(event?.event_dates)
 
   if (loading) return <div style={{display:"flex",minHeight:"100vh",alignItems:"center",justifyContent:"center"}}><p style={{color:"#6b7280",fontSize:14}}>Ladowanie...</p></div>
-  if (!event) return <div style={{display:"flex",minHeight:"100vh",alignItems:"center",justifyContent:"center"}}><p style={{color:"#6b7280"}}>Nie znaleziono wydarzenia.</p></div>
+  if (!event) return (
+    <div style={{display:"flex",flexDirection:"column",gap:20,minHeight:"100vh",alignItems:"center",justifyContent:"center",background:"#0a0a0a",padding:"0 20px",textAlign:"center"}}>
+      <Link href="/" style={{display:"inline-flex",alignItems:"center",gap:8,textDecoration:"none",color:"white",fontSize:18,fontWeight:700}}>
+        <span style={{display:"flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:9,background:"#16a34a",flexShrink:0}}>
+          <MapPin size={18} color="white" />
+        </span>
+        evently
+      </Link>
+      <p style={{color:"#6b7280",margin:0}}>Nie znaleziono wydarzenia.</p>
+      <Link href="/" style={{color:"#16a34a",fontWeight:600,textDecoration:"none",fontSize:14}}>Zobacz wszystkie wydarzenia →</Link>
+    </div>
+  )
 
   // Data użyta do badge "DZIŚ/JUTRO" na hero: dla wydarzenia cyklicznego
   // to najbliższy nadchodzący termin z event_dates, NIE surowe start_date
