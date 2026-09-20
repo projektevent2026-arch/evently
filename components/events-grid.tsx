@@ -134,6 +134,7 @@ export function EventsGrid() {
           // sygnał przy przeglądaniu, dokładna liczba jest potrzebna dopiero
           // przy podejmowaniu decyzji "idę / nie idę".
           price: e.is_free ? "Wstęp wolny" : "Wstęp płatny",
+          is_free: e.is_free,
           // Pola tylko do wyszukiwania — nie renderowane w kartach.
           description: e.description ?? null,
           short_description: e.short_description ?? null,

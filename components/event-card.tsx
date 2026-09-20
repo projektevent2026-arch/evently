@@ -30,6 +30,7 @@ export interface EventData {
   interested: number
   category: string
   price?: string
+  is_free?: boolean
   initialGoing?: boolean
 }
 
@@ -167,7 +168,11 @@ export function EventCard({ event, initialGoing = false, theme = "dark" }: { eve
 
           {event.price && (
             <div className="mt-0.5">
-              <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${t.priceBadge}`}>
+              <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                event.is_free
+                  ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                  : 'bg-red-500/10 text-red-600 dark:text-red-400'
+              }`}>
                 {event.price}
               </span>
             </div>
