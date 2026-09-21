@@ -66,7 +66,21 @@ export default function AdminUzytkownicy() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "system-ui, sans-serif", background: "#f6f8fa" }}>
-      <aside style={{ width: 220, background: "white", borderRight: "1px solid #e5e7eb", padding: "1.5rem 1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+      {/* Ten sam wzorzec responsywności co app/admin/page.tsx (2026-09-21):
+          sidebar znika poniżej 1100px, każdy wiersz użytkownika przechodzi
+          z jednej ciasnej linii na dwie — góra: e-mail+data, dół: rola+
+          select+przycisk, zawijane zamiast ściśnięte. */}
+      <style>{`
+        @media (max-width: 1100px) {
+          .admin-sidebar { display: none !important; }
+          .admin-users-main { padding: 14px 16px !important; }
+          .admin-user-row { flex-wrap: wrap !important; }
+          .admin-user-row > .admin-user-email-block { width: 100% !important; flex-basis: 100% !important; margin-bottom: 8px; }
+          .admin-user-row select { flex: 1 !important; min-width: 100px !important; }
+        }
+      `}</style>
+
+      <aside className="admin-sidebar" style={{ width: 220, background: "white", borderRight: "1px solid #e5e7eb", padding: "1.5rem 1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1.5rem" }}>
           <div style={{ width: 32, height: 32, borderRadius: 8, background: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <MapPin size={16} color="white" />
@@ -78,7 +92,7 @@ export default function AdminUzytkownicy() {
         <a href="/admin/uzytkownicy" style={{ padding: "0.6rem 0.75rem", borderRadius: 8, fontSize: "0.9rem", background: "#f0fdf4", color: "#16a34a", fontWeight: 600, textDecoration: "none" }}>Użytkownicy</a>
       </aside>
 
-      <main style={{ flex: 1, padding: "1.5rem", minWidth: 0 }}>
+      <main className="admin-users-main" style={{ flex: 1, padding: "1.5rem", minWidth: 0 }}>
         <h1 style={{ fontSize: "1.5rem", fontWeight: 800, margin: "0 0 4px", color: "#111827" }}>Użytkownicy</h1>
         <p style={{ color: "#6b7280", fontSize: "0.9rem", margin: "0 0 1.5rem" }}>E-mail i rola w jednym miejscu, bez przełączania się między zakładkami Supabase.</p>
 
@@ -92,8 +106,8 @@ export default function AdminUzytkownicy() {
               const current = ROLE_LABELS[u.role] || ROLE_LABELS.user
               const editing = pendingRole[u.id] !== undefined
               return (
-                <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid #f3f4f6" }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                <div key={u.id} className="admin-user-row" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid #f3f4f6" }}>
+                  <div className="admin-user-email-block" style={{ flex: 1, minWidth: 0 }}>
                     <Link
                       href={`/admin/organizator/${u.id}`}
                       style={{ fontSize: "0.9rem", color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", textDecoration: "none" }}
