@@ -282,6 +282,19 @@ export default function AdminPage() {
           .admin-list-head { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; }
           .admin-add-btn { justify-content: center !important; width: 100% !important; }
           .admin-list-pad { padding: 14px 16px !important; }
+          /* Większe cele dotykowe na wąskim ekranie — te same elementy,
+             tylko łatwiejsze do trafienia palcem niż kursorem myszy. */
+          .admin-tab-btn { padding: 10px 2px !important; font-size: 0.95rem !important; }
+          .admin-pill-btn { padding: 10px 16px !important; font-size: 0.9rem !important; }
+          /* Cień na prawej krawędzi przewijanych rzędów — sygnalizuje
+             "jest więcej, przewiń", zamiast wyglądać jak ucięte na sztywno. */
+          .admin-scroll-fade { display: block !important; }
+          /* Szukaj + daty + sortowanie: to samo co na desktopie, tylko
+             każde w swojej linii zamiast wciśnięte w jeden ciasny rząd. */
+          .admin-filters-row { flex-direction: column !important; align-items: stretch !important; }
+          .admin-filters-row > * { width: 100% !important; }
+          .admin-date-group { display: flex !important; gap: 8px !important; width: 100% !important; }
+          .admin-date-group input { flex: 1 !important; min-width: 0 !important; }
         }
       `}</style>
 
@@ -316,9 +329,10 @@ export default function AdminPage() {
           </div>
 
           {/* Zakładki statusu */}
+          <div style={{ position: "relative" }}>
           <div style={{ display: "flex", gap: "1.25rem", marginBottom: "1rem", borderBottom: "1px solid #e5e7eb", overflowX: "auto", scrollbarWidth: "none" }}>
           {(["all", "pending", "published", "draft", "archived", "trash"] as const).map(val => (
-              <button key={val} onClick={() => setFilterStatus(val)} style={{
+              <button key={val} className="admin-tab-btn" onClick={() => setFilterStatus(val)} style={{
                 background: "none", border: "none", cursor: "pointer", fontSize: "0.9rem", whiteSpace: "nowrap",
                 fontWeight: filterStatus === val ? 600 : 400,
                 color: filterStatus === val ? "#16a34a" : "#6b7280",
@@ -330,11 +344,14 @@ export default function AdminPage() {
               </button>
             ))}
           </div>
+          <div className="admin-scroll-fade" style={{ display: "none", position: "absolute", right: 0, top: 0, bottom: "1rem", width: 32, background: "linear-gradient(to right, transparent, #f6f8fa)", pointerEvents: "none" }} />
+          </div>
 
           {/* Pigułki kategorii */}
+          <div style={{ position: "relative" }}>
           <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12, scrollbarWidth: "none" }}>
             {CAT_PILLS.map(c => (
-              <button key={c.id} onClick={() => setCatFilter(c.id)} style={{
+              <button key={c.id} className="admin-pill-btn" onClick={() => setCatFilter(c.id)} style={{
                 flexShrink: 0, padding: "8px 14px", borderRadius: 999, whiteSpace: "nowrap",
                 border: "1px solid", cursor: "pointer", fontSize: "0.85rem", fontFamily: "inherit",
                 background: catFilter === c.id ? "#16a34a" : "white",
@@ -344,9 +361,11 @@ export default function AdminPage() {
               }}>{c.label}</button>
             ))}
           </div>
+          <div className="admin-scroll-fade" style={{ display: "none", position: "absolute", right: 0, top: 0, bottom: 12, width: 32, background: "linear-gradient(to right, transparent, #f6f8fa)", pointerEvents: "none" }} />
+          </div>
 
           {/* Szukaj + sortowanie */}
-          <div style={{ display: "flex", gap: "0.6rem", marginBottom: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+          <div className="admin-filters-row" style={{ display: "flex", gap: "0.6rem", marginBottom: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
             <input
                 id="admin-search-input"
@@ -359,11 +378,13 @@ export default function AdminPage() {
                 <button onClick={() => setSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 18, lineHeight: 1 }}>×</button>
               )}
             </div>
+            <div className="admin-date-group">
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
               style={{ padding: "0.7rem 0.6rem", borderRadius: 10, border: "1px solid #e5e7eb", fontSize: "0.85rem", background: "white", color: "#111827" }} />
             <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>–</span>
             <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
               style={{ padding: "0.7rem 0.6rem", borderRadius: 10, border: "1px solid #e5e7eb", fontSize: "0.85rem", background: "white", color: "#111827" }} />
+            </div>
             <select value={sortBy} onChange={e => setSortBy(e.target.value)}
               style={{ padding: "0.7rem 0.85rem", borderRadius: 10, border: "1px solid #e5e7eb", fontSize: "0.9rem", background: "white", color: "#111827", cursor: "pointer" }}>
               <option value="date_desc">Data: od najnowszych</option>
