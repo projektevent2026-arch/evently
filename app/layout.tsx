@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Space_Grotesk } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
+import { AnalyticsWithOptOut } from '@/components/AnalyticsWithOptOut'
 import BottomNav from '@/components/BottomNav'
 import './globals.css'
 import "leaflet/dist/leaflet.css"
@@ -42,7 +42,13 @@ export default function RootLayout({
       <body className={`${_inter.variable} ${_spaceGrotesk.variable} font-sans antialiased`}>
         {children}
         <BottomNav />
-        <Analytics />
+        {/* beforeSend + localStorage("va-disable") — przeniesione do
+            osobnego komponentu klienckiego (AnalyticsWithOptOut), bo ten
+            plik jest serwerowy i nie może przekazać funkcji jako propsa.
+            Ustaw raz w konsoli: localStorage.setItem('va-disable', '1')
+            — Twoje własne wejścia (na TYM urządzeniu/przeglądarce)
+            przestaną być liczone, reszta odwiedzających bez zmian. */}
+        <AnalyticsWithOptOut />
       </body>
     </html>
   )
