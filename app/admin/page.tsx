@@ -282,6 +282,7 @@ export default function AdminPage() {
           .admin-list-head { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; }
           .admin-add-btn { justify-content: center !important; width: 100% !important; }
           .admin-list-pad { padding: 14px 16px !important; }
+          .admin-mobile-nav { display: flex !important; }
           /* Większe cele dotykowe na wąskim ekranie — te same elementy,
              tylko łatwiejsze do trafienia palcem niż kursorem myszy. */
           .admin-tab-btn { padding: 10px 2px !important; font-size: 0.95rem !important; }
@@ -315,6 +316,17 @@ export default function AdminPage() {
 
       {/* LISTA */}
       <main className="admin-list-main" style={{ flex: 1, padding: "1.5rem", minWidth: 0 }}>
+
+        {/* Mobilny pasek nawigacji — widoczny TYLKO poniżej 1100px (patrz
+            .admin-mobile-nav w media query wyżej), dokładnie tam gdzie
+            sidebar (jedyne miejsce z tymi linkami) się chowa. Bez tego
+            "Moje wydarzenia" i "Użytkownicy" były na telefonie całkowicie
+            niedostępne — nie ukryte za czymś, tylko dosłownie znikały. */}
+        <div className="admin-mobile-nav" style={{ display: "none", gap: 8, padding: "12px 16px 0", overflowX: "auto", scrollbarWidth: "none" }}>
+          <button onClick={() => setOnlyMine(false)} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 20, border: "1px solid " + (!onlyMine ? "#16a34a" : "#e5e7eb"), background: !onlyMine ? "#f0fdf4" : "white", color: !onlyMine ? "#16a34a" : "#374151", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>Wydarzenia</button>
+          <button onClick={() => setOnlyMine(true)} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 20, border: "1px solid " + (onlyMine ? "#16a34a" : "#e5e7eb"), background: onlyMine ? "#f0fdf4" : "white", color: onlyMine ? "#16a34a" : "#374151", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>Moje wydarzenia</button>
+          <a href="/admin/uzytkownicy" style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 20, border: "1px solid #e5e7eb", background: "white", color: "#374151", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", textDecoration: "none" }}>Użytkownicy</a>
+        </div>
 
         {/* Nagłówek */}
         <div className="admin-list-pad">
