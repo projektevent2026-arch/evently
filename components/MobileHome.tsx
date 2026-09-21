@@ -334,11 +334,25 @@ export function MobileHome() {
   const [cityCoords, setCityCoords] = useState<[number, number] | null>(CITY_COORDS['Suwałki'] ?? null)
   const [cityLoading, setCityLoading] = useState(false)
   const [showCityDropdown, setShowCityDropdown] = useState(false)
-  const [radius, setRadius] = useState(25)
+  // Promień był zwykłym useState(25) — resetował się do 25 przy KAŻDYM
+  // odświeżeniu strony, bo nic go nigdzie nie zapisywało. events-grid.tsx
+  // (inny komponent na tej samej stronie) trzyma to samo w URL i przez to
+  // przetrwa odświeżenie — tu robimy to przez localStorage, bo ten komponent
+  // nie operuje na parametrach URL.
+  const [radius, setRadius] = useState(() => {
+    if (typeof window === 'undefined') return 25
+    const saved = localStorage.getItem('evently_radius')
+    const parsed = saved ? parseInt(saved, 10) : NaN
+    return [5, 10, 25, 50].includes(parsed) ? parsed : 25
+  })
   const [activeDate, setActiveDate] = useState<'all'|'today'|'tomorrow'|'weekend'|'custom'>('all')
   const [customDate, setCustomDate] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
   const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    localStorage.setItem('evently_radius', String(radius))
+  }, [radius])
 
   const effLat = gpsActive ? userLat : (cityCoords?.[0] ?? null)
   const effLon = gpsActive ? userLon : (cityCoords?.[1] ?? null)
