@@ -202,12 +202,21 @@ export function LocationSidebar() {
                 key={r}
                 onClick={() => {
                   setRadius(r)
+                  // POPRAWKA: poprzednia wersja wstawiała tu lokalny stan
+                  // `city`, który mógł być NIEAKTUALNY względem URL — np.
+                  // po kliknięciu logo (czyści URL do "/") lokalny `city`
+                  // w tym komponencie zostawał przy starej wartości (np.
+                  // "Ełk"), bo React nie resetuje useState przy zwykłej
+                  // nawigacji Linkiem. Efekt: kliknięcie promienia po
+                  // powrocie na stronę główną "wskrzeszało" stare miasto.
+                  // Teraz: jeśli URL faktycznie nie ma miasta, wpisujemy
+                  // TYLKO twardą wartość domyślną, nigdy lokalny stan.
                   const params = new URLSearchParams(searchParams.toString())
                   params.set("radius", r.toString())
                   if (!params.get("city")) {
-                    params.set("city", city || "Suwałki")
-                    params.set("lat", String(mapCenter?.[0] ?? SUWALKI_COORDS[0]))
-                    params.set("lng", String(mapCenter?.[1] ?? SUWALKI_COORDS[1]))
+                    params.set("city", "Suwałki")
+                    params.set("lat", String(SUWALKI_COORDS[0]))
+                    params.set("lng", String(SUWALKI_COORDS[1]))
                   }
                   router.push(`/?${params.toString()}`, { scroll: false })
                 }}
