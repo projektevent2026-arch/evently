@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { MapPin, Navigation, ChevronDown } from "lucide-react"
 
 const MiniMap = dynamic(() => import("@/components/MiniMap"), { ssr: false })
@@ -63,14 +63,33 @@ export function LocationSidebar() {
     ? [parseFloat(urlLat), parseFloat(urlLng)]
     : SUWALKI_COORDS
 
-  const [city, setCity] = useState(initialCity)
-  const [radius, setRadius] = useState(initialRadius)
-  const [locating, setLocating] = useState(false)
-  const [suggestions, setSuggestions] = useState<GeoResult[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [searching, setSearching] = useState(false)
-  const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(initialCenter)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+    const [city, setCity] = useState(initialCity)
+    const [radius, setRadius] = useState(initialRadius)
+    const [locating, setLocating] = useState(false)
+    const [suggestions, setSuggestions] = useState<GeoResult[]>([])
+    const [showSuggestions, setShowSuggestions] = useState(false)
+    const [searching, setSearching] = useState(false)
+    const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(initialCenter)
+    const [sidebarOpen, setSidebarOpen] = useState(false)
+  
+    // POPRAWKA: city/radius/mapCenter były czytane z URL TYLKO raz, przy
+    // pierwszym renderze (useState inicjalizowany raz). Kliknięcie logo
+    // (Link do "/", czyści URL) zmienia adres, ale NIE odświeża stanu tego
+    // komponentu — pole tekstowe zostawało przy starej wartości (np. "Ełk"),
+    // mimo że filtrowanie (czytane bezpośrednio z URL w innych miejscach)
+    // było już poprawnie ustawione na Suwałki. Ten efekt synchronizuje
+    // widoczny stan z URL za każdym razem, gdy URL faktycznie się zmieni
+    // z zewnątrz (nie tylko przy starcie).
+    useEffect(() => {
+      const urlCity = searchParams.get("city") || "Suwałki"
+      const urlRadiusRaw = parseInt(searchParams.get("radius") || "25", 10)
+      const urlRadius = RADII.includes(urlRadiusRaw) ? urlRadiusRaw : 25
+      const uLat = searchParams.get("lat")
+      const uLng = searchParams.get("lng")
+      setCity(urlCity)
+      setRadius(urlRadius)
+      setMapCenter(uLat && uLng ? [parseFloat(uLat), parseFloat(uLng)] : SUWALKI_COORDS)
+    }, [searchParams])
 
   const handleGeolocate = () => {
     setLocating(true)

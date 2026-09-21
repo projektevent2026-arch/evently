@@ -70,8 +70,19 @@ export function EventsGrid() {
   const [attendingIds, setAttendingIds] = useState<Set<string>>(new Set())
 
   const q = searchParams.get("q") || ""
-  const filterLat = parseFloat(searchParams.get("lat") || "")
-  const filterLng = parseFloat(searchParams.get("lng") || "")
+  // 2026-09-21: bez tego, gdy URL nie miał jeszcze lat/lng (zupełnie
+  // świeże wejście, zanim ktokolwiek kliknął cokolwiek w LocationSidebar),
+  // hasLocationFilter wychodziło false i KAŻDE wydarzenie przechodziło
+  // filtr, niezależnie od odległości — mimo że panel z boku i tak
+  // POKAZYWAŁ "25 km od Suwałki" jako aktywny filtr. Wygląd i rzeczywiste
+  // filtrowanie były rozjechane. Domyślne współrzędne Suwałk (te same co
+  // w location-sidebar.tsx i MobileHome.tsx) naprawiają to u źródła.
+  const SUWALKI_LAT = 54.1113
+  const SUWALKI_LNG = 22.9302
+  const urlLat = parseFloat(searchParams.get("lat") || "")
+  const urlLng = parseFloat(searchParams.get("lng") || "")
+  const filterLat = isNaN(urlLat) ? SUWALKI_LAT : urlLat
+  const filterLng = isNaN(urlLng) ? SUWALKI_LNG : urlLng
   const filterRadius = parseFloat(searchParams.get("radius") || "25")
   const hasLocationFilter = !isNaN(filterLat) && !isNaN(filterLng)
 
