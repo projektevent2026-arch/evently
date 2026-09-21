@@ -525,11 +525,14 @@ export function MobileHome() {
         />
       )}
 
-      {/* Header — logo klikalne (goHome) + mała ikona logowania. Dzwonek
-          (push) i avatar-atrapa (/profil 404) zostają ukryte do tier D —
-          to nie jest to samo — ale bez JAKIEGOKOLWIEK linku do /login
-          organizator/admin na prawdziwym telefonie (nie w "wersji na
-          komputer") nie miał w ogóle jak się zalogować z tego widoku. */}
+      {/* Header — samo logo, klikalne: reset filtrów + odświeżenie listy (goHome).
+          Ikona logowania celowo ZDJĘTA (2026-09-21) — Rafał uznał, że
+          widoczna ikona konta zmienia odczucie strony z "serwis
+          informacyjny" na "platforma z kontami", zbyt wcześnie na tym
+          etapie. /login nadal istnieje i działa pod swoim adresem —
+          w razie potrzeby logowania z telefonu wejdź tam bezpośrednio
+          (albo zapisz jako zakładkę). Dzwonek (push) i avatar-atrapa
+          (/profil 404) zostają ukryte do tier D, jak wcześniej. */}
       <div className="px-4 pt-5 pb-3">
         <div className="flex items-center justify-between mb-3">
           <button
@@ -538,13 +541,6 @@ export function MobileHome() {
           >
             ● evently
           </button>
-          <Link
-            href="/login"
-            aria-label="Zaloguj się"
-            className="w-9 h-9 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[15px]"
-          >
-            👤
-          </Link>
         </div>
 
         <button
