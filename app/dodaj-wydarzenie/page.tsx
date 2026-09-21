@@ -85,6 +85,9 @@ export default function DodajWydarzenie() {
   const [roleChecked, setRoleChecked] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [editNotAllowed, setEditNotAllowed] = useState(false)
+  // Domyślnie true — baner "sprawdź dane" pokazuje się tylko PO skanie
+  // plakatu, nigdy przy zwykłym, ręcznym wypełnianiu formularza.
+  const [scanReviewed, setScanReviewed] = useState(true)
 
   useEffect(() => {
     async function init() {
@@ -613,11 +616,26 @@ try {
                           }
                         } catch {}
                       }
+                      // AI odczytuje plakat, ale bywa niedoskonałe (np. ozdobna
+                      // czcionka: "Chopina" odczytane jako "Chłodna") — baner
+                      // niżej wymusza świadome potwierdzenie, zamiast pozwolić
+                      // wysłać formularz z niesprawdzonymi danymi.
+                      setScanReviewed(false)
                     }}
                   />
                   <p style={{fontSize:"0.75rem",color:"#9ca3af",margin:"4px 0 0"}}>
                     Wgraj zdjęcie plakatu — AI automatycznie wypełni formularz.
                   </p>
+                  {!scanReviewed && (
+                    <div style={{display:"flex",gap:12,alignItems:"flex-start",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:"12px 14px",marginTop:10}}>
+                      <span style={{fontSize:18,lineHeight:1}}>🔍</span>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:13,fontWeight:600,color:"#b45309",marginBottom:2}}>AI wypełniło formularz — sprawdź i popraw</div>
+                        <div style={{fontSize:12,color:"#92400e",lineHeight:1.5}}>Przejrzyj wszystkie pola, zwłaszcza adres, daty i godziny — AI mogło coś przeczytać źle (np. pomylić podobnie wyglądające litery w ozdobnej czcionce).</div>
+                        <button type="button" onClick={() => setScanReviewed(true)} style={{marginTop:8,padding:"6px 12px",border:"1px solid #f59e0b",borderRadius:8,background:"white",color:"#b45309",fontSize:12,fontWeight:600,cursor:"pointer"}}>OK, sprawdziłem</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <label style={lbl}>Nazwa wydarzenia *</label>
                 <input name="title" value={form.title} onChange={handleChange} required
@@ -888,19 +906,21 @@ try {
 
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:"0.5rem",borderTop:"1px solid #f3f4f6"}}>
                 <button type="button" onClick={() => setActiveTab("location")} style={backBtn}>← Wstecz</button>
-                <button type="submit" disabled={submitting || !roleChecked} style={{
+                <button type="submit" disabled={submitting || !roleChecked || !scanReviewed} style={{
                   display:"flex",alignItems:"center",gap:8,
                   padding:"0.8rem 2rem",background:"#16a34a",color:"white",
                   border:"none",borderRadius:10,cursor:"pointer",
-                  fontWeight:700,fontSize:"1rem",opacity:submitting ? 0.7 : 1,
+                  fontWeight:700,fontSize:"1rem",opacity:(submitting || !scanReviewed) ? 0.7 : 1,
                 }}>
                   {!roleChecked
                     ? "Sprawdzanie..."
-                    : submitting
-                      ? "Wysyłanie..."
-                      : userRole === "organizer"
-                        ? (editId ? "💾 Zapisz zmiany" : "✅ Opublikuj wydarzenie")
-                        : "✅ Wyślij do weryfikacji"}
+                    : !scanReviewed
+                      ? "Najpierw sprawdź dane z plakatu ↑"
+                      : submitting
+                        ? "Wysyłanie..."
+                        : userRole === "organizer"
+                          ? (editId ? "💾 Zapisz zmiany" : "✅ Opublikuj wydarzenie")
+                          : "✅ Wyślij do weryfikacji"}
                 </button>
               </div>
             </>}
@@ -913,7 +933,9 @@ try {
           <Link href="/regulamin" style={{color:"#16a34a",textDecoration:"underline"}}>regulamin serwisu</Link>{" "}
           oraz{" "}
           <Link href="/polityka-prywatnosci" style={{color:"#16a34a",textDecoration:"underline"}}>politykę prywatności</Link>.
-          {" "}Evently zastrzega sobie prawo do odmowy publikacji.
+          {" "}Evently zastrzega sobie prawo do odmowy publikacji. Odpowiadasz za poprawność
+          podanych danych (w tym danych odczytanych automatycznie z plakatu) — Evently
+          nie ponosi odpowiedzialności za błędy w treści zgłoszonego wydarzenia.
         </p>
       </div>
     </div>
