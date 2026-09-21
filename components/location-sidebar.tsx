@@ -8,6 +8,7 @@ import { MapPin, Navigation, ChevronDown } from "lucide-react"
 const MiniMap = dynamic(() => import("@/components/MiniMap"), { ssr: false })
 
 const RADII = [5, 10, 25, 50]
+const SUWALKI_COORDS: [number, number] = [54.1113, 22.9302]
 
 interface GeoResult {
   lat: number
@@ -15,10 +16,6 @@ interface GeoResult {
   label: string
 }
 
-// Geokoder MIAST — featureType=settlement zawęża wyniki do MIEJSCOWOŚCI
-// (miasta / miasteczka / wsie) i odsiewa firmy, ulice, stacje uzdatniania wody.
-// Wcześniej "suw" zwracało: "SUW, 28", "Rem-Suw sp. z o.o.", "PWiK SUW Siedlice".
-// Sortowanie po place_rank stawia większe miasta wyżej (Suwałki przed wsią Suwałki-kolonia).
 async function searchNominatim(query: string): Promise<GeoResult[]> {
   const url =
     `/api/nominatim?op=search&q=${encodeURIComponent(query)}` +
@@ -36,8 +33,8 @@ async function searchNominatim(query: string): Promise<GeoResult[]> {
         lat: parseFloat(item.lat),
         lng: parseFloat(item.lon),
         label: place && region ? `${place}, ${region}` : (place || String(item.display_name || "").split(",")[0]),
-        placeRank: item.place_rank ?? 99,      // niższy = ważniejsza miejscowość
-        importance: item.importance ?? 0,      // większe miasta = wyższa wartość
+        placeRank: item.place_rank ?? 99,
+        importance: item.importance ?? 0,
       }
     })
     .filter((r) => r.label && !isNaN(r.lat) && !isNaN(r.lng))
@@ -46,16 +43,34 @@ async function searchNominatim(query: string): Promise<GeoResult[]> {
 }
 
 export function LocationSidebar() {
-  const [city, setCity] = useState("")
-  const [radius, setRadius] = useState(25)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // 2026-09-21: stan startowy czytany z URL, nie z pustki/sztywnej wartości.
+  // Poprzednio: useState("") + useState(25), bez odczytu przy starcie —
+  // ten komponent ZAPISYWAŁ radius/city do URL, ale nigdy nie CZYTAŁ ich
+  // z powrotem, więc każde odświeżenie kasowało wybór. Do tego przycisk
+  // promienia miał warunek "if (city)" blokujący aktualizację URL, dopóki
+  // city było puste — czyli działał dopiero PO ręcznym wpisaniu miasta,
+  // mimo że hero-section.tsx i tak pokazywało "Suwałki" jako pozornie już
+  // ustawioną lokalizację. Teraz: domyślnie Suwałki naprawdę, od razu.
+  const initialCity = searchParams.get("city") || "Suwałki"
+  const initialRadiusRaw = parseInt(searchParams.get("radius") || "25", 10)
+  const initialRadius = RADII.includes(initialRadiusRaw) ? initialRadiusRaw : 25
+  const urlLat = searchParams.get("lat")
+  const urlLng = searchParams.get("lng")
+  const initialCenter: [number, number] = (urlLat && urlLng)
+    ? [parseFloat(urlLat), parseFloat(urlLng)]
+    : SUWALKI_COORDS
+
+  const [city, setCity] = useState(initialCity)
+  const [radius, setRadius] = useState(initialRadius)
   const [locating, setLocating] = useState(false)
   const [suggestions, setSuggestions] = useState<GeoResult[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [searching, setSearching] = useState(false)
-  const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined)
+  const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(initialCenter)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const router = useRouter()
-  const searchParams = useSearchParams()
 
   const handleGeolocate = () => {
     setLocating(true)
@@ -82,7 +97,6 @@ export function LocationSidebar() {
     )
   }
 
-  // Podpowiedzi w trakcie pisania (od 3 znaków)
   const handleCityChange = async (val: string) => {
     setCity(val)
     if (val.trim().length < 3) {
@@ -92,7 +106,6 @@ export function LocationSidebar() {
     }
     try {
       const results = await searchNominatim(val.trim())
-      // usuń duplikaty po etykiecie
       const unique = results.filter(
         (r, i, arr) => arr.findIndex(x => x.label === r.label) === i
       )
@@ -104,7 +117,6 @@ export function LocationSidebar() {
     }
   }
 
-  // Wybór miasta z listy albo z Enter — ustawia lat/lng i filtruje
   const applyCity = (r: GeoResult) => {
     setCity(r.label)
     setShowSuggestions(false)
@@ -117,7 +129,6 @@ export function LocationSidebar() {
     router.push(`/?${params.toString()}`, { scroll: false })
   }
 
-  // Enter w polu: jeśli są podpowiedzi, weź pierwszą; jeśli nie — dociągnij z geokodera
   const handleCitySearch = async () => {
     if (!city.trim()) return
     if (suggestions.length > 0) {
@@ -134,7 +145,6 @@ export function LocationSidebar() {
 
   const sidebarContent = (
     <>
-      {/* Lokalizacja */}
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
           <MapPin className="size-4 text-primary" />
@@ -192,11 +202,14 @@ export function LocationSidebar() {
                 key={r}
                 onClick={() => {
                   setRadius(r)
-                  if (city) {
-                    const params = new URLSearchParams(searchParams.toString())
-                    params.set("radius", r.toString())
-                    router.push(`/?${params.toString()}`, { scroll: false })
+                  const params = new URLSearchParams(searchParams.toString())
+                  params.set("radius", r.toString())
+                  if (!params.get("city")) {
+                    params.set("city", city || "Suwałki")
+                    params.set("lat", String(mapCenter?.[0] ?? SUWALKI_COORDS[0]))
+                    params.set("lng", String(mapCenter?.[1] ?? SUWALKI_COORDS[1]))
                   }
+                  router.push(`/?${params.toString()}`, { scroll: false })
                 }}
                 className={`rounded-lg py-1.5 text-xs font-medium transition-colors ${
                   radius === r
@@ -219,7 +232,6 @@ export function LocationSidebar() {
         )}
       </div>
 
-      {/* Blisko Ciebie */}
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="text-sm font-semibold text-foreground mb-3">Blisko Ciebie</h3>
         <MiniMap center={mapCenter} />
@@ -229,7 +241,6 @@ export function LocationSidebar() {
 
   return (
     <div>
-      {/* Mobile — zwijany panel */}
       <div className="lg:hidden flex flex-col gap-4">
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -251,7 +262,6 @@ export function LocationSidebar() {
         {sidebarOpen && <div className="flex flex-col gap-4">{sidebarContent}</div>}
       </div>
 
-      {/* Desktop — zawsze widoczny */}
       <div className="hidden lg:flex lg:flex-col lg:gap-6 sticky top-24">
         {sidebarContent}
       </div>
