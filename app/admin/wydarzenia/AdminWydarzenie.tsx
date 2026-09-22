@@ -657,8 +657,8 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
 
         {/* Status info */}
         <div style={{ padding:"12px 16px", borderTop:"1px solid #f3f4f6" }}>
-          <div style={{ fontSize:11, color:"#9ca3af", marginBottom:4 }}>Status</div>
-          <select name="status" value={form.status} onChange={handleChange} style={{ width:"100%", padding:"6px 8px", border:"1px solid #e5e7eb", borderRadius:6, fontSize:12, color:"#374151" }}>
+          <label htmlFor="status" style={{ fontSize:11, color:"#9ca3af", marginBottom:4, display:"block" }}>Status</label>
+          <select id="status" name="status" value={form.status} onChange={handleChange} style={{ width:"100%", padding:"6px 8px", border:"1px solid #e5e7eb", borderRadius:6, fontSize:12, color:"#374151" }}>
             <option value="published">Opublikowane</option>
             <option value="draft">Szkic</option>
           </select>
@@ -765,20 +765,20 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
               )}
               <SectionTitle>Podstawowe informacje</SectionTitle>
 
-              <Field label="Nazwa wydarzenia *">
-                <input name="title" value={form.title} onChange={handleChange} placeholder="np. Dni Suwałk 2026" required style={inp} maxLength={100} />
+              <Field label="Nazwa wydarzenia *" htmlFor="title">
+                <input id="title" name="title" value={form.title} onChange={handleChange} placeholder="np. Dni Suwałk 2026" required style={inp} maxLength={100} />
                 <Counter cur={form.title.length} max={100} />
               </Field>
 
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-                <Field label="Kategoria *">
-                  <select name="category" value={form.category} onChange={handleChange} required style={inp}>
+                <Field label="Kategoria *" htmlFor="category">
+                  <select id="category" name="category" value={form.category} onChange={handleChange} required style={inp}>
                     <option value="" disabled>Wybierz kategorię...</option>
                     {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
                   </select>
                 </Field>
-                <Field label="Organizator">
-                  <input name="organizer_name" value={form.organizer_name} onChange={handleChange} placeholder="np. Urząd Miasta Suwałki" style={inp} />
+                <Field label="Organizator" htmlFor="organizer_name">
+                  <input id="organizer_name" name="organizer_name" value={form.organizer_name} onChange={handleChange} placeholder="np. Urząd Miasta Suwałki" style={inp} />
                 </Field>
               </div>
 
@@ -797,22 +797,23 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                         {isPast && <span style={{ marginLeft:8, color:"#ef4444", fontWeight:700 }}>· JUŻ MINĄŁ</span>}
                       </span>
                       <button type="button" disabled={dates.length === 1}
+                        aria-label={`Usuń termin ${i + 1}`}
                         onClick={() => applyDates(dates.filter((_, j) => j !== i))}
                         style={{ border:"none", background:"none", color: dates.length === 1 ? "#e5e7eb" : "#ef4444", fontSize:16, cursor: dates.length === 1 ? "default" : "pointer", padding:"2px 4px", lineHeight:1 }}>✕</button>
                     </div>
-                    <div style={{ fontSize:11, color:"#9ca3af", marginBottom:4 }}>Data</div>
-                    <input type="date" min={todayStr()} value={en.date}
+                    <label htmlFor={`admin-date-${i}`} style={{ fontSize:11, color:"#9ca3af", marginBottom:4, display:"block" }}>Data</label>
+                    <input id={`admin-date-${i}`} type="date" min={todayStr()} value={en.date}
                       onChange={e => applyDates(dates.map((d, j) => j === i ? { ...d, date: e.target.value } : d))} style={inp} />
                     <div className="admin-terminy" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:8 }}>
                       <div>
-                        <div style={{ fontSize:11, color: en.date && !en.from ? "#ef4444" : "#9ca3af", marginBottom:4, fontWeight: en.date && !en.from ? 700 : 400 }}>Od godziny {en.date && !en.from ? "*" : ""}</div>
-                        <input type="time" value={en.from}
+                        <label htmlFor={`admin-time-from-${i}`} style={{ fontSize:11, color: en.date && !en.from ? "#ef4444" : "#9ca3af", marginBottom:4, fontWeight: en.date && !en.from ? 700 : 400, display:"block" }}>Od godziny {en.date && !en.from ? "*" : ""}</label>
+                        <input id={`admin-time-from-${i}`} type="time" value={en.from}
                           onChange={e => applyDates(dates.map((d, j) => j === i ? { ...d, from: e.target.value } : d))}
                           style={en.date && !en.from ? { ...inp, borderColor:"#ef4444" } : inp} />
                       </div>
                       <div>
-                        <div style={{ fontSize:11, color:"#9ca3af", marginBottom:4 }}>Do godziny</div>
-                        <input type="time" value={en.to}
+                        <label htmlFor={`admin-time-to-${i}`} style={{ fontSize:11, color:"#9ca3af", marginBottom:4, display:"block" }}>Do godziny</label>
+                        <input id={`admin-time-to-${i}`} type="time" value={en.to}
                           onChange={e => applyDates(dates.map((d, j) => j === i ? { ...d, to: e.target.value } : d))} style={inp} />
                       </div>
                       </div>
@@ -839,7 +840,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
 
               <div>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
-                  <label style={{ fontSize:13, fontWeight:500, color:"#374151" }}>Opis wydarzenia</label>
+                  <label htmlFor="description" style={{ fontSize:13, fontWeight:500, color:"#374151" }}>Opis wydarzenia</label>
                   <div style={{ display:"flex", gap:6 }}>
                     <button type="button" onClick={handleBold}
                       title="Zaznacz fragment tekstu i kliknij, żeby go pogrubić"
@@ -864,7 +865,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                     </button>
                   </div>
                 </div>
-                <textarea ref={descriptionRef} name="description" value={form.description} onChange={handleChange} placeholder="Opisz wydarzenie — pierwsze zdania pokażą się na liście i mapie..." style={{ ...inp, height:160, resize:"vertical" }} maxLength={2000} />
+                <textarea id="description" ref={descriptionRef} name="description" value={form.description} onChange={handleChange} placeholder="Opisz wydarzenie — pierwsze zdania pokażą się na liście i mapie..." style={{ ...inp, height:160, resize:"vertical" }} maxLength={2000} />
                 {improveError && (
                   <div style={{ fontSize:12, color:"#ef4444", marginTop:4 }}>⚠️ {improveError}</div>
                 )}
@@ -879,18 +880,18 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                 {!form.is_free && (
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                     <span style={{ fontSize:13, color:"#6b7280" }}>Cena od:</span>
-                    <input name="price_from" type="number" min="0" step="0.01" value={form.price_from} onChange={handleChange} style={{ ...inp, width:100 }} />
+                    <input name="price_from" aria-label="Cena od (PLN)" type="number" min="0" step="0.01" value={form.price_from} onChange={handleChange} style={{ ...inp, width:100 }} />
                     <span style={{ fontSize:13, color:"#6b7280" }}>PLN</span>
                   </div>
                 )}
               </div>
 
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-                <Field label="Link do biletów">
-                  <input name="ticket_url" value={form.ticket_url} onChange={handleChange} placeholder="https://..." style={inp} />
+                <Field label="Link do biletów" htmlFor="ticket_url">
+                  <input id="ticket_url" name="ticket_url" value={form.ticket_url} onChange={handleChange} placeholder="https://..." style={inp} />
                 </Field>
-                <Field label="Strona www">
-                  <input name="website_url" value={form.website_url} onChange={handleChange} placeholder="https://..." style={inp} />
+                <Field label="Strona www" htmlFor="website_url">
+                  <input id="website_url" name="website_url" value={form.website_url} onChange={handleChange} placeholder="https://..." style={inp} />
                 </Field>
               </div>
 
@@ -904,26 +905,26 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
           {section === "media" && (
             <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
               <SectionTitle>Zdjęcia i plakat</SectionTitle>
-              <Field label="Zdjęcie okładki">
+              <Field label="Zdjęcie okładki" htmlFor="cover_image_url">
                 <ImageUpload currentUrl={form.cover_image_url} onUploadComplete={(url) => setForm(prev => ({ ...prev, cover_image_url: url }))} />
                 <div style={{ display:"flex", alignItems:"center", gap:8, margin:"10px 0" }}>
                   <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
                   <span style={{ fontSize:12, color:"#9ca3af" }}>lub wklej URL</span>
                   <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
                 </div>
-                <input name="cover_image_url" value={form.cover_image_url} onChange={handleChange} placeholder="https://..." style={inp} />
+                <input id="cover_image_url" name="cover_image_url" value={form.cover_image_url} onChange={handleChange} placeholder="https://..." style={inp} />
               </Field>
               {form.cover_image_url && (
                 <img src={form.cover_image_url} alt="podgląd" style={{ width:"100%", height:220, objectFit:"cover", borderRadius:10 }} />
               )}
-              <Field label="Plakat wydarzenia (pionowy)">
+              <Field label="Plakat wydarzenia (pionowy)" htmlFor="image_url">
                 <ImageUpload currentUrl={form.image_url||""} onUploadComplete={(url) => setForm(prev => ({ ...prev, image_url: url }))} />
                 <div style={{ display:"flex", alignItems:"center", gap:8, margin:"10px 0" }}>
                   <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
                   <span style={{ fontSize:12, color:"#9ca3af" }}>lub wklej URL</span>
                   <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
                 </div>
-                <input name="image_url" value={form.image_url||""} onChange={handleChange} placeholder="https://... wklej URL plakatu" style={inp} />
+                <input id="image_url" name="image_url" value={form.image_url||""} onChange={handleChange} placeholder="https://... wklej URL plakatu" style={inp} />
                 {form.image_url && (
                   <img src={form.image_url} alt="podgląd plakatu" style={{ width:"100%", maxHeight:280, objectFit:"contain", borderRadius:10, marginTop:10, background:"#f3f4f6" }} />
                 )}
@@ -941,27 +942,27 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
             <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
               <SectionTitle>Lokalizacja</SectionTitle>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-                <Field label="Miasto *">
-                  <input name="city" value={form.city} onChange={handleChange} placeholder="np. Suwałki" style={inp} />
+                <Field label="Miasto *" htmlFor="admin-city">
+                  <input id="admin-city" name="city" value={form.city} onChange={handleChange} placeholder="np. Suwałki" style={inp} />
                 </Field>
-                <Field label="Nazwa miejsca">
-                  <input name="venue_name" value={form.venue_name} onChange={handleChange} placeholder="np. Dom Kultury" style={inp} />
+                <Field label="Nazwa miejsca" htmlFor="venue_name">
+                  <input id="venue_name" name="venue_name" value={form.venue_name} onChange={handleChange} placeholder="np. Dom Kultury" style={inp} />
                 </Field>
               </div>
-              <Field label="Adres">
+              <Field label="Adres" htmlFor="address">
                 <div style={{ display:"flex", gap:8 }}>
-                  <input name="address" value={form.address} onChange={handleChange} placeholder="ul. Kościuszki 1" style={{ ...inp, flex:1 }} />
+                  <input id="address" name="address" value={form.address} onChange={handleChange} placeholder="ul. Kościuszki 1" style={{ ...inp, flex:1 }} />
                   <button type="button" onClick={handleGeocode} disabled={geocoding} style={{ padding:"0 16px", border:"1px solid #e5e7eb", borderRadius:8, background:"#f9fafb", cursor:"pointer", fontSize:13, whiteSpace:"nowrap" }}>
                     {geocoding ? "..." : "📍 Geocode"}
                   </button>
                 </div>
               </Field>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-                <Field label="Szerokość geograficzna">
-                  <input name="latitude" value={form.latitude} onChange={handleChange} placeholder="54.1116" style={{ ...inp, background:"#f9fafb" }} />
+                <Field label="Szerokość geograficzna" htmlFor="latitude">
+                  <input id="latitude" name="latitude" value={form.latitude} onChange={handleChange} placeholder="54.1116" style={{ ...inp, background:"#f9fafb" }} />
                 </Field>
-                <Field label="Długość geograficzna">
-                  <input name="longitude" value={form.longitude} onChange={handleChange} placeholder="22.9302" style={{ ...inp, background:"#f9fafb" }} />
+                <Field label="Długość geograficzna" htmlFor="longitude">
+                  <input id="longitude" name="longitude" value={form.longitude} onChange={handleChange} placeholder="22.9302" style={{ ...inp, background:"#f9fafb" }} />
                 </Field>
               </div>
               <LocationPicker
@@ -970,8 +971,8 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                 onChange={(lat, lng) => setForm(prev => ({ ...prev, latitude: lat, longitude: lng }))}
               />
 
-              <Field label="Przydatne informacje o lokalizacji">
-                <textarea name="location_notes" value={form.location_notes} onChange={handleChange} placeholder="np. Parking płatny, wjazd od ul. Kościuszki" style={{ ...inp, height:80, resize:"vertical" }} maxLength={300} />
+              <Field label="Przydatne informacje o lokalizacji" htmlFor="location_notes">
+                <textarea id="location_notes" name="location_notes" value={form.location_notes} onChange={handleChange} placeholder="np. Parking płatny, wjazd od ul. Kościuszki" style={{ ...inp, height:80, resize:"vertical" }} maxLength={300} />
                 <Counter cur={form.location_notes.length} max={300} />
               </Field>
 
@@ -1128,10 +1129,10 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 style={{ fontSize:16, fontWeight:700, color:"#111827", margin:"20px 0 4px", paddingBottom:10, borderBottom:"1px solid #f3f4f6" }}>{children}</h2>
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display:"block", fontSize:13, fontWeight:500, color:"#374151", marginBottom:6 }}>{label}</label>
+      <label htmlFor={htmlFor} style={{ display:"block", fontSize:13, fontWeight:500, color:"#374151", marginBottom:6 }}>{label}</label>
       {children}
     </div>
   )
