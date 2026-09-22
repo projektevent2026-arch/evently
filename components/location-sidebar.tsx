@@ -5,7 +5,19 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { MapPin, Navigation, ChevronDown } from "lucide-react"
 
-const MiniMap = dynamic(() => import("@/components/MiniMap"), { ssr: false })
+// 2026-09-22: dodany `loading` — bez tego, zanim JS doczyta chunk MiniMapy
+// (dynamic + ssr:false), w tym miejscu nie renderuje się NIC (0px), mimo że
+// sama MiniMap rezerwuje 200px w swoim placeholderze. Skok 0px -> 200px przy
+// domontowaniu to był dokładnie powód CLS 0,212 na desktopie (potwierdzone:
+// CLS=0 na każdym z 3 przebiegów mobile, gdzie tego komponentu w ogóle nie
+// ma; 0,212 na 2 z 3 przebiegów desktop, gdzie jest). Ten sam placeholder co
+// wewnątrz MiniMap.tsx, żeby wysokość była identyczna przed i po.
+const MiniMap = dynamic(() => import("@/components/MiniMap"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ height: 200, borderRadius: 10, background: "#f3f4f6" }} />
+  ),
+})
 
 const RADII = [5, 10, 25, 50]
 const SUWALKI_COORDS: [number, number] = [54.1113, 22.9302]
