@@ -575,7 +575,7 @@ export function MobileHome({ initialEvents }: { initialEvents?: Event[] }) {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          {search && <button onClick={() => setSearch('')} className="text-zinc-600 text-sm">✕</button>}
+          {search && <button onClick={() => setSearch('')} aria-label="Wyczyść wyszukiwanie" className="text-zinc-600 text-sm">✕</button>}
         </div>
 
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-2">

@@ -637,30 +637,30 @@ try {
                     </div>
                   )}
                 </div>
-                <label style={lbl}>Nazwa wydarzenia *</label>
-                <input name="title" value={form.title} onChange={handleChange} required
+                <label style={lbl} htmlFor="title">Nazwa wydarzenia *</label>
+                <input id="title" name="title" value={form.title} onChange={handleChange} required
                   placeholder="np. Dni Suwałk 2026" style={inp} maxLength={100} />
                 <div style={counter}>{form.title.length}/100</div>
               </div>
 
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
                 <div>
-                  <label style={lbl}>Kategoria *</label>
-                  <select name="category" value={form.category} onChange={handleChange} required style={inp}>
+                  <label style={lbl} htmlFor="category">Kategoria *</label>
+                  <select id="category" name="category" value={form.category} onChange={handleChange} required style={inp}>
                     <option value="" disabled>Wybierz kategorię...</option>
                     {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={lbl}>Organizator</label>
-                  <input name="organizer_name" value={form.organizer_name} onChange={handleChange}
+                  <label style={lbl} htmlFor="organizer_name">Organizator</label>
+                  <input id="organizer_name" name="organizer_name" value={form.organizer_name} onChange={handleChange}
                     placeholder="np. Urząd Miasta" style={inp} />
                 </div>
               </div>
 
               <div>
-                <label style={lbl}>Email kontaktowy</label>
-                <input name="organizer_email" type="email" value={form.organizer_email} onChange={handleChange}
+                <label style={lbl} htmlFor="organizer_email">Email kontaktowy</label>
+                <input id="organizer_email" name="organizer_email" type="email" value={form.organizer_email} onChange={handleChange}
                   placeholder="kontakt@organizator.pl" style={inp} />
                 <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Nie będzie widoczny publicznie. Użyjemy go tylko w razie pytań.</div>
               </div>
@@ -675,22 +675,23 @@ try {
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
                       <span style={{fontSize:11,fontWeight:700,color:"#9ca3af",letterSpacing:"0.04em",textTransform:"uppercase"}}>Termin {i+1}</span>
                       <button type="button" disabled={dates.length === 1}
+                        aria-label={`Usuń termin ${i + 1}`}
                         onClick={() => setDates(dates.filter((_, j) => j !== i))}
                         style={{border:"none",background:"none",color: dates.length === 1 ? "#e5e7eb" : "#ef4444",fontSize:16,cursor: dates.length === 1 ? "default" : "pointer",padding:"2px 4px",lineHeight:1}}>✕</button>
                     </div>
-                    <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Data</div>
-                    <input type="date" min={todayStr()} value={en.date}
+                    <label htmlFor={`date-${i}`} style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4,display:"block"}}>Data</label>
+                    <input id={`date-${i}`} type="date" min={todayStr()} value={en.date}
                       onChange={e => setDates(dates.map((d, j) => j === i ? { ...d, date: e.target.value } : d))} style={inp} />
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:8}}>
                       <div>
-                        <div style={{fontSize:"0.75rem",color: en.date && !en.from ? "#ef4444" : "#9ca3af",marginBottom:4,fontWeight: en.date && !en.from ? 700 : 400}}>Od godziny {en.date && !en.from ? "*" : ""}</div>
-                        <input type="time" value={en.from}
+                        <label htmlFor={`time-from-${i}`} style={{fontSize:"0.75rem",color: en.date && !en.from ? "#ef4444" : "#9ca3af",marginBottom:4,fontWeight: en.date && !en.from ? 700 : 400,display:"block"}}>Od godziny {en.date && !en.from ? "*" : ""}</label>
+                        <input id={`time-from-${i}`} type="time" value={en.from}
                           onChange={e => setDates(dates.map((d, j) => j === i ? { ...d, from: e.target.value } : d))}
                           style={en.date && !en.from ? { ...inp, borderColor:"#ef4444" } : inp} />
                       </div>
                       <div>
-                        <div style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4}}>Do godziny</div>
-                        <input type="time" value={en.to}
+                        <label htmlFor={`time-to-${i}`} style={{fontSize:"0.75rem",color:"#9ca3af",marginBottom:4,display:"block"}}>Do godziny</label>
+                        <input id={`time-to-${i}`} type="time" value={en.to}
                           onChange={e => setDates(dates.map((d, j) => j === i ? { ...d, to: e.target.value } : d))} style={inp} />
                       </div>
                     </div>
@@ -716,7 +717,7 @@ try {
 
               <div>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-                  <label style={{...lbl,marginBottom:0}}>Pełny opis</label>
+                  <label style={{...lbl,marginBottom:0}} htmlFor="description">Pełny opis</label>
                   <div style={{display:"flex",gap:6}}>
                     <button type="button" onClick={handleBold}
                       title="Zaznacz fragment tekstu i kliknij, żeby go pogrubić"
@@ -741,7 +742,7 @@ try {
                     </button>
                   </div>
                 </div>
-                <textarea ref={descriptionRef} name="description" value={form.description} onChange={handleChange}
+                <textarea id="description" ref={descriptionRef} name="description" value={form.description} onChange={handleChange}
                   placeholder="Opisz szczegóły, atrakcje, program..." style={{...inp,height:140,resize:"vertical"}} maxLength={2000} />
                 {improveError && (
                   <div style={{fontSize:"0.78rem",color:"#ef4444",marginTop:4}}>⚠️ {improveError}</div>
@@ -756,8 +757,8 @@ try {
                 </label>
                 {!form.is_free && (
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <label style={{...lbl,margin:0}}>Cena od (PLN)</label>
-                    <input name="price_from" type="number" min="0" step="0.01"
+                    <label style={{...lbl,margin:0}} htmlFor="price_from">Cena od (PLN)</label>
+                    <input id="price_from" name="price_from" type="number" min="0" step="0.01"
                       value={form.price_from} onChange={handleChange} style={{...inp,width:100}} />
                   </div>
                 )}
@@ -790,21 +791,21 @@ try {
             {activeTab === "location" && <>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
                 <div>
-                  <label style={lbl}>Miasto *</label>
-                  <input name="city" value={form.city} onChange={handleChange} required
+                  <label style={lbl} htmlFor="city">Miasto *</label>
+                  <input id="city" name="city" value={form.city} onChange={handleChange} required
                     placeholder="np. Suwałki" style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Nazwa miejsca</label>
-                  <input name="venue_name" value={form.venue_name} onChange={handleChange}
+                  <label style={lbl} htmlFor="venue_name">Nazwa miejsca</label>
+                  <input id="venue_name" name="venue_name" value={form.venue_name} onChange={handleChange}
                     placeholder="np. Dom Kultury" style={inp} />
                 </div>
               </div>
 
               <div>
-                <label style={lbl}>Adres</label>
+                <label style={lbl} htmlFor="address">Adres</label>
                 <div style={{display:"flex",gap:"0.5rem"}}>
-                  <input name="address" value={form.address} onChange={handleChange}
+                  <input id="address" name="address" value={form.address} onChange={handleChange}
                     placeholder="ul. Kościuszki 1 lub 54.10, 22.93" style={{...inp,flex:1}} />
                   <button type="button" onClick={handleGeocode} disabled={geocoding} style={geoBtn}>
                     {geocoding ? "..." : "📍 Znajdź"}
@@ -820,8 +821,8 @@ try {
               />
 
               <div>
-                <label style={lbl}>Ważne informacje o dojeździe <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie)</span></label>
-                <textarea name="location_notes" value={form.location_notes} onChange={handleChange}
+                <label style={lbl} htmlFor="location_notes">Ważne informacje o dojeździe <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie)</span></label>
+                <textarea id="location_notes" name="location_notes" value={form.location_notes} onChange={handleChange}
                   placeholder="np. Parking płatny, wjazd od ul. Kościuszki" style={{...inp,height:70,resize:"vertical"}} maxLength={300} />
                 <div style={counter}>{form.location_notes.length}/300</div>
               </div>
@@ -836,7 +837,7 @@ try {
 
             {activeTab === "media" && <>
               <div>
-                <label style={lbl}>Zdjęcie</label>
+                <label style={lbl} htmlFor="cover_image_url">Zdjęcie</label>
                 <ImageUpload
                   currentUrl={form.cover_image_url}
                   onUploadComplete={(url) => setForm(prev => ({ ...prev, cover_image_url: url }))}
@@ -848,7 +849,7 @@ try {
                       <span style={{fontSize:"0.75rem",color:"#9ca3af"}}>albo</span>
                       <div style={{flex:1,height:1,background:"#e5e7eb"}} />
                     </div>
-                    <input name="cover_image_url" value={form.cover_image_url} onChange={handleChange}
+                    <input id="cover_image_url" name="cover_image_url" value={form.cover_image_url} onChange={handleChange}
                       placeholder="Wklej link https://..." style={inp} />
                     <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Wgraj zdjęcie z dysku (max 5MB) lub wklej bezpośredni link.</div>
                   </>
@@ -863,7 +864,7 @@ try {
               )}
 
               <div>
-                <label style={lbl}>Plakat wydarzenia <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie, jeśli masz osobny od zdjęcia)</span></label>
+                <label style={lbl} htmlFor="image_url">Plakat wydarzenia <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie, jeśli masz osobny od zdjęcia)</span></label>
                 <ImageUpload
                   currentUrl={form.image_url}
                   onUploadComplete={(url) => setForm(prev => ({ ...prev, image_url: url }))}
@@ -875,7 +876,7 @@ try {
                       <span style={{fontSize:"0.75rem",color:"#9ca3af"}}>albo</span>
                       <div style={{flex:1,height:1,background:"#e5e7eb"}} />
                     </div>
-                    <input name="image_url" value={form.image_url} onChange={handleChange}
+                    <input id="image_url" name="image_url" value={form.image_url} onChange={handleChange}
                       placeholder="Wklej link https://..." style={inp} />
                     <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Jeśli nie dodasz, w przycisku "Plakat" pokaże się zdjęcie powyżej.</div>
                   </>
@@ -891,13 +892,13 @@ try {
 
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
                 <div>
-                  <label style={lbl}>Link do biletów</label>
-                  <input name="ticket_url" value={form.ticket_url} onChange={handleChange}
+                  <label style={lbl} htmlFor="ticket_url">Link do biletów</label>
+                  <input id="ticket_url" name="ticket_url" value={form.ticket_url} onChange={handleChange}
                     placeholder="https://..." style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Strona www organizatora</label>
-                  <input name="website_url" value={form.website_url} onChange={handleChange}
+                  <label style={lbl} htmlFor="website_url">Strona www organizatora</label>
+                  <input id="website_url" name="website_url" value={form.website_url} onChange={handleChange}
                     placeholder="https://..." style={inp} />
                 </div>
               </div>
