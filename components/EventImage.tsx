@@ -39,6 +39,16 @@ interface EventImageProps {
   className?: string;
   /** true dla hero (ładuj od razu), false/pominięte dla kart (lazy) */
   eager?: boolean;
+  /**
+   * Atrybut sizes dla next/image — MUSI odpowiadać realnej renderowanej
+   * szerokości w danym miejscu użycia, inaczej Next pobiera obrazek dla
+   * szerszego layoutu niż faktycznie jest (2026-09-22: karty w siatce
+   * dostawały sizes="50vw" mimo że siatka ma 4 kolumny na desktopie —
+   * realnie ~25vw. Efekt: ~311 KiB niepotrzebnie pobieranych danych na
+   * ekran, wg PageSpeed). Domyślna wartość pasuje do hero (pół ekranu na
+   * desktopie) — nadpisz przy każdym innym layoucie.
+   */
+  sizes?: string;
 }
 
 export default function EventImage({
@@ -46,6 +56,7 @@ export default function EventImage({
   alt,
   className = "",
   eager = false,
+  sizes = "(max-width: 768px) 100vw, 50vw",
 }: EventImageProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [fit, setFit] = useState<Fit | null>(null);
@@ -102,7 +113,7 @@ export default function EventImage({
           alt=""
           aria-hidden="true"
           fill
-          sizes="(max-width: 768px) 100vw, 50vw"
+          sizes={sizes}
           className="scale-110 object-cover blur-2xl brightness-50"
         />
       )}
@@ -111,7 +122,7 @@ export default function EventImage({
         src={src}
         alt={alt}
         fill
-        sizes="(max-width: 768px) 100vw, 50vw"
+        sizes={sizes}
         priority={eager}
         onLoad={(e) => decideFit(e.currentTarget)}
         onError={() => setFailed(true)}

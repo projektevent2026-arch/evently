@@ -118,6 +118,11 @@ export function EventCard({ event, initialGoing = false, theme = "dark" }: { eve
             src={event.image}
             alt={event.title}
             className="h-full w-full transition-transform duration-500 group-hover:scale-105"
+            // Siatka: 1 kolumna <640px, 2 kolumny 640-1023px, 4 kolumny ≥1024px
+            // (patrz components/events-grid.tsx: sm:grid-cols-2 lg:grid-cols-4).
+            // Domyślne 50vw z EventImage było poprawne tylko dla środkowego
+            // przedziału — na desktopie kazało pobierać obrazek 2x za duży.
+            sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 25vw"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
 

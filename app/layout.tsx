@@ -3,7 +3,12 @@ import { Inter, Space_Grotesk } from 'next/font/google'
 import { AnalyticsWithOptOut } from '@/components/AnalyticsWithOptOut'
 import BottomNav from '@/components/BottomNav'
 import './globals.css'
-import "leaflet/dist/leaflet.css"
+// 2026-09-22: usunięty stąd import "leaflet/dist/leaflet.css" — ładował się
+// GLOBALNIE na każdej stronie (nawet /login, /regulamin, gdzie nie ma
+// żadnej mapy), blokując renderowanie (~140ms wg PageSpeed). MiniMap.tsx
+// i EventMap.tsx już same importują ten CSS u siebie — więc nic się nie
+// psuje tam, gdzie mapa faktycznie jest, a wszędzie indziej przestaje
+// być niepotrzebnym obciążeniem.
 
 const _inter = Inter({ subsets: ['latin', 'latin-ext'], variable: '--font-inter' })
 const _spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-space-grotesk' })
@@ -27,8 +32,11 @@ export const viewport: Viewport = {
   themeColor: '#2d9e5f',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // 2026-09-22: maximumScale: 1 + userScalable: false usunięte — blokowały
+  // zoom, co PageSpeed konsekwentnie zgłaszał jako problem dostępności
+  // (osoba słabowidząca nie mogła powiększyć strony). maximumScale: 5 to
+  // sensowny górny limit, nie "bez ograniczeń".
+  maximumScale: 5,
   viewportFit: 'cover',
 }
 
