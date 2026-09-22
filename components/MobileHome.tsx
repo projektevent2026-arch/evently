@@ -317,12 +317,17 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
   )
 }
 
-export function MobileHome() {
+export function MobileHome({ initialEvents }: { initialEvents?: Event[] }) {
   const router = useRouter()
   const dateInputRef = useRef<HTMLInputElement>(null)
 
-  const [events, setEvents] = useState<Event[]>([])
-  const [loading, setLoading] = useState(true)
+  // Pierwszy render: initialEvents z SSR (app/page.tsx) — zero pustego
+  // stanu "Ładowanie..." na starcie (to był główny powód LCP 5,1s na
+  // mobile w PageSpeed z 22.09.2026). Jeśli SSR się wywalił,
+  // initialEvents jest undefined i wraca normalny fetch po stronie
+  // klienta jak dawniej.
+  const [events, setEvents] = useState<Event[]>(initialEvents ?? [])
+  const [loading, setLoading] = useState(!initialEvents)
   const [loadError, setLoadError] = useState(false)
   const [userLat, setUserLat] = useState<number | null>(null)
   const [userLon, setUserLon] = useState<number | null>(null)
@@ -482,8 +487,11 @@ export function MobileHome() {
   }, [])
 
   useEffect(() => {
+    // Dane już są z SSR — pierwszy fetch niepotrzebny. goHome() (klik
+    // w logo) dalej może wywołać loadEvents() ręcznie, to się nie zmienia.
+    if (initialEvents) return
     loadEvents()
-  }, [loadEvents])
+  }, [loadEvents, initialEvents])
 
   const filtered = events
     .map(e => ({

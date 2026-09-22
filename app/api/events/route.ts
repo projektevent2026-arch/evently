@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getPublishedEvents } from '@/lib/getPublishedEvents'
 
 // Cache'owane przez Next.js na 60 sekund (jeśli next.config.ts NIE ma
 // cacheComponents: true — sprawdź to; jeśli ma, ten mechanizm jest inny
@@ -8,21 +8,19 @@ import { createClient } from '@supabase/supabase-js'
 // jest aktywny — to on realnie robi robotę dla requestów z przeglądarki.
 export const revalidate = 60
 
+// 2026-09-22: query wydzielona do lib/getPublishedEvents.ts, żeby SSR na
+// app/page.tsx mógł jej użyć bez duplikowania (patrz komentarz w tamtym
+// pliku). Ten endpoint zostaje — obsługuje refetch przy zmianie filtra/
+// lokalizacji z poziomu przeglądarki (EventsGrid, MobileHome).
 export async function GET() {
-  // Osobna instancja klienta per request — nie reużywamy singletona
-  // z lib/supabase.ts (ten jest dla przeglądarki, tu jesteśmy na serwerze
-  // obsługującym wielu użytkowników naraz).
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  const { data, error } = await supabase
-    .from('published_events_with_next_date')
-    .select('*')
-    .order('next_date', { ascending: true })
-
-  if (error) {
+  try {
+    const data = await getPublishedEvents()
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+      },
+    })
+  } catch (error: any) {
     // NIGDY nie cache'uj błędu — inaczej jedna awaria Supabase daje
     // wszystkim użytkownikom błąd przez całe okno rewalidacji.
     return NextResponse.json(
@@ -30,10 +28,4 @@ export async function GET() {
       { status: 500, headers: { 'Cache-Control': 'no-store' } }
     )
   }
-
-  return NextResponse.json(data ?? [], {
-    headers: {
-      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
-    },
-  })
 }

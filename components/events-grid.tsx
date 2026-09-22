@@ -19,9 +19,10 @@ const DATE_FILTERS = [
 
 // ─────────────────────────────────────────────────────────────
 // FETCH z timeoutem + retry — ten sam wzorzec co w MobileHome.
-// ZMIANA: zamiast pytać Supabase bezpośrednio, pytamy współdzielony,
-// cache'owany endpoint /api/events (revalidate: 60) — ten sam co
-// MobileHome i EventMap.
+// Pytamy współdzielony, cache'owany endpoint /api/events (revalidate: 60)
+// — ten sam co MobileHome i EventMap. Używane TYLKO przy refetchu
+// (zmiana filtra/lokalizacji) — pierwsze wczytanie idzie przez
+// initialEvents z SSR, patrz app/page.tsx.
 // ─────────────────────────────────────────────────────────────
 const TIMEOUT_MS = 8000
 const MAX_RETRIES = 2
@@ -51,23 +52,61 @@ async function fetchPublishedEvents(): Promise<any[]> {
   throw lastErr ?? new Error("fetch events failed")
 }
 
-export function EventsGrid() {
+// Filtrowanie po lokalizacji (haversine) + mapowanie surowych wierszy z
+// published_events_with_next_date na EventData używane przez <EventCard>.
+// Wydzielone z loadEvents 2026-09-22, żeby dokładnie ta sama logika dała
+// się użyć zarówno przy pierwszym renderze (initialEvents z SSR) jak i
+// przy każdym kolejnym refetchu — bez tego mielibyśmy dwie kopie tego
+// samego mapowania, dokładnie ten wzorzec, który już raz narobił bugów
+// przy promieniu wyszukiwania.
+function mapEvents(
+  data: any[],
+  params: { filterLat: number; filterLng: number; filterRadius: number; hasLocationFilter: boolean; q: string }
+) {
+  const { filterLat, filterLng, filterRadius, hasLocationFilter, q } = params
+  return data
+    .filter((e) => {
+      if (q) return true
+      if (!hasLocationFilter) return true
+      if (!e.latitude || !e.longitude) return true
+      return haversineKm(filterLat, filterLng, e.latitude, e.longitude) <= filterRadius
+    })
+    .map((e) => ({
+      id: e.id,
+      slug: e.slug,
+      title: e.title,
+      date: e.next_date ? new Date(e.next_date).toLocaleDateString("pl-PL", {
+        day: "numeric", month: "long", year: "numeric",
+      }) : "",
+      start_date: e.next_date,
+      start_time: e.next_start_time ?? null,
+      schedule_type: e.schedule_type,
+      city: e.city,
+      image: e.cover_image_url || "/images/event-concert.jpg",
+      image_url: e.image_url || null,
+      interested: e.interested_count || 0,
+      category: e.category || "Inne",
+      // Na kartach w siatce pokazujemy tylko sygnał darmowe/płatne, NIE
+      // konkretną kwotę — pełna cena ("Od 100 PLN") jest dopiero na
+      // stronie szczegółów wydarzenia (liczona tam niezależnie, patrz
+      // EventPageClient.tsx). To celowy podział: karta ma dać szybki
+      // sygnał przy przeglądaniu, dokładna liczba jest potrzebna dopiero
+      // przy podejmowaniu decyzji "idę / nie idę".
+      price: e.is_free ? "Wstęp wolny" : "Wstęp płatny",
+      is_free: e.is_free,
+      // Pola tylko do wyszukiwania — nie renderowane w kartach.
+      description: e.description ?? null,
+      short_description: e.short_description ?? null,
+      venue_name: e.venue_name ?? null,
+      organizer_name: e.organizer_name ?? null,
+      address: e.address ?? null,
+      schedule: e.schedule ?? null,
+    }))
+}
+
+export function EventsGrid({ initialEvents }: { initialEvents?: any[] }) {
   const searchParams = useSearchParams()
   const dateInputRef = useRef<HTMLInputElement>(null)
-  const [events, setEvents] = useState<EventData[]>([])
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const [activeDate, setActiveDate] = useState("all")
-  const [customDate, setCustomDate] = useState("")
-  // "loading" = PIERWSZE wczytanie w ogóle (siatka jeszcze pusta) — jedyny
-  // moment, w którym pokazujemy pełnoekranowy napis "Ładowanie...".
-  // "refreshing" = KAŻDE kolejne odświeżenie (zmiana filtra, lokalizacji,
-  // powrót na stronę) — siatka zostaje widoczna, tylko dyskretny wskaźnik
-  // obok licznika.
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const hasLoadedOnceRef = useRef(false)
-  const [loadError, setLoadError] = useState(false)
-  const [attendingIds, setAttendingIds] = useState<Set<string>>(new Set())
 
   const q = searchParams.get("q") || ""
   // 2026-09-21: bez tego, gdy URL nie miał jeszcze lat/lng (zupełnie
@@ -85,6 +124,32 @@ export function EventsGrid() {
   const filterLng = isNaN(urlLng) ? SUWALKI_LNG : urlLng
   const filterRadius = parseFloat(searchParams.get("radius") || "25")
   const hasLocationFilter = !isNaN(filterLat) && !isNaN(filterLng)
+
+  // Pierwszy render: jeśli mamy initialEvents z SSR (app/page.tsx), od
+  // razu je zmapuj i pokaż — zero pustego stanu "Ładowanie..." na starcie.
+  // Jeśli SSR się wywalił (initialEvents === undefined), zostaje pusta
+  // tablica i normalny fetch po stronie klienta jak dawniej.
+  const [events, setEvents] = useState<EventData[]>(() =>
+    initialEvents ? mapEvents(initialEvents, { filterLat, filterLng, filterRadius, hasLocationFilter, q }) : []
+  )
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [activeDate, setActiveDate] = useState("all")
+  const [customDate, setCustomDate] = useState("")
+  // "loading" = PIERWSZE wczytanie w ogóle (siatka jeszcze pusta) — jedyny
+  // moment, w którym pokazujemy pełnoekranowy napis "Ładowanie...".
+  // "refreshing" = KAŻDE kolejne odświeżenie (zmiana filtra, lokalizacji,
+  // powrót na stronę) — siatka zostaje widoczna, tylko dyskretny wskaźnik
+  // obok licznika.
+  const [loading, setLoading] = useState(!initialEvents)
+  const [refreshing, setRefreshing] = useState(false)
+  const hasLoadedOnceRef = useRef(!!initialEvents)
+  // Gdy initialEvents przyszły z SSR, pierwsze wywołanie loadEvents (z
+  // useEffect poniżej) NIE powinno robić kolejnego fetcha — dane już są.
+  // Skip działa tylko RAZ; każda kolejna zmiana filtra/lokalizacji i tak
+  // wywoła prawdziwy fetch, jak dawniej.
+  const skipInitialFetchRef = useRef(!!initialEvents)
+  const [loadError, setLoadError] = useState(false)
+  const [attendingIds, setAttendingIds] = useState<Set<string>>(new Set())
 
   function openCalendar() {
     try { dateInputRef.current?.showPicker() } catch { dateInputRef.current?.click() }
@@ -110,50 +175,20 @@ export function EventsGrid() {
   }
 
   const loadEvents = useCallback(async () => {
+    if (skipInitialFetchRef.current) {
+      // Dane już są z SSR — tylko dociągnij sesję/RSVP, bez fetcha.
+      skipInitialFetchRef.current = false
+      hasLoadedOnceRef.current = true
+      loadAttendance()
+      return
+    }
+
     if (hasLoadedOnceRef.current) setRefreshing(true)
     else setLoading(true)
     setLoadError(false)
     try {
       const data = await fetchPublishedEvents()
-
-      const mapped = data
-        .filter((e) => {
-          if (q) return true
-          if (!hasLocationFilter) return true
-          if (!e.latitude || !e.longitude) return true
-          return haversineKm(filterLat, filterLng, e.latitude, e.longitude) <= filterRadius
-        })
-        .map((e) => ({
-          id: e.id,
-          slug: e.slug,
-          title: e.title,
-          date: e.next_date ? new Date(e.next_date).toLocaleDateString("pl-PL", {
-            day: "numeric", month: "long", year: "numeric",
-          }) : "",
-          start_date: e.next_date,
-          start_time: e.next_start_time ?? null,
-          schedule_type: e.schedule_type,
-          city: e.city,
-          image: e.cover_image_url || "/images/event-concert.jpg",
-          image_url: e.image_url || null,
-          interested: e.interested_count || 0,
-          category: e.category || "Inne",
-          // Na kartach w siatce pokazujemy tylko sygnał darmowe/płatne, NIE
-          // konkretną kwotę — pełna cena ("Od 100 PLN") jest dopiero na
-          // stronie szczegółów wydarzenia (liczona tam niezależnie, patrz
-          // EventPageClient.tsx). To celowy podział: karta ma dać szybki
-          // sygnał przy przeglądaniu, dokładna liczba jest potrzebna dopiero
-          // przy podejmowaniu decyzji "idę / nie idę".
-          price: e.is_free ? "Wstęp wolny" : "Wstęp płatny",
-          is_free: e.is_free,
-          // Pola tylko do wyszukiwania — nie renderowane w kartach.
-          description: e.description ?? null,
-          short_description: e.short_description ?? null,
-          venue_name: e.venue_name ?? null,
-          organizer_name: e.organizer_name ?? null,
-          address: e.address ?? null,
-          schedule: e.schedule ?? null,
-        }))
+      const mapped = mapEvents(data, { filterLat, filterLng, filterRadius, hasLocationFilter, q })
 
       setEvents(mapped)
 
