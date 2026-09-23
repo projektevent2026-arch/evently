@@ -322,10 +322,11 @@ export default function EventPageClient({ slug }: { slug: string }) {
               )}
             </div>
 
-            {(event.organizer_name || event.website_url) && (
-              <div style={{background:"white",borderRadius:18,padding:"20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:0.5,marginBottom:14}}>Organizator</div>
-                <div style={{display:"flex",alignItems:"center",gap:14}}>
+            {(event.organizer_name || event.website_url) && (() => {
+              const href = event.website_url ? cleanUrlForDisplay(event.website_url).href : ""
+              const rowStyle = {display:"flex",alignItems:"center",gap:14} as const
+              const row = (
+                <div style={rowStyle}>
                   <div style={{width:48,height:48,borderRadius:12,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                     <Building2 size={22} color="#16a34a" />
                   </div>
@@ -334,14 +335,25 @@ export default function EventPageClient({ slug }: { slug: string }) {
                       <div style={{fontSize:15,fontWeight:700,color:"#111827"}}>{event.organizer_name}</div>
                     )}
                     {event.website_url && (
-                      <a href={cleanUrlForDisplay(event.website_url).href} target="_blank" rel="noopener noreferrer" style={{fontSize:13,color:"#16a34a",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>
+                      <span style={{fontSize:13,color:"#16a34a",display:"inline-flex",alignItems:"center",gap:4}}>
                         ↗ Strona organizatora
-                      </a>
+                      </span>
                     )}
                   </div>
                 </div>
-              </div>
-            )}
+              )
+              const cardStyle = {background:"white",borderRadius:18,padding:"20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"} as const
+              return (
+                <div style={cardStyle}>
+                  <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:0.5,marginBottom:14}}>Organizator</div>
+                  {event.website_url ? (
+                    <a href={href} target="_blank" rel="noopener noreferrer" style={{textDecoration:"none", display:"block"}}>
+                      {row}
+                    </a>
+                  ) : row}
+                </div>
+              )
+            })()}
 
             <div style={{background:"white",borderRadius:18,padding:"20px 24px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:0.5,marginBottom:14}}>Szczegoly</div>

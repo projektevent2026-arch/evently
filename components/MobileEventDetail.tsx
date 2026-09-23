@@ -245,32 +245,39 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
               </button>
             )}
 
-            {/* Organizer */}
-            {(event.organizer_name || event.website_url) && (
-              <div className="mt-5 flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl p-3">
-                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-xl flex-shrink-0">
-                  🏛️
+            {/* Organizer — 2026-09-23: cała karta jest teraz klikalna (nie
+                tylko wąski napis z domeną), żeby trafienie palcem nie
+                zależało od tego, jak krótka/długa jest wyświetlana
+                etykieta. Gdy nie ma website_url, karta zostaje zwykłym,
+                nieklikalnym <div> — nie ma dokąd prowadzić. */}
+            {(event.organizer_name || event.website_url) && (() => {
+              const { href, label } = event.website_url ? cleanUrlForDisplay(event.website_url) : { href: "", label: "" }
+              const inner = (
+                <>
+                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-xl flex-shrink-0">
+                    🏛️
+                  </div>
+                  <div className="flex-1">
+                    {event.organizer_name && (
+                      <div className="text-[12px] font-bold text-white">{event.organizer_name}</div>
+                    )}
+                    {event.website_url && (
+                      <div className="text-[10px] text-zinc-500">{label}</div>
+                    )}
+                  </div>
+                </>
+              )
+              return event.website_url ? (
+                <a href={href} target="_blank" rel="noopener noreferrer"
+                  className="mt-5 flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl p-3 active:bg-zinc-800 transition-colors">
+                  {inner}
+                </a>
+              ) : (
+                <div className="mt-5 flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl p-3">
+                  {inner}
                 </div>
-                <div className="flex-1">
-                  {event.organizer_name && (
-                    <div className="text-[12px] font-bold text-white">{event.organizer_name}</div>
-                  )}
-                  {event.website_url && (() => {
-                    const { href, label } = cleanUrlForDisplay(event.website_url)
-                    return (
-                      <a href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[10px] text-zinc-500"
-                      >
-                        {label}
-                      </a>
-                    )
-                  })()}
-                </div>
-                {/* „Obserwuj" UKRYTE — wymaga kont + push (tier D). */}
-              </div>
-            )}
+              )
+            })()}
 
             {/* Kup bilety + Dodaj do kalendarza obok siebie w jednym wierszu
                 (jak na desktopie) — wcześniej każdy był osobnym, pełnoszerokim
