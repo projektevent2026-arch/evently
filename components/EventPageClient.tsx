@@ -13,7 +13,7 @@ import AddToCalendarButton from "@/components/AddToCalendarButton"
 import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
-import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, durationBetween, nextTermInfo, nextOccurrence, linkify, effectiveStartDate, isToday, isTomorrow } from "@/lib/eventFormat"
+import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, durationBetween, nextTermInfo, nextOccurrence, linkify, effectiveStartDate, isToday, isTomorrow, cleanUrlForDisplay } from "@/lib/eventFormat"
 import { publishedFilter } from "@/lib/publishedFilter"
 import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
 
@@ -334,7 +334,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
                       <div style={{fontSize:15,fontWeight:700,color:"#111827"}}>{event.organizer_name}</div>
                     )}
                     {event.website_url && (
-                      <a href={event.website_url} target="_blank" rel="noopener noreferrer" style={{fontSize:13,color:"#16a34a",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>
+                      <a href={cleanUrlForDisplay(event.website_url).href} target="_blank" rel="noopener noreferrer" style={{fontSize:13,color:"#16a34a",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>
                         ↗ Strona organizatora
                       </a>
                     )}

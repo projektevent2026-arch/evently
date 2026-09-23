@@ -333,7 +333,7 @@ const TRACKING_PARAMS = [
 // 2026-09-22: dodane po tym, jak wklejony link z Facebooka ("skopiuj link
 // do posta") pokazywał całe zdanie surowego adresu z fbclid= na końcu —
 // technicznie działał, ale wyglądał jak spam.
-function cleanUrlForDisplay(rawUrl: string): { href: string; label: string } {
+export function cleanUrlForDisplay(rawUrl: string): { href: string; label: string } {
   try {
     const url = new URL(rawUrl)
     TRACKING_PARAMS.forEach((p) => url.searchParams.delete(p))

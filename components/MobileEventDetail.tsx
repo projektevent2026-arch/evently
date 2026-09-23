@@ -13,7 +13,7 @@ import { useFavorites } from '@/hooks/useFavorites'
 import { getEventWithDates } from '@/lib/getEventWithDates'
 import EventDatesList from '@/components/EventDatesList'
 import AddToCalendarButton from '@/components/AddToCalendarButton'
-import { dateRange, isMultiDay, weekdayName, fmtClock, durationBetween, nextTermInfo, nextOccurrence, linkify } from '@/lib/eventFormat'
+import { dateRange, isMultiDay, weekdayName, fmtClock, durationBetween, nextTermInfo, nextOccurrence, linkify, cleanUrlForDisplay } from '@/lib/eventFormat'
 import { normalizeCategory, CATEGORY_LABELS, CATEGORY_BADGE_CLASSES, type CategoryKey } from '@/lib/eventCategory'
 
 const EventMap = dynamic(() => import('@/components/event-map').then(m => m.EventMap), { ssr: false })
@@ -255,16 +255,18 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                   {event.organizer_name && (
                     <div className="text-[12px] font-bold text-white">{event.organizer_name}</div>
                   )}
-                  {event.website_url && (
-                    
-                     <a href={event.website_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[10px] text-zinc-500"
-                    >
-                      {event.website_url.replace(/^https?:\/\//, '')}
-                    </a>
-                  )}
+                  {event.website_url && (() => {
+                    const { href, label } = cleanUrlForDisplay(event.website_url)
+                    return (
+                      <a href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-zinc-500"
+                      >
+                        {label}
+                      </a>
+                    )
+                  })()}
                 </div>
                 {/* „Obserwuj" UKRYTE — wymaga kont + push (tier D). */}
               </div>
