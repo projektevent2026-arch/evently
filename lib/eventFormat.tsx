@@ -337,12 +337,26 @@ export function cleanUrlForDisplay(rawUrl: string): { href: string; label: strin
   try {
     const url = new URL(rawUrl)
     TRACKING_PARAMS.forEach((p) => url.searchParams.delete(p))
-    const path = url.pathname === "/" ? "" : url.pathname
-    const query = url.search // to, co zostało po odsianiu śledzenia — zwykle nic
-    return {
-      href: url.toString(),
-      label: `${url.hostname.replace(/^www\./, "")}${path}${query}`,
+    // url.pathname jest zawsze zakodowane (np. polskie znaki jako %C5%82) —
+    // dekodujemy TYLKO do wyświetlenia, href pod spodem zostaje jak było
+    // (poprawnie zakodowany, bo tego wymaga faktyczna nawigacja).
+    let path = url.pathname === "/" ? "" : url.pathname
+    try {
+      path = decodeURIComponent(path)
+    } catch {
+      // ciąg z nieprawidłowym % — zostaw jak było, nie psuj wyświetlania
     }
+    const query = url.search // to, co zostało po odsianiu śledzenia — zwykle nic
+    let label = `${url.hostname.replace(/^www\./, "")}${path}${query}`
+    // 2026-09-23: sama ścieżka (bez żadnego trackingu) bywa długa sama w
+    // sobie — np. link do wydarzenia na Facebooku niesie w adresie cały
+    // slug tytułu. Twardy limit, żeby karta organizatora nigdy nie
+    // rozjeżdżała się na kilka linijek niezależnie od długości oryginału.
+    const MAX_LABEL_LENGTH = 42
+    if (label.length > MAX_LABEL_LENGTH) {
+      label = label.slice(0, MAX_LABEL_LENGTH - 1) + "…"
+    }
+    return { href: url.toString(), label }
   } catch {
     // Coś nietypowego (np. URL bez protokołu, którego new URL() nie strawił)
     // — nie psuj linku, po prostu nie czyść go.
