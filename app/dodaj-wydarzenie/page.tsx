@@ -212,7 +212,9 @@ export default function DodajWydarzenie() {
           }
         })
       }
-    } catch {}
+    } catch (err: any) {
+      setError(err?.message || "Nie udało się wyszukać lokalizacji.")
+    }
     setGeocoding(false)
   }
 

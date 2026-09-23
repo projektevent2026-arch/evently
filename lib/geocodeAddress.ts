@@ -39,6 +39,18 @@ function extractSuggestedCity(address: Record<string, string> | undefined): stri
   
     const tryQuery = async (q: string) => {
       const res = await fetch("/api/geocode?q=" + encodeURIComponent(q))
+      // 2026-09-23: brakowało sprawdzenia statusu — gdy serwer odrzucał
+      // zapytanie (limit 30/h, błąd Nominatim, cokolwiek), odpowiedź to
+      // {error: "..."}, nie tablica. Array.isArray() na tym zwracało false,
+      // funkcja cicho zwracała null, i formularz wyglądał tak, jakby nic
+      // nie znaleziono — bez śladu prawdziwej przyczyny. Teraz taki
+      // przypadek leci jako wyjątek z czytelnym komunikatem, zamiast ciszy.
+      if (res.status === 429) {
+        throw new Error("Zbyt wiele wyszukiwań lokalizacji w krótkim czasie — odczekaj kilka minut i spróbuj ponownie.")
+      }
+      if (!res.ok) {
+        throw new Error("Nie udało się połączyć z usługą wyszukiwania lokalizacji. Spróbuj ponownie za chwilę.")
+      }
       const data = await res.json()
       return Array.isArray(data) && data[0] ? data[0] : null
     }

@@ -277,7 +277,9 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
           }
         })
       }
-    } catch {}
+    } catch (err: any) {
+      setMsg(err?.message || "Nie udało się wyszukać lokalizacji.")
+    }
     setGeocoding(false)
   }
 
