@@ -318,6 +318,38 @@ export function toggleBoldSelection(text: string, start: number, end: number): {
   return { text: newText, start: start + 2, end: end + 2 }
 }
 
+// Parametry śledzące, które platformy społecznościowe/reklamowe doklejają
+// do linków (fbclid przy kopiowaniu z Facebooka, utm_* z kampanii, itd.).
+// Nie mają znaczenia dla docelowej strony, tylko brudzą to, co widać.
+const TRACKING_PARAMS = [
+  "fbclid", "gclid", "gbraid", "wbraid", "msclkid",
+  "igshid", "mc_cid", "mc_eid",
+  "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id",
+]
+
+// Czyści URL ze śledzenia i zwraca krótką, czytelną etykietę do
+// wyświetlenia (domena + ścieżka, bez protokołu/www/query śledzącego) —
+// href pod spodem prowadzi dalej do pełnego, poprawnego adresu.
+// 2026-09-22: dodane po tym, jak wklejony link z Facebooka ("skopiuj link
+// do posta") pokazywał całe zdanie surowego adresu z fbclid= na końcu —
+// technicznie działał, ale wyglądał jak spam.
+function cleanUrlForDisplay(rawUrl: string): { href: string; label: string } {
+  try {
+    const url = new URL(rawUrl)
+    TRACKING_PARAMS.forEach((p) => url.searchParams.delete(p))
+    const path = url.pathname === "/" ? "" : url.pathname
+    const query = url.search // to, co zostało po odsianiu śledzenia — zwykle nic
+    return {
+      href: url.toString(),
+      label: `${url.hostname.replace(/^www\./, "")}${path}${query}`,
+    }
+  } catch {
+    // Coś nietypowego (np. URL bez protokołu, którego new URL() nie strawił)
+    // — nie psuj linku, po prostu nie czyść go.
+    return { href: rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`, label: rawUrl }
+  }
+}
+
 // Zamienia URL-e w tekście na klikalne linki i **tekst** na pogrubienie.
 // Reszta tekstu (w tym akapity dzięki whitespace-pre-line w otaczającym
 // <p>) zostaje bez zmian. Końcowa interpunkcja (., ,) nie wpada do linka.
@@ -338,12 +370,13 @@ export function linkify(text: string, variant: "light" | "dark" = "light") {
     }
     if (/^(https?:\/\/|www\.)/.test(part)) {
       const trailing = part.match(/[.,);]+$/)?.[0] ?? ""
-      const clean = trailing ? part.slice(0, part.length - trailing.length) : part
-      const href = clean.startsWith("http") ? clean : `https://${clean}`
+      const cleanPart = trailing ? part.slice(0, part.length - trailing.length) : part
+      const rawHref = cleanPart.startsWith("http") ? cleanPart : `https://${cleanPart}`
+      const { href, label } = cleanUrlForDisplay(rawHref)
       return (
         <span key={i}>
           <a href={href} target="_blank" rel="noopener noreferrer" style={linkStyle} className={linkClassName}>
-            {clean}
+            {label}
           </a>
           {trailing}
         </span>
