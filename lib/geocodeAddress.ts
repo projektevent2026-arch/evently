@@ -22,11 +22,27 @@
 // banera "AI wypełniło formularz — sprawdź i popraw", nie jako
 // samodzielne, niezależne auto-uzupełnienie) — nigdy nie ufaj jej bez
 // przeglądu, zwłaszcza gdy Miasto to pole wymagane używane do filtrowania.
-function extractSuggestedCity(address: Record<string, string> | undefined): string | null {
+//
+// 2026-09-23: Nominatim czasem duplikuje nazwę samej wsi na kilku
+// poziomach naraz (np. address.city = "Tauroszyszki", to samo co
+// address.village) — bez pomijania takich duplikatów pierwszy sprawdzany
+// klucz (city) zwracał z powrotem nazwę wsi, którą i tak już mieliśmy,
+// i podpowiedź nigdy nie docierała do właściwej gminy. knownVillage
+// pozwala pominąć kandydatów, które tylko powtarzają to, co już wiemy.
+function extractSuggestedCity(
+    address: Record<string, string> | undefined,
+    knownVillage: string
+  ): string | null {
     if (!address) return null
-    if (address.city) return address.city
-    if (address.town) return address.town
-    if (address.municipality) return address.municipality.replace(/^gmina\s+/i, "").trim()
+    const candidates = [
+      address.city,
+      address.town,
+      address.municipality?.replace(/^gmina\s+/i, "").trim(),
+    ].filter(Boolean) as string[]
+  
+    for (const c of candidates) {
+      if (c.toLowerCase() !== knownVillage.trim().toLowerCase()) return c
+    }
     return null
   }
   
@@ -58,7 +74,7 @@ function extractSuggestedCity(address: Record<string, string> | undefined): stri
     const withSuggestion = (result: any) => ({
       lat: result.lat,
       lon: result.lon,
-      suggestedCity: extractSuggestedCity(result.address),
+      suggestedCity: extractSuggestedCity(result.address, city || address),
     })
   
     const first = await tryQuery(full)
