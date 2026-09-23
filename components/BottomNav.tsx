@@ -49,10 +49,25 @@ export default function BottomNav() {
           <span className={labelClass('/ulubione')}>Ulubione</span>
         </Link>
 
-        {/* Dodaj — teraz zwykły tab, spójny z resztą */}
-        <Link href="/dodaj-wydarzenie" className={linkClass('/dodaj-wydarzenie')}>
+        {/* Dodaj — teraz zwykły tab, spójny z resztą. Aktywny też na
+            /admin/wydarzenia: 2026-09-23, admin dodający/edytujący
+            wydarzenie przez panel nie widział podświetlenia, bo isActive()
+            sprawdzał tylko /dodaj-wydarzenie (formularz publiczny) — mimo
+            że semantycznie robi dokładnie to samo. */}
+        <Link
+          href="/dodaj-wydarzenie"
+          className={`flex flex-col items-center gap-0.5 flex-1 pt-2 ${
+            isActive('/dodaj-wydarzenie') || pathname.startsWith('/admin/wydarzenia') ? 'text-green-500' : 'text-[#555]'
+          }`}
+        >
           <PlusCircle size={22} />
-          <span className={labelClass('/dodaj-wydarzenie')}>Dodaj</span>
+          <span
+            className={`text-[10px] font-medium ${
+              isActive('/dodaj-wydarzenie') || pathname.startsWith('/admin/wydarzenia') ? 'text-green-500' : 'text-[#555]'
+            }`}
+          >
+            Dodaj
+          </span>
         </Link>
 
         {/* Mapa */}

@@ -11,6 +11,8 @@ import { MapPin, ChevronRight, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/scheduleType"
 import { toggleBoldSelection } from "@/lib/eventFormat"
+import { geocodeAddress } from "@/lib/geocodeAddress"
+import { revalidateHome } from "@/lib/revalidateHome"
 
 const LocationPicker = dynamic(
   () => import("@/components/admin/LocationPicker"),
@@ -183,17 +185,15 @@ export default function DodajWydarzenie() {
   }
 
   const handleGeocode = async () => {
-    const query = [form.address, form.city].filter(Boolean).join(", ")
-    if (!query) return
+    if (!form.address && !form.city) return
     setGeocoding(true)
     try {
-      const res = await fetch("/api/geocode?q=" + encodeURIComponent(query))
-      const data = await res.json()
-      if (data[0]) {
+      const result = await geocodeAddress(form.address, form.city)
+      if (result) {
         setForm(prev => ({
           ...prev,
-          latitude: parseFloat(data[0].lat).toFixed(6),
-          longitude: parseFloat(data[0].lon).toFixed(6),
+          latitude: parseFloat(result.lat).toFixed(6),
+          longitude: parseFloat(result.lon).toFixed(6),
         }))
       }
     } catch {}
@@ -392,6 +392,10 @@ try {
       return
     }
 
+    // Edycja organizatora publikuje się od razu — strona główna musi się
+    // dowiedzieć o tym natychmiast, nie dopiero za 60s (revalidate w
+    // app/page.tsx).
+    revalidateHome()
     setSubmitted(true)
     setSubmitting(false)
     return
@@ -451,6 +455,10 @@ try {
       }
     }
 
+    // Organizator publikuje od razu — strona główna musi się dowiedzieć
+    // natychmiast. Zwykłe zgłoszenie (status "pending") nie jest jeszcze
+    // widoczne publicznie, więc nie ma czego odświeżać.
+    if (isOrganizer) revalidateHome()
     setSubmitted(true)
   } catch (err) {
     setError("Błąd sieci. Sprawdź połączenie i spróbuj ponownie.")
@@ -603,15 +611,22 @@ try {
                         }])
                       }
                       if (data.address || data.city) {
-                        const query = [data.address, data.city].filter(Boolean).join(", ")
                         try {
-                          const res = await fetch("/api/geocode?q=" + encodeURIComponent(query))
-                          const geo = await res.json()
-                          if (geo[0]) {
+                          const result = await geocodeAddress(data.address || "", data.city || "")
+                          if (result) {
                             setForm(prev => ({
                               ...prev,
-                              latitude: parseFloat(geo[0].lat).toFixed(6),
-                              longitude: parseFloat(geo[0].lon).toFixed(6),
+                              latitude: parseFloat(result.lat).toFixed(6),
+                              longitude: parseFloat(result.lon).toFixed(6),
+                              // AI nie odczytało miasta z plakatu — podpowiedź
+                              // z przynależności administracyjnej (gmina).
+                              // To PRZYNALEŻNOŚĆ, nie zawsze "najbliższe
+                              // sensowne miasto" — dlatego wymaga przeglądu,
+                              // nie jest brana na wiarę. Tu wystarczy wpisać
+                              // ją do pola: cały ten blok już jest objęty
+                              // banerem "AI wypełniło formularz — sprawdź i
+                              // popraw" niżej, więc przegląd i tak nastąpi.
+                              ...(!data.city && result.suggestedCity ? { city: result.suggestedCity } : {}),
                             }))
                           }
                         } catch {}

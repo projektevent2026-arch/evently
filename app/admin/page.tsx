@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { revalidateHome } from "@/lib/revalidateHome"
 import { supabase } from "@/lib/supabase"
 import { Plus, MapPin, Trash2, Edit, Copy, Check, X, Eye, RotateCcw } from "lucide-react"
 
@@ -48,6 +50,7 @@ const SOURCE_LABELS: Record<string, { label: string; color: string; bg: string }
 }
 
 export default function AdminPage() {
+  const router = useRouter()
   const [events, setEvents] = useState<any[]>([])
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [onlyMine, setOnlyMine] = useState(false)
@@ -113,7 +116,12 @@ export default function AdminPage() {
       return (b.start_date || "").localeCompare(a.start_date || "")
     })
 
-  const handleEdit = (event: any) => { window.location.href = `/admin/wydarzenia?id=${event.id}` }
+  // 2026-09-23: było window.location.href — pełne przeładowanie strony
+  // (cały HTML/JS/CSS od nowa) zamiast szybkiego przejścia w obrębie
+  // aplikacji. router.push() (Next.js) robi to samo przejście bez
+  // przeładowania — dokładnie ten sam problem co przy linkach "Dodaj
+  // wydarzenie"/"Użytkownicy" niżej w tym pliku.
+  const handleEdit = (event: any) => { router.push(`/admin/wydarzenia?id=${event.id}`) }
 
   const handleApprove = async (id: string) => {
     // Ta sama ochrona co w edytorze i formularzu publicznym — bez tego
@@ -133,6 +141,7 @@ export default function AdminPage() {
     const { data, error } = await supabase.from("events").update({ status: "published" }).eq("id", id).select("id")
     if (error) { alert("Błąd zatwierdzania: " + error.message); return }
     if (!data || data.length === 0) { alert("Nie udało się zatwierdzić — brak uprawnień albo wydarzenie już nie istnieje."); return }
+    revalidateHome()
     fetchEvents()
   }
   const handleReject = async (id: string) => {
@@ -147,6 +156,7 @@ export default function AdminPage() {
     const { data, error } = await supabase.from("events").update({ deleted_at: new Date().toISOString() }).eq("id", id).select("id")
     if (error) { alert("Błąd przenoszenia do kosza: " + error.message); return }
     if (!data || data.length === 0) { alert("Nie udało się przenieść do kosza — brak uprawnień albo wydarzenie już nie istnieje."); return }
+    revalidateHome()
     fetchEvents()
   }
   const handleDuplicate = async (event: any) => {
@@ -185,6 +195,7 @@ export default function AdminPage() {
     const { data, error } = await supabase.from("events").update({ deleted_at: new Date().toISOString() }).in("id", ids).select("id")
     if (error) alert("Błąd przenoszenia do kosza: " + error.message)
     else if (!data || data.length < ids.length) alert(`Przeniesiono do kosza tylko ${data?.length ?? 0} z ${ids.length} — sprawdź uprawnienia do pozostałych.`)
+    revalidateHome()
     clearSelection()
     fetchEvents()
   }
@@ -194,6 +205,7 @@ export default function AdminPage() {
     const { data, error } = await supabase.from("events").update({ status: "archived" }).in("id", ids).select("id")
     if (error) alert("Błąd archiwizacji: " + error.message)
     else if (!data || data.length < ids.length) alert(`Zarchiwizowano tylko ${data?.length ?? 0} z ${ids.length} — sprawdź uprawnienia do pozostałych.`)
+    revalidateHome()
     clearSelection()
     fetchEvents()
   }
@@ -203,6 +215,7 @@ export default function AdminPage() {
     const { data, error } = await supabase.from("events").update({ status: "published" }).in("id", ids).select("id")
     if (error) alert("Błąd zatwierdzania: " + error.message)
     else if (!data || data.length < ids.length) alert(`Zatwierdzono tylko ${data?.length ?? 0} z ${ids.length} — sprawdź uprawnienia do pozostałych.`)
+    revalidateHome()
     clearSelection()
     fetchEvents()
   }
@@ -212,6 +225,7 @@ export default function AdminPage() {
     const { data, error } = await supabase.from("events").update({ status: "published" }).in("id", ids).select("id")
     if (error) alert("Błąd przywracania: " + error.message)
     else if (!data || data.length < ids.length) alert(`Przywrócono tylko ${data?.length ?? 0} z ${ids.length} — sprawdź uprawnienia do pozostałych.`)
+    revalidateHome()
     clearSelection()
     fetchEvents()
   }
@@ -220,6 +234,7 @@ export default function AdminPage() {
     const { data, error } = await supabase.from("events").update({ deleted_at: null }).eq("id", id).select("id")
     if (error) { alert("Błąd przywracania: " + error.message); return }
     if (!data || data.length === 0) { alert("Nie udało się przywrócić — brak uprawnień albo wydarzenie już nie istnieje."); return }
+    revalidateHome()
     fetchEvents()
   }
   const handlePermanentDelete = async (id: string) => {
@@ -234,6 +249,7 @@ export default function AdminPage() {
     const { data, error } = await supabase.from("events").update({ deleted_at: null }).in("id", ids).select("id")
     if (error) alert("Błąd przywracania: " + error.message)
     else if (!data || data.length < ids.length) alert(`Przywrócono tylko ${data?.length ?? 0} z ${ids.length} — sprawdź uprawnienia do pozostałych.`)
+    revalidateHome()
     clearSelection()
     fetchEvents()
   }
@@ -310,8 +326,8 @@ export default function AdminPage() {
         <a href="/" style={navItem(false)}>Panel główny</a>
         <button onClick={() => setOnlyMine(false)} style={{ ...navItem(!onlyMine), width: "100%", textAlign: "left", border: "none", background: !onlyMine ? "#f0fdf4" : "transparent" }}>Wydarzenia</button>
         <button onClick={() => setOnlyMine(true)} style={{ ...navItem(onlyMine), width: "100%", textAlign: "left", border: "none", background: onlyMine ? "#f0fdf4" : "transparent" }}>Moje wydarzenia</button>
-        <a href="/admin/wydarzenia" style={navItem(false)}>Dodaj wydarzenie</a>
-        <a href="/admin/uzytkownicy" style={navItem(false)}>Użytkownicy</a>
+        <Link href="/admin/wydarzenia" style={navItem(false)}>Dodaj wydarzenie</Link>
+        <Link href="/admin/uzytkownicy" style={navItem(false)}>Użytkownicy</Link>
       </aside>
 
       {/* LISTA */}
@@ -325,7 +341,7 @@ export default function AdminPage() {
         <div className="admin-mobile-nav" style={{ display: "none", gap: 8, padding: "12px 16px 0", overflowX: "auto", scrollbarWidth: "none" }}>
           <button onClick={() => setOnlyMine(false)} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 20, border: "1px solid " + (!onlyMine ? "#16a34a" : "#e5e7eb"), background: !onlyMine ? "#f0fdf4" : "white", color: !onlyMine ? "#16a34a" : "#374151", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>Wydarzenia</button>
           <button onClick={() => setOnlyMine(true)} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 20, border: "1px solid " + (onlyMine ? "#16a34a" : "#e5e7eb"), background: onlyMine ? "#f0fdf4" : "white", color: onlyMine ? "#16a34a" : "#374151", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>Moje wydarzenia</button>
-          <a href="/admin/uzytkownicy" style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 20, border: "1px solid #e5e7eb", background: "white", color: "#374151", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", textDecoration: "none" }}>Użytkownicy</a>
+          <Link href="/admin/uzytkownicy" style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 20, border: "1px solid #e5e7eb", background: "white", color: "#374151", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", textDecoration: "none" }}>Użytkownicy</Link>
         </div>
 
         {/* Nagłówek */}
@@ -335,9 +351,9 @@ export default function AdminPage() {
             <h1 style={{ fontSize: "1.5rem", fontWeight: 800, margin: 0, color: "#111827" }}>{onlyMine ? "Moje wydarzenia" : "Wydarzenia"}</h1>
               <p style={{ color: "#6b7280", fontSize: "0.9rem", margin: "4px 0 0" }}>{onlyMine ? "Wydarzenia, które dodałeś jako admin" : "Zarządzaj wszystkimi wydarzeniami"}</p>
             </div>
-            <a href="/admin/wydarzenia" className="admin-add-btn" style={{ display: "flex", alignItems: "center", gap: 6, background: "#16a34a", color: "white", borderRadius: 10, padding: "0.75rem 1.1rem", fontWeight: 600, fontSize: "0.95rem", textDecoration: "none", whiteSpace: "nowrap" }}>
+            <Link href="/admin/wydarzenia" className="admin-add-btn" style={{ display: "flex", alignItems: "center", gap: 6, background: "#16a34a", color: "white", borderRadius: 10, padding: "0.75rem 1.1rem", fontWeight: 600, fontSize: "0.95rem", textDecoration: "none", whiteSpace: "nowrap" }}>
               <Plus size={18} /> Dodaj wydarzenie
-            </a>
+            </Link>
           </div>
 
           {/* Zakładki statusu */}

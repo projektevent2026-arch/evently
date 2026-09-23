@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
+import { revalidateHome } from "@/lib/revalidateHome"
 import { MapPin, Pencil, Plus, Trash2 } from "lucide-react"
 
 // Prosta lista własnych wydarzeń organizatora, z możliwością edycji
@@ -71,6 +72,7 @@ export default function MojeWydarzenia() {
 
     setEvents(prev => prev.filter(e => e.id !== id))
     setDeletingId(null)
+    revalidateHome()
   }
 
   return (

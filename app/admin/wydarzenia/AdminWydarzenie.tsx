@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { safeUrl } from "@/lib/safeUrl"
 import dynamic from "next/dynamic"
@@ -9,6 +11,8 @@ import ImageUpload from "@/components/admin/ImageUpload"
 import ScheduleEditor from "@/components/admin/ScheduleEditor"
 import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/scheduleType"
 import { toggleBoldSelection } from "@/lib/eventFormat"
+import { geocodeAddress } from "@/lib/geocodeAddress"
+import { revalidateHome } from "@/lib/revalidateHome"
 
 const CATEGORIES = ["festyny","kultura","muzyka","sport"]
 const CATEGORY_LABELS: Record<string,string> = {
@@ -105,6 +109,7 @@ const SECTIONS = [
 ]
 
 export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
+  const router = useRouter()
     const [posterPreviewUrl, setPosterPreviewUrl] = useState("")
   const [form, setForm] = useState(emptyForm)
   const [dates, setDates] = useState<DateEntry[]>([{ date:"", from:"", to:"" }])
@@ -250,16 +255,14 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
   }
 
   const handleGeocode = async () => {
-    const query = [form.address, form.city].filter(Boolean).join(", ")
-    if (!query) return
+    if (!form.address && !form.city) return
     setGeocoding(true)
     try {
-      const res = await fetch("/api/geocode?q=" + encodeURIComponent(query))
-      const data = await res.json()
-      if (data[0]) setForm(prev => ({
+      const result = await geocodeAddress(form.address, form.city)
+      if (result) setForm(prev => ({
         ...prev,
-        latitude: parseFloat(data[0].lat).toFixed(6),
-        longitude: parseFloat(data[0].lon).toFixed(6)
+        latitude: parseFloat(result.lat).toFixed(6),
+        longitude: parseFloat(result.lon).toFixed(6)
       }))
     } catch {}
     setGeocoding(false)
@@ -586,7 +589,10 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     }
 
     setMsg(statusOverride === "published" ? "✅ Opublikowano!" : "✅ Zapisano szkic!")
-    setTimeout(() => { window.location.href = "/admin" }, 1500)
+    // Tylko publikacja zmienia to, co widać na stronie głównej — szkic
+    // nie jest tam nigdy widoczny, nie ma czego odświeżać.
+    if (statusOverride === "published") revalidateHome()
+    setTimeout(() => { router.push("/admin") }, 1500)
     setSaving(false)
   }
   
@@ -634,9 +640,9 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
         </div>
 
         {/* Powrót */}
-        <a href="/admin" style={{ display:"flex", alignItems:"center", gap:8, padding:"12px 16px", borderBottom:"1px solid #f3f4f6", color:"#6b7280", fontSize:13, textDecoration:"none" }}>
+        <Link href="/admin" style={{ display:"flex", alignItems:"center", gap:8, padding:"12px 16px", borderBottom:"1px solid #f3f4f6", color:"#6b7280", fontSize:13, textDecoration:"none" }}>
           ← Lista wydarzeń
-        </a>
+        </Link>
 
         {/* Sekcje */}
         <nav style={{ padding:"12px 8px", flex:1 }}>
