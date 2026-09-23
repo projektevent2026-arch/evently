@@ -60,6 +60,11 @@ export default function DodajWydarzenie() {
   const [dates, setDates] = useState<DateEntry[]>([{ date: "", from: "", to: "" }])
   const [activeTab, setActiveTab] = useState("basic")
   const [geocoding, setGeocoding] = useState(false)
+  // Podpowiedź miasta po ręcznym "Znajdź" — NIGDY cicho nie nadpisuje tego,
+  // co użytkownik wpisał (w odróżnieniu od auto-uzupełnienia po skanie
+  // plakatu, które ma za sobą baner "sprawdź i popraw"). Tu decyzja
+  // zawsze należy do klikającego.
+  const [citySuggestion, setCitySuggestion] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState("")
@@ -187,6 +192,7 @@ export default function DodajWydarzenie() {
   const handleGeocode = async () => {
     if (!form.address && !form.city) return
     setGeocoding(true)
+    setCitySuggestion(null)
     try {
       const result = await geocodeAddress(form.address, form.city)
       if (result) {
@@ -195,6 +201,11 @@ export default function DodajWydarzenie() {
           latitude: parseFloat(result.lat).toFixed(6),
           longitude: parseFloat(result.lon).toFixed(6),
         }))
+        // Podpowiedź, nie auto-uzupełnienie — pokazujemy tylko, gdy
+        // faktycznie różni się od tego, co już jest wpisane.
+        if (result.suggestedCity && result.suggestedCity !== form.city) {
+          setCitySuggestion(result.suggestedCity)
+        }
       }
     } catch {}
     setGeocoding(false)
@@ -809,6 +820,20 @@ try {
                   <label style={lbl} htmlFor="city">Miasto *</label>
                   <input id="city" name="city" value={form.city} onChange={handleChange} required
                     placeholder="np. Suwałki" style={inp} />
+                  {citySuggestion && (
+                    <div style={{marginTop:6,fontSize:"0.8rem",color:"#6b7280",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                      <span>Sugerowane miasto: <strong>{citySuggestion}</strong></span>
+                      <button type="button"
+                        onClick={() => { setForm(prev => ({ ...prev, city: citySuggestion })); setCitySuggestion(null) }}
+                        style={{color:"#16a34a",fontWeight:600,background:"none",border:"none",cursor:"pointer",padding:0,textDecoration:"underline"}}>
+                        Zastosuj
+                      </button>
+                      <button type="button" onClick={() => setCitySuggestion(null)}
+                        style={{color:"#9ca3af",background:"none",border:"none",cursor:"pointer",padding:0}}>
+                        Odrzuć
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label style={lbl} htmlFor="venue_name">Nazwa miejsca</label>
