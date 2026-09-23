@@ -35,7 +35,12 @@ export const aiRateLimit = new Ratelimit({
 
 export const geocodeRateLimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(30, "1 h"),
+  // 2026-09-23: 30 -> 60/h. Realny limit Nominatim to ~1 zapytanie/s
+  // (3600/h) — nawet 60/h na jeden adres IP to wciąż duży margines
+  // bezpieczeństwa, nie ryzykowna zmiana. Podniesione po tym, jak
+  // intensywne testowanie jednego przypadku (wielokrotne kliknięcia
+  // "Znajdź" pod rząd przy debugowaniu) wyczerpało poprzedni limit.
+  limiter: Ratelimit.slidingWindow(60, "1 h"),
   prefix: "ratelimit:geocode",
 })
 
