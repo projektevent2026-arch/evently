@@ -202,13 +202,26 @@ export default function DodajWydarzenie() {
           const cityLooksUnconsidered =
             !prev.city.trim() ||
             (!!prev.address.trim() && prev.address.toLowerCase().includes(prev.city.trim().toLowerCase()))
+          const shouldUpdateCity = !!result.suggestedCity && result.suggestedCity !== prev.city && cityLooksUnconsidered
+          // TypeScript nie widzi, że shouldUpdateCity=true gwarantuje, że
+          // result.suggestedCity nie jest null — stąd osobna, zawężona
+          // stała tuż przed użyciem (naprawia błąd builda: "Type 'string |
+          // null' is not assignable to type 'string'").
+          const suggestedCity = result.suggestedCity
+          // TYMCZASOWY LOG — do usunięcia po znalezieniu przyczyny
+          // (2026-09-23, debugowanie Tauroszyszki/Puńsk).
+          console.log("[GEOCODE DEBUG]", {
+            resultSuggestedCity: result.suggestedCity,
+            prevCity: prev.city,
+            prevAddress: prev.address,
+            cityLooksUnconsidered,
+            shouldUpdateCity,
+          })
           return {
             ...prev,
             latitude: parseFloat(result.lat).toFixed(6),
             longitude: parseFloat(result.lon).toFixed(6),
-            ...(result.suggestedCity && result.suggestedCity !== prev.city && cityLooksUnconsidered
-              ? { city: result.suggestedCity }
-              : {}),
+            ...(shouldUpdateCity && suggestedCity ? { city: suggestedCity } : {}),
           }
         })
       }
