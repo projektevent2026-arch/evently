@@ -45,9 +45,19 @@ function parseCoords(input: string): { lat: number; lon: number } | null {
 }
 
 async function askNominatim(query: string) {
+  // viewbox + bounded=1 = TWARDE ograniczenie do regionu Suwałk (2026-09-23:
+  // zmienione z miękkiego nachylenia na twardy filtr — na rekomendację z
+  // sesji debugowania Tauroszyszki/Puńsk). Świadomie regionalne, nie
+  // ogólnopolskie: przy skalowaniu na cały kraj trzeba wrócić do
+  // dwuetapowego zapytania (najpierw miasto bez region-bias, potem ciasne
+  // pudełko wokół TEGO miasta) — już zapisane w backlogu projektu.
+  // Pudełko z zapasem ~80km od Suwałk (54.1113, 22.9302) w każdą stronę,
+  // żeby objąć sąsiednie powiaty (Sejny, Augustów, Ełk) — nie tylko samo
+  // miasto. Format: lewo,góra,prawo,dół (lon_min,lat_max,lon_max,lat_min).
+  const SUWALKI_VIEWBOX = "21.70,54.83,24.16,53.39"
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
     query
-  )}&limit=5&countrycodes=pl&addressdetails=1`
+  )}&limit=5&countrycodes=pl&addressdetails=1&viewbox=${SUWALKI_VIEWBOX}&bounded=1`
 
   const res = await fetch(url, {
     headers: NOMINATIM_HEADERS,
