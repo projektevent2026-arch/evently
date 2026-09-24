@@ -208,15 +208,6 @@ export default function DodajWydarzenie() {
           // stała tuż przed użyciem (naprawia błąd builda: "Type 'string |
           // null' is not assignable to type 'string'").
           const suggestedCity = result.suggestedCity
-          // TYMCZASOWY LOG — do usunięcia po znalezieniu przyczyny
-          // (2026-09-23, debugowanie Tauroszyszki/Puńsk).
-          console.log("[GEOCODE DEBUG]", {
-            resultSuggestedCity: result.suggestedCity,
-            prevCity: prev.city,
-            prevAddress: prev.address,
-            cityLooksUnconsidered,
-            shouldUpdateCity,
-          })
           return {
             ...prev,
             latitude: parseFloat(result.lat).toFixed(6),
@@ -645,20 +636,32 @@ try {
                         try {
                           const result = await geocodeAddress(data.address || "", data.city || "")
                           if (result) {
-                            setForm(prev => ({
-                              ...prev,
-                              latitude: parseFloat(result.lat).toFixed(6),
-                              longitude: parseFloat(result.lon).toFixed(6),
-                              // AI nie odczytało miasta z plakatu — podpowiedź
-                              // z przynależności administracyjnej (gmina).
-                              // To PRZYNALEŻNOŚĆ, nie zawsze "najbliższe
-                              // sensowne miasto" — dlatego wymaga przeglądu,
-                              // nie jest brana na wiarę. Tu wystarczy wpisać
-                              // ją do pola: cały ten blok już jest objęty
+                            setForm(prev => {
+                              // 2026-09-23: było "tylko gdy AI w ogóle nie
+                              // odczytało miasta" — ale AI CZĘSTO odczytuje
+                              // samą nazwę wsi jako miasto wprost z plakatu
+                              // (np. tytuł "Dzień Kukurydzy Tauroszyszki"),
+                              // więc ten warunek prawie nigdy się nie
+                              // uruchamiał. Ten sam warunek co w ręcznym
+                              // "Znajdź" (handleGeocode): nadpisz tylko gdy
+                              // Miasto wygląda na przypadkowe — puste albo
+                              // powtórzone z adresu — inaczej zostaw jak AI
+                              // odczytało. Cały ten blok i tak jest objęty
                               // banerem "AI wypełniło formularz — sprawdź i
-                              // popraw" niżej, więc przegląd i tak nastąpi.
-                              ...(!data.city && result.suggestedCity ? { city: result.suggestedCity } : {}),
-                            }))
+                              // popraw" niżej, więc przegląd nastąpi.
+                              const cityLooksUnconsidered =
+                                !prev.city.trim() ||
+                                (!!prev.address.trim() && prev.address.toLowerCase().includes(prev.city.trim().toLowerCase()))
+                              const suggestedCity = result.suggestedCity
+                              return {
+                                ...prev,
+                                latitude: parseFloat(result.lat).toFixed(6),
+                                longitude: parseFloat(result.lon).toFixed(6),
+                                ...(suggestedCity && suggestedCity !== prev.city && cityLooksUnconsidered
+                                  ? { city: suggestedCity }
+                                  : {}),
+                              }
+                            })
                           }
                         } catch {}
                       }
