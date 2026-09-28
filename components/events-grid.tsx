@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase"
 import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
 import { isToday, isTomorrow, isThisWeekend, isSameLocalDate, haversineKm } from "@/lib/eventFormat"
 
-const CATEGORIES = ["kultura", "muzyka", "sport", "festyny"]
+const CATEGORIES = ["kultura", "muzyka", "sport", "festyny", "targi"]
 
 const DATE_FILTERS = [
   { id: "all",      label: "Wszystkie" },
@@ -213,11 +213,13 @@ export function EventsGrid({ initialEvents }: { initialEvents?: any[] }) {
     loadEvents()
   }, [loadEvents])
 
-  const filtered = events.filter((e) => {
+  // Wspólne dla listy I dla liczenia kategorii (patrz categoryCounts niżej)
+  // — wydzielone, żeby nie utrzymywać dwóch kopii tych samych warunków.
+  // Celowo BEZ filtra kategorii, i celowo BEZ filtra promienia — promień
+  // jest już zastosowany po stronie serwera (loadEvents/filterRadius), więc
+  // `events` tutaj to zbiór już przefiltrowany po lokalizacji.
+  const passesNonCategoryFilters = (e: (typeof events)[number]) => {
     const matchQ = q ? matchesQuery(e, q) : true
-    const matchCat = activeCategory
-      ? normalizeCategory(e.category) === activeCategory
-      : true
     const matchDate = (() => {
       if (!e.start_date) return true
       if (activeDate === "today") return isToday(e.start_date)
@@ -226,8 +228,29 @@ export function EventsGrid({ initialEvents }: { initialEvents?: any[] }) {
       if (activeDate === "custom" && customDate) return isSameLocalDate(e.start_date, customDate)
       return true
     })()
-    return matchQ && matchCat && matchDate
+    return matchQ && matchDate
+  }
+
+  const filtered = events.filter((e) => {
+    const matchCat = activeCategory
+      ? normalizeCategory(e.category) === activeCategory
+      : true
+    return passesNonCategoryFilters(e) && matchCat
   })
+
+  // 2026-09-27: kolejność pigułek kategorii odzwierciedla, ile wydarzeń jest
+  // w KAŻDEJ z nich przy obecnym promieniu/dacie/wyszukiwaniu — malejąco po
+  // liczbie wydarzeń. Samo się dostosowuje do sezonu i do zmiany promienia
+  // (ten sam mechanizm co w MobileHome.tsx, mobile).
+  const categoryCounts: Record<string, number> = {}
+  for (const e of events) {
+    if (!passesNonCategoryFilters(e)) continue
+    const k = normalizeCategory(e.category)
+    categoryCounts[k] = (categoryCounts[k] ?? 0) + 1
+  }
+  const sortedCategories = [...CATEGORIES].sort(
+    (a, b) => (categoryCounts[b] ?? 0) - (categoryCounts[a] ?? 0)
+  )
 
   return (
     <section className="pb-8" id="discover">
@@ -254,7 +277,7 @@ export function EventsGrid({ initialEvents }: { initialEvents?: any[] }) {
         >
           Wszystkie
         </button>
-        {CATEGORIES.map((cat) => (
+        {sortedCategories.map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}

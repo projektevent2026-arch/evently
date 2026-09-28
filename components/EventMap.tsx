@@ -291,7 +291,7 @@ export default function EventMap() {
     })
   }, [userPosition, urlCenter, mapReady])
 
-  const categories = ['kultura', 'muzyka', 'sport', 'festyny']
+  const categories = ['kultura', 'muzyka', 'sport', 'festyny', 'targi']
 
   function updateParams(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString())

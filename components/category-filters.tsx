@@ -1,64 +1,70 @@
-"use client"
+// lib/eventCategory.ts
+//
+// Współdzielone kategorie wydarzeń: normalizacja wartości z bazy do jednego
+// z 4 kanonicznych kluczy, oraz mapowania na etykiety PL i kolory. Wcześniej
+// normalizeCategory() + słowniki etykiet/kolorów były reimplementowane
+// niezależnie w EventMap.tsx, MobileHome.tsx, /ulubione, event-card.tsx i
+// events-grid.tsx — ten sam mechanizm duplikacji, który wcześniej naprawiono
+// dla logiki dat (lib/eventFormat.tsx).
+//
+// Podczas konsolidacji znalezione i naprawione dwa realne błędy:
+// 1. events-grid.tsx: normalizeCategory kończyła się `return c` zamiast
+//    `return 'festyny'` dla nierozpoznanej wartości — inaczej niż reszta
+//    apki, która zawsze pada na 'festyny' jako kategorię domyślną.
+// 2. EventMap.tsx: filtr kategorii na /mapa porównywał SUROWE
+//    `ev.category` (np. 'culture', 'Kultura') wprost z kanonicznym kluczem
+//    przycisku filtra ('kultura') — bez normalizacji, więc wydarzenia z
+//    kategorią zapisaną w innym formacie niż dokładnie 'kultura' nie
+//    pojawiały się przy aktywnym filtrze, mimo że powinny.
+//
+// CELOWO NIE dotyczy formularzy admina (AdminWydarzenie.tsx,
+// app/dodaj-wydarzenie/page.tsx) — ich normalizeCategory ma inną,
+// świadomą semantykę: zwraca "" dla pustej wartości (żeby <select>
+// pokazał "Wybierz kategorię..." zamiast domyślnie wybierać "festyny"),
+// bo tam trzeba odróżnić "nie wybrano" od "wybrano festyny". Mieszanie
+// tego z logiką wyświetlania złamałoby wymagane pole formularza.
 
-import { useState } from "react"
-import { Music, PartyPopper, Palette, Dumbbell, Baby, UtensilsCrossed } from "lucide-react"
+export type CategoryKey = "festyny" | "kultura" | "muzyka" | "sport" | "targi"
 
-const categories = [
-  { name: "Muzyka", icon: Music },
-  { name: "Imprezy", icon: PartyPopper },
-  { name: "Kultura", icon: Palette },
-  { name: "Sport", icon: Dumbbell },
-  { name: "Rodzinne", icon: Baby },
-  { name: "Jedzenie", icon: UtensilsCrossed },
-]
+export function normalizeCategory(raw: string | null | undefined): CategoryKey {
+  const c = (raw ?? "").toLowerCase().trim()
+  if (c === "kultura" || c === "culture") return "kultura"
+  if (c === "muzyka" || c === "music") return "muzyka"
+  if (c === "sport") return "sport"
+  // 2026-09-27: "Targi/Biznes" — dodane po Suwalskich Targach Branży
+  // Eventowej, które nie pasowały do żadnej z 4 poprzednich kategorii.
+  // Świadomie NIE rozdzielone na osobne "Targi" i "Biznes" — przy
+  // dzisiejszej liczbie wydarzeń w bazie to byłoby rozróżnienie bez
+  // różnicy (patrz notatka w pamięci projektu); rozdzielić dopiero, gdy
+  // obu realnie przybędzie.
+  if (c === "targi" || c === "biznes" || c === "business" || c === "fair") return "targi"
+  return "festyny"
+}
 
-export function CategoryFilters() {
-  const [active, setActive] = useState<string | null>(null)
+export const CATEGORY_LABELS: Record<CategoryKey, string> = {
+  festyny: "Festyny",
+  kultura: "Kultura",
+  muzyka: "Muzyka",
+  sport: "Sport",
+  targi: "Targi/Biznes",
+}
 
-  return (
-    <section className="mx-auto max-w-7xl px-6 py-10 lg:px-8">
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-lg font-semibold text-foreground">Przeglądaj kategorie</h2>
-        <button className="text-sm font-medium text-primary transition-colors hover:text-primary/80">
-          Wszystkie
-        </button>
-      </div>
+// Klasy Tailwind dla plakietek na kartach (MobileHome, /ulubione, event-card).
+export const CATEGORY_BADGE_CLASSES: Record<CategoryKey, string> = {
+  festyny: "bg-amber-500 text-black",
+  kultura: "bg-purple-500 text-white",
+  muzyka: "bg-green-500 text-black",
+  sport: "bg-blue-500 text-white",
+  targi: "bg-slate-500 text-white",
+}
 
-      <div className="flex items-center gap-3 overflow-x-auto pb-2" role="tablist" aria-label="Filtry kategorii">
-        <button
-          role="tab"
-          aria-selected={active === null}
-          onClick={() => setActive(null)}
-          className={`flex shrink-0 items-center gap-2 rounded-xl border px-5 py-3 text-sm font-medium transition-all ${
-            active === null
-              ? "border-primary bg-primary text-primary-foreground shadow-sm"
-              : "border-border bg-card text-foreground/70 hover:border-primary/40 hover:text-primary"
-          }`}
-        >
-          Wszystkie
-        </button>
-
-        {categories.map((cat) => {
-          const Icon = cat.icon
-          const isActive = active === cat.name
-          return (
-            <button
-              key={cat.name}
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setActive(isActive ? null : cat.name)}
-              className={`flex shrink-0 items-center gap-2.5 rounded-xl border px-5 py-3 text-sm font-medium transition-all ${
-                isActive
-                  ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                  : "border-border bg-card text-foreground/70 hover:border-primary/40 hover:text-primary"
-              }`}
-            >
-              <Icon className="size-4" />
-              {cat.name}
-            </button>
-          )
-        })}
-      </div>
-    </section>
-  )
+// Kolory HEX dla znaczników/popupów na mapie (EventMap.tsx) — Leaflet
+// renderuje je jako surowe stringi HTML (divIcon/popup), więc klasy
+// Tailwind tam nie działają; potrzebne osobne wartości koloru.
+export const CATEGORY_MAP_COLORS: Record<CategoryKey, string> = {
+  kultura: "#8B5CF6",
+  muzyka: "#22C55E",
+  sport: "#3B82F6",
+  festyny: "#F59E0B",
+  targi: "#64748B",
 }

@@ -49,6 +49,7 @@ const CATEGORIES = [
   { id: 'kultura', label: 'Kultura',   emoji: '🎭' },
   { id: 'muzyka',  label: 'Muzyka',    emoji: '🎵' },
   { id: 'sport',   label: 'Sport',     emoji: '⚽' },
+  { id: 'targi',   label: 'Targi/Biznes', emoji: '🏢' },
 ]
 
 const RADII = [5, 10, 25, 50]
@@ -493,32 +494,51 @@ export function MobileHome({ initialEvents }: { initialEvents?: Event[] }) {
     loadEvents()
   }, [loadEvents, initialEvents])
 
-  const filtered = events
-    .map(e => ({
-      ...e,
-      distance: (effLat !== null && effLon !== null && e.latitude !== null && e.longitude !== null)
-        ? haversineKm(effLat, effLon, e.latitude, e.longitude) : null
-    }))
-    .filter(e => {
-// Przy aktywnym wyszukiwaniu promień nie odcina — szukasz konkretnej rzeczy,
-      // masz ją znaleźć niezależnie od odległości. Dystans dalej liczy się na karcie.
-      if (!search.trim() && e.distance !== null && e.distance > radius) return false
-      if (activeDate === 'today' && !isToday(e.next_date)) return false
-      if (activeDate === 'tomorrow' && !isTomorrow(e.next_date)) return false
-      if (activeDate === 'weekend' && !isThisWeekend(e.next_date)) return false
-      if (activeDate === 'custom' && customDate && !isSameLocalDate(e.next_date, customDate)) return false
-      if (activeCategory !== 'all') {
-        if (normalizeCategory(e.category) !== activeCategory) return false
-      }
-      if (search.trim()) {
-        if (!matchesQuery(e, search)) return false
-      }
-      return true
-    })
+  const withDistance = events.map(e => ({
+    ...e,
+    distance: (effLat !== null && effLon !== null && e.latitude !== null && e.longitude !== null)
+      ? haversineKm(effLat, effLon, e.latitude, e.longitude) : null
+  }))
+
+  // Filtry wspólne dla listy I dla liczenia kategorii (patrz categoryCounts
+  // niżej) — wydzielone, żeby nie utrzymywać dwóch kopii tych samych
+  // czterech warunków. Celowo BEZ filtra kategorii — to jest właśnie ta
+  // różnica, dzięki której można policzyć "ile jest w KAŻDEJ kategorii",
+  // nie tylko w aktywnie wybranej.
+  const passesNonCategoryFilters = (e: typeof withDistance[number]) => {
+    // Przy aktywnym wyszukiwaniu promień nie odcina — szukasz konkretnej rzeczy,
+    // masz ją znaleźć niezależnie od odległości. Dystans dalej liczy się na karcie.
+    if (!search.trim() && e.distance !== null && e.distance > radius) return false
+    if (activeDate === 'today' && !isToday(e.next_date)) return false
+    if (activeDate === 'tomorrow' && !isTomorrow(e.next_date)) return false
+    if (activeDate === 'weekend' && !isThisWeekend(e.next_date)) return false
+    if (activeDate === 'custom' && customDate && !isSameLocalDate(e.next_date, customDate)) return false
+    if (search.trim() && !matchesQuery(e, search)) return false
+    return true
+  }
+
+  const filtered = withDistance
+    .filter(e => passesNonCategoryFilters(e) && (activeCategory === 'all' || normalizeCategory(e.category) === activeCategory))
     .sort((a, b) => {
       if (a.distance !== null && b.distance !== null) return a.distance - b.distance
       return new Date(a.next_date).getTime() - new Date(b.next_date).getTime()
     })
+
+  // 2026-09-27: kolejność pigułek kategorii odzwierciedla, ile wydarzeń jest
+  // w KAŻDEJ z nich przy obecnym promieniu/dacie/wyszukiwaniu — "Wszystkie"
+  // zawsze pierwsza, reszta malejąco po liczbie wydarzeń. Samo się dostosowuje
+  // do sezonu (festyny latem, mniej zimą) i do zmiany promienia — bez
+  // ręcznego przestawiania kolejności co kilka miesięcy.
+  const categoryCounts: Record<string, number> = {}
+  for (const e of withDistance) {
+    if (!passesNonCategoryFilters(e)) continue
+    const k = normalizeCategory(e.category)
+    categoryCounts[k] = (categoryCounts[k] ?? 0) + 1
+  }
+  const sortedCategories = [
+    CATEGORIES[0],
+    ...CATEGORIES.slice(1).sort((a, b) => (categoryCounts[b.id] ?? 0) - (categoryCounts[a.id] ?? 0)),
+  ]
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pb-24">
@@ -579,7 +599,7 @@ export function MobileHome({ initialEvents }: { initialEvents?: Event[] }) {
         </div>
 
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-2">
-          {CATEGORIES.map(cat => (
+          {sortedCategories.map(cat => (
             <button key={cat.id}
               onClick={e => {
                 setActiveCategory(cat.id)

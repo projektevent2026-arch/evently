@@ -24,12 +24,13 @@ const CAT_PILLS = [
   { id: "kultura", label: "🎭 Kultura" },
   { id: "muzyka", label: "🎵 Muzyka" },
   { id: "sport", label: "⚽ Sport" },
+  { id: "targi", label: "🏢 Targi/Biznes" },
 ]
 const CAT_LABEL: Record<string, string> = {
-  festyny: "🎪 Festyny", kultura: "🎭 Kultura", muzyka: "🎵 Muzyka", sport: "⚽ Sport",
+  festyny: "🎪 Festyny", kultura: "🎭 Kultura", muzyka: "🎵 Muzyka", sport: "⚽ Sport", targi: "🏢 Targi/Biznes",
 }
 const CAT_COLOR: Record<string, string> = {
-  festyny: "#f59e0b", kultura: "#7c3aed", muzyka: "#16a34a", sport: "#2563eb",
+  festyny: "#f59e0b", kultura: "#7c3aed", muzyka: "#16a34a", sport: "#2563eb", targi: "#64748b",
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
