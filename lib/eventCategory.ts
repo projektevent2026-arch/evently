@@ -42,11 +42,11 @@ export function normalizeCategory(raw: string | null | undefined): CategoryKey {
 }
 
 export const CATEGORY_LABELS: Record<CategoryKey, string> = {
-  festyny: "Festyny",
-  kultura: "Kultura",
-  muzyka: "Muzyka",
-  sport: "Sport",
-  targi: "Targi/Biznes",
+  festyny: "🎪 Festyny",
+  kultura: "🎭 Kultura",
+  muzyka: "🎵 Muzyka",
+  sport: "⚽ Sport",
+  targi: "🏢 Targi/Biznes",
 }
 
 // Klasy Tailwind dla plakietek na kartach (MobileHome, /ulubione, event-card).
