@@ -21,7 +21,7 @@ const LocationPicker = dynamic(
 
 const CATEGORIES = ["festyny","kultura","muzyka","sport","targi"]
 const CATEGORY_LABELS: Record<string,string> = {
-  festyny:"Festyny 🎪", kultura:"Kultura", muzyka:"Muzyka", sport:"Sport", targi:"Targi/Biznes 🏢"
+  festyny:"Festyny 🎪", kultura:"Kultura 🎭", muzyka:"Muzyka 🎵", sport:"Sport ⚽", targi:"Targi/Biznes 🏢"
 }
 
 // Zwraca dzisiejszą datę jako YYYY-MM-DD (do atrybutu min i porównań)

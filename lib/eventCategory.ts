@@ -24,13 +24,20 @@
 // bo tam trzeba odróżnić "nie wybrano" od "wybrano festyny". Mieszanie
 // tego z logiką wyświetlania złamałoby wymagane pole formularza.
 
-export type CategoryKey = "festyny" | "kultura" | "muzyka" | "sport"
+export type CategoryKey = "festyny" | "kultura" | "muzyka" | "sport" | "targi"
 
 export function normalizeCategory(raw: string | null | undefined): CategoryKey {
   const c = (raw ?? "").toLowerCase().trim()
   if (c === "kultura" || c === "culture") return "kultura"
   if (c === "muzyka" || c === "music") return "muzyka"
   if (c === "sport") return "sport"
+  // 2026-09-27: "Targi/Biznes" — dodane po Suwalskich Targach Branży
+  // Eventowej, które nie pasowały do żadnej z 4 poprzednich kategorii.
+  // Świadomie NIE rozdzielone na osobne "Targi" i "Biznes" — przy
+  // dzisiejszej liczbie wydarzeń w bazie to byłoby rozróżnienie bez
+  // różnicy (patrz notatka w pamięci projektu); rozdzielić dopiero, gdy
+  // obu realnie przybędzie.
+  if (c === "targi" || c === "biznes" || c === "business" || c === "fair") return "targi"
   return "festyny"
 }
 
@@ -39,6 +46,7 @@ export const CATEGORY_LABELS: Record<CategoryKey, string> = {
   kultura: "Kultura",
   muzyka: "Muzyka",
   sport: "Sport",
+  targi: "Targi/Biznes",
 }
 
 // Klasy Tailwind dla plakietek na kartach (MobileHome, /ulubione, event-card).
@@ -47,6 +55,7 @@ export const CATEGORY_BADGE_CLASSES: Record<CategoryKey, string> = {
   kultura: "bg-purple-500 text-white",
   muzyka: "bg-green-500 text-black",
   sport: "bg-blue-500 text-white",
+  targi: "bg-slate-500 text-white",
 }
 
 // Kolory HEX dla znaczników/popupów na mapie (EventMap.tsx) — Leaflet
@@ -57,4 +66,5 @@ export const CATEGORY_MAP_COLORS: Record<CategoryKey, string> = {
   muzyka: "#22C55E",
   sport: "#3B82F6",
   festyny: "#F59E0B",
+  targi: "#64748B",
 }
