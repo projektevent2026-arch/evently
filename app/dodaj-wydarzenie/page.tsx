@@ -426,7 +426,7 @@ try {
   // Nowe wydarzenie — formularz publiczny (status pending, source public)
   // albo organizator dodający coś nowego (status published od razu,
   // source organizer, created_by ustawiony żeby mógł to później edytować).
-  const { data: savedEvent, error: supabaseError } = await supabase.from("events").insert([{
+  const insertEvent = () => supabase.from("events").insert([{
     title: form.title,
     slug: generateSlug(form.title),
     description: form.description || null,
@@ -455,8 +455,25 @@ try {
     created_by: userId || null,
   }]).select("id").single()
 
+  let { data: savedEvent, error: supabaseError } = await insertEvent()
+
+  // 2026-09-27: slug ma wbudowany znacznik czasu w milisekundach
+  // (generateSlug), więc realne zderzenie jest praktycznie niemożliwe —
+  // ale skoro baza jest teraz tego pilnująca (unique index
+  // events_slug_unique_active), obsłuż to niewidocznie dla usera zamiast
+  // pokazywać mu awarię: spróbuj raz jeszcze ze świeżym slugiem (drugi
+  // znacznik czasu prawie na pewno będzie inny). Kod 23505 = Postgres
+  // unique_violation.
+  if (supabaseError?.code === "23505") {
+    ;({ data: savedEvent, error: supabaseError } = await insertEvent())
+  }
+
     if (supabaseError) {
-      setError("Błąd zapisu: " + supabaseError.message)
+      setError(
+        supabaseError.code === "23505"
+          ? "Nie udało się zapisać wydarzenia — spróbuj ponownie."
+          : "Błąd zapisu: " + supabaseError.message
+      )
       setSubmitting(false)
       return
     }
