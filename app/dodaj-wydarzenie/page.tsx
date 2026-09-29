@@ -397,17 +397,21 @@ try {
       return
     }
 
-    // Terminy: prościej usunąć stare i wstawić nowe niż dopasowywać
-    // różnice wiersz po wierszu — liczba terminów mogła się zmienić.
-    await supabase.from("event_dates").delete().eq("event_id", editId)
+    // 2026-09-28: usuń-i-wstaw terminów przez jedną transakcyjną funkcję
+    // (replace_event_dates) zamiast dwóch osobnych zapytań — wcześniej,
+    // gdyby DELETE się udał a INSERT padł w połowie, wydarzenie zostawało
+    // publicznie widoczne z połową programu. RPC robi oba kroki atomowo:
+    // albo wszystko się zapisze, albo nic.
     const editRows = sortedDates.map(d => ({
-      event_id: editId,
       date: d.date,
       start_time: d.from || null,
       end_time: d.to || null,
       starts_at: d.from ? `${d.date}T${d.from}:00` : `${d.date}T00:00:00`,
     }))
-    const { error: editDatesError } = await supabase.from("event_dates").insert(editRows)
+    const { error: editDatesError } = await supabase.rpc("replace_event_dates", {
+      p_event_id: editId,
+      p_dates: editRows,
+    })
     if (editDatesError) {
       setError("Zapisano zmiany, ale wystąpił błąd zapisu terminów: " + editDatesError.message)
       setSubmitting(false)

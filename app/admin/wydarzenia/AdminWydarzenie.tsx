@@ -577,28 +577,22 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     const validDates = dates.filter(d => d.date)
 
     if (savedEventId && validDates.length > 0) {
-      const { error: deleteError } = await supabase
-        .from("event_dates")
-        .delete()
-        .eq("event_id", savedEventId)
-
-      if (deleteError) {
-        setMsg("Błąd zapisu terminów: " + deleteError.message)
-        setSaving(false)
-        return
-      }
-
+      // 2026-09-28: usuń-i-wstaw przez jedną transakcyjną funkcję
+      // (replace_event_dates) zamiast dwóch osobnych zapytań — patrz
+      // ten sam komentarz w dodaj-wydarzenie/page.tsx.
       const rows = validDates.map(d => ({
-        event_id: savedEventId,
         date: d.date,
         start_time: d.from || null,
         end_time: d.to || null,
         starts_at: d.from ? `${d.date}T${d.from}:00` : `${d.date}T00:00:00`,
       }))
 
-      const { error: insertError } = await supabase.from("event_dates").insert(rows)
-      if (insertError) {
-        setMsg("Błąd zapisu terminów: " + insertError.message)
+      const { error: datesError } = await supabase.rpc("replace_event_dates", {
+        p_event_id: savedEventId,
+        p_dates: rows,
+      })
+      if (datesError) {
+        setMsg("Błąd zapisu terminów: " + datesError.message)
         setSaving(false)
         return
       }
