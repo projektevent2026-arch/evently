@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { revalidateHome } from "@/lib/revalidateHome"
-import { MapPin, Pencil, Plus, Trash2 } from "lucide-react"
+import { MapPin, Pencil, Plus, Trash2, User } from "lucide-react"
 
 // Prosta lista własnych wydarzeń organizatora, z możliwością edycji
 // i usuwania. Middleware już wymaga zalogowania przed wejściem tutaj —
@@ -90,9 +90,14 @@ export default function MojeWydarzenia() {
       <div style={{ maxWidth: 640, margin: "2rem auto", padding: "0 1rem", paddingBottom: "3rem" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
           <h1 style={{ fontSize: "1.5rem", fontWeight: 800, margin: 0 }}>Moje wydarzenia</h1>
-          <Link href="/dodaj-wydarzenie" style={{ display: "flex", alignItems: "center", gap: 6, background: "#16a34a", color: "white", borderRadius: 10, padding: "0.6rem 1rem", fontWeight: 600, fontSize: "0.85rem", textDecoration: "none" }}>
-            <Plus size={16} /> Dodaj wydarzenie
-          </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Link href="/moje-wydarzenia/profil" style={{ display: "flex", alignItems: "center", gap: 6, background: "white", border: "1px solid #e5e7eb", color: "#374151", borderRadius: 10, padding: "0.6rem 1rem", fontWeight: 600, fontSize: "0.85rem", textDecoration: "none" }}>
+              <User size={16} /> Mój profil
+            </Link>
+            <Link href="/dodaj-wydarzenie" style={{ display: "flex", alignItems: "center", gap: 6, background: "#16a34a", color: "white", borderRadius: 10, padding: "0.6rem 1rem", fontWeight: 600, fontSize: "0.85rem", textDecoration: "none" }}>
+              <Plus size={16} /> Dodaj wydarzenie
+            </Link>
+          </div>
         </div>
 
         {deleteError && (

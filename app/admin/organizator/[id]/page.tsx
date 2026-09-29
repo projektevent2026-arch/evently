@@ -5,9 +5,9 @@ import { useParams, useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { ArrowLeft, MapPin } from "lucide-react"
 
-// Profil pojedynczego użytkownika widziany oczami admina — na razie tylko
-// e-mail + rola (nazwa organizacji, np. "Suwalski Ośrodek Kultury",
-// zostaje na później, gdy dojdzie kolumna w profiles) i lista wszystkich
+// Profil pojedynczego użytkownika widziany oczami admina — nazwa
+// organizacji + zdjęcie profilowe (2026-09-29, dodane kolumny w profiles,
+// organizator ustawia je sam w /moje-wydarzenia/profil) i lista wszystkich
 // jego wydarzeń, niezależnie od statusu. Chroniona tak samo jak reszta
 // /admin/* — przez middleware (wymóg roli admin/moderator) + RLS na
 // odczyt events (admin/moderator widzi wszystko, nie tylko published).
@@ -32,6 +32,8 @@ export default function OrganizatorProfile() {
 
   const [email, setEmail] = useState<string | null>(null)
   const [role, setRole] = useState<string | null>(null)
+  const [orgName, setOrgName] = useState<string | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -47,6 +49,8 @@ export default function OrganizatorProfile() {
         if (match) {
           setEmail(match.email)
           setRole(match.role)
+          setOrgName(match.organization_name)
+          setAvatarUrl(match.avatar_url)
         }
 
         const { data, error: eventsError } = await supabase
@@ -93,9 +97,21 @@ export default function OrganizatorProfile() {
           <p style={{ color: "#ef4444" }}>{error}</p>
         ) : (
           <>
-            <h1 style={{ fontSize: "1.4rem", fontWeight: 800, margin: "0 0 8px", color: "#111827" }}>
-              {email || "Nieznany użytkownik"}
-            </h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", flexShrink: 0, background: "#f3f4f6" }} />
+              ) : (
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#f3f4f6", flexShrink: 0 }} />
+              )}
+              <div>
+                <h1 style={{ fontSize: "1.4rem", fontWeight: 800, margin: 0, color: "#111827" }}>
+                  {orgName || email || "Nieznany użytkownik"}
+                </h1>
+                {orgName && email && (
+                  <p style={{ margin: "2px 0 0", fontSize: "0.85rem", color: "#6b7280" }}>{email}</p>
+                )}
+              </div>
+            </div>
             {roleInfo && (
               <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 20, fontSize: "0.75rem", fontWeight: 600, background: roleInfo.bg, color: roleInfo.color, marginBottom: "1.5rem" }}>
                 {roleInfo.label}

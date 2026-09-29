@@ -101,7 +101,7 @@ export default function DodajWydarzenie() {
         if (!user) return
 
         setUserId(user.id)
-        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+        const { data: profile } = await supabase.from("profiles").select("role, organization_name").eq("id", user.id).single()
         setUserRole(profile?.role || null)
 
         if (editParam) {
@@ -146,6 +146,16 @@ export default function DodajWydarzenie() {
               to: d.end_time ? String(d.end_time).slice(0, 5) : "",
             })))
           }
+        } else if (profile?.organization_name) {
+          // 2026-09-29: nowe wydarzenie (nie edycja) — jeśli organizator ma
+          // ustawioną nazwę organizacji w swoim profilu (/moje-wydarzenia/
+          // profil), wypełnij nią pole od razu, zamiast wymagać wpisania
+          // jej ręcznie za każdym razem. Celowo TYLKO tutaj, nie przy
+          // edycji (gałąź wyżej) — tam pole już ma wartość zapisaną przy
+          // TYM konkretnym wydarzeniu, której nie chcemy po cichu nadpisać
+          // (organizator mógł świadomie wpisać coś innego dla tego eventu).
+          // User i tak może to pole normalnie nadpisać przed zapisem.
+          setForm(prev => ({ ...prev, organizer_name: profile.organization_name }))
         }
       } finally {
         // Niezależnie od tego, którą ścieżką funkcja się zakończyła

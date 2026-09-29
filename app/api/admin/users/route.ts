@@ -19,7 +19,7 @@ export async function GET() {
     { data: profiles, error: profilesError },
   ] = await Promise.all([
     supabaseAdmin.auth.admin.listUsers(),
-    supabaseAdmin.from("profiles").select("id, role"),
+    supabaseAdmin.from("profiles").select("id, role, organization_name, avatar_url"),
   ])
 
   if (authError) {
@@ -29,15 +29,20 @@ export async function GET() {
     return NextResponse.json({ error: profilesError.message }, { status: 500 })
   }
 
-  const roleById = new Map((profiles || []).map((p: any) => [p.id, p.role]))
+  const profileById = new Map((profiles || []).map((p: any) => [p.id, p]))
 
   const merged = authUsers.users
-    .map((u: any) => ({
-      id: u.id,
-      email: u.email,
-      role: roleById.get(u.id) || "user",
-      created_at: u.created_at,
-    }))
+    .map((u: any) => {
+      const profile = profileById.get(u.id)
+      return {
+        id: u.id,
+        email: u.email,
+        role: profile?.role || "user",
+        organization_name: profile?.organization_name || null,
+        avatar_url: profile?.avatar_url || null,
+        created_at: u.created_at,
+      }
+    })
     .sort((a: any, b: any) => (b.created_at || "").localeCompare(a.created_at || ""))
 
   return NextResponse.json({ users: merged })
