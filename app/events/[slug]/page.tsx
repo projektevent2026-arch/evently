@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import type { Metadata } from "next"
 import EventDetailWrapper from "@/components/EventDetailWrapper"
+import { publishedFilter } from "@/lib/publishedFilter"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,9 +13,15 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params
 
-  const { data: event } = await supabase
-    .from("events")
-    .select("title, short_description, cover_image_url, city, start_date")
+  // 2026-09-28: było .from("events") bez filtra statusu/deleted_at —
+  // metadane (tagi OG dla Facebooka/Twittera/WhatsAppa) generowały się
+  // nawet dla wydarzeń oczekujących na moderację albo już usuniętych,
+  // niezależnie od tego, że sama treść strony (EventDetailWrapper) już
+  // dawno przeszła na public_events + publishedFilter. Teraz to samo
+  // źródło i ten sam filtr w obu miejscach.
+  const { data: event } = await publishedFilter(
+    supabase.from("public_events").select("title, short_description, cover_image_url, city, start_date")
+  )
     .eq(/^[0-9a-f-]{36}$/i.test(slug) ? "id" : "slug", slug)
     .single()
 
