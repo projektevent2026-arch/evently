@@ -62,6 +62,9 @@ export default function AdminPage() {
   const [search, setSearch] = useState("")
   const [sortBy, setSortBy] = useState("date_desc")
   const [previewEvent, setPreviewEvent] = useState<any>(null)
+  // 2026-09-29: id wydarzenia, którego okienko statystyk (po kliknięciu
+  // w 👁) jest aktualnie otwarte — null gdy żadne.
+  const [statsPopupId, setStatsPopupId] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   useEffect(() => { fetchEvents() }, [])
@@ -281,6 +284,21 @@ export default function AdminPage() {
 
   const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" }) : "—"
 
+  // Format "X temu" dla okienka statystyk po kliknięciu w 👁 — celowo
+  // względny czas, nie dokładna data/godzina, bo o to chodziło w pomyśle
+  // ("tempo", nie precyzyjny log).
+  const timeAgo = (iso: string | null): string => {
+    if (!iso) return "—"
+    const diffMs = Date.now() - new Date(iso).getTime()
+    const min = Math.floor(diffMs / 60000)
+    if (min < 1) return "przed chwilą"
+    if (min < 60) return `${min} ${min === 1 ? "minutę" : min < 5 ? "minuty" : "minut"} temu`
+    const godz = Math.floor(min / 60)
+    if (godz < 24) return `${godz} ${godz === 1 ? "godzinę" : godz < 5 ? "godziny" : "godzin"} temu`
+    const dni = Math.floor(godz / 24)
+    return `${dni} ${dni === 1 ? "dzień" : dni < 5 ? "dni" : "dni"} temu`
+  }
+
   const daysUntilPurge = (deletedAt: string): number => {
     const deleted = new Date(deletedAt)
     const purgeDate = new Date(deleted)
@@ -457,13 +475,36 @@ export default function AdminPage() {
                 <input type="checkbox" checked={selected.has(event.id)} onChange={() => toggleSelect(event.id)}
                   style={{ width: 18, height: 18, marginTop: 4, flexShrink: 0, cursor: "pointer" }} />
                 <img src={event.cover_image_url || event.image_url || "/images/event-concert.jpg"} alt=""
-                  onClick={() => setPreviewEvent(event)}
+                  onClick={() => { setPreviewEvent(event); setStatsPopupId(null) }}
                   style={{ width: 60, height: 78, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "#f3f4f6", cursor: "pointer" }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div onClick={() => setPreviewEvent(event)} style={{ cursor: "pointer" }}>
+                  <div onClick={() => { setPreviewEvent(event); setStatsPopupId(null) }} style={{ cursor: "pointer" }}>
                     <div style={{ fontWeight: 600, fontSize: "0.98rem", lineHeight: 1.3, marginBottom: 4, color: "#111827" }}>{event.title}</div>
                     <div style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📍 {event.address || event.city || "—"}</div>
-                    <div style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 8 }}>📅 {fmtDate(event.start_date)}</div>
+                    <div style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 8, position: "relative" }}>
+                      📅 {fmtDate(event.start_date)} ·{" "}
+                      <span
+                        onClick={e => { e.stopPropagation(); setStatsPopupId(statsPopupId === event.id ? null : event.id) }}
+                        style={{ cursor: "pointer", textDecoration: "underline dotted" }}
+                      >
+                        👁 {event.view_count ?? 0}
+                      </span>
+                      {statsPopupId === event.id && (
+                        <div
+                          onClick={e => e.stopPropagation()}
+                          style={{
+                            position: "absolute", top: "100%", left: 0, marginTop: 4, zIndex: 10,
+                            background: "white", border: "1px solid #e5e7eb", borderRadius: 8,
+                            padding: "10px 14px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                            fontSize: "0.78rem", color: "#374151", whiteSpace: "nowrap",
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, marginBottom: 4 }}>{event.view_count ?? 0} wyświetleń</div>
+                          <div>Pierwsze: {timeAgo(event.first_viewed_at)}</div>
+                          <div>Ostatnie: {timeAgo(event.last_viewed_at)}</div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   {event.deleted_at && (
                     <div style={{ fontSize: "0.8rem", color: "#ef4444", marginBottom: 8, fontWeight: 600 }}>
