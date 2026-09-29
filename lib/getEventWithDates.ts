@@ -70,5 +70,29 @@ export async function getEventWithDates(slug: string, isPreview: boolean = false
     return aVal.localeCompare(bVal)
   })
 
+  // 2026-09-29: licznik wyświetleń, tylko dla panelu admina (patrz notatka
+  // projektu) — celowo NIE liczymy podglądu admina/organizatora
+  // (isPreview) jako prawdziwego wyświetlenia. Znacznik w localStorage
+  // (24h) zapobiega zawyżaniu przy zwykłym odświeżeniu strony/powrocie
+  // "wstecz" przez tego samego odwiedzającego — to nie jest ochrona przed
+  // celowym nadużyciem (ktoś mógłby wyczyścić localStorage i wywołać RPC
+  // ręcznie z konsoli), tylko przed najpospolitszym, niezłośliwym źródłem
+  // zawyżenia. Pełna, dokładna wersja (deduplikacja po IP/sesji) to
+  // osobne, świadomie odłożone zadanie — patrz notatka.
+  if (!isPreview && typeof window !== "undefined") {
+    try {
+      const key = `evently_viewed_${data.id}`
+      const last = localStorage.getItem(key)
+      const now = Date.now()
+      if (!last || now - parseInt(last, 10) > 24 * 60 * 60 * 1000) {
+        localStorage.setItem(key, String(now))
+        supabase.rpc("increment_view_count", { p_event_id: data.id }).then(() => {})
+      }
+    } catch {
+      // localStorage niedostępny (np. tryb prywatny) — licznik nie jest
+      // krytyczny dla działania strony, po prostu pomiń.
+    }
+  }
+
   return { ...data, event_dates: sortedDates }
 }

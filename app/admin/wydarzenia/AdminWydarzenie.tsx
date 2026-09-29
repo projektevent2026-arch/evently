@@ -117,6 +117,9 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
   const [section, setSection] = useState("basic")
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState("")
+  // 2026-09-29: licznik wyświetleń — tylko do wyświetlenia, nie edytowalne,
+  // stąd osobny stan zamiast dokładania pola do `form`.
+  const [viewCount, setViewCount] = useState<number | null>(null)
   const [geocoding, setGeocoding] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [scanStatus, setScanStatus] = useState("")
@@ -166,6 +169,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
   async function loadEvent(id: string) {
     const { data } = await supabase.from("events").select("*").eq("id", id).single()
     if (!data) return
+    setViewCount(typeof data.view_count === "number" ? data.view_count : 0)
   
     // Terminy czytamy z event_dates — to jest teraz źródło prawdy, nie start_date/end_date
     const { data: dateRows } = await supabase
@@ -716,6 +720,11 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
           <div>
             <h1 style={{ margin:0, fontSize:18, fontWeight:700, color:"#111827" }}>
               {eventId ? "Edytuj wydarzenie" : "Dodaj wydarzenie"}
+              {eventId && viewCount !== null && (
+                <span style={{ marginLeft:10, fontSize:13, fontWeight:500, color:"#6b7280" }}>
+                  · 👁 {viewCount} {viewCount === 1 ? "wyświetlenie" : viewCount < 5 ? "wyświetlenia" : "wyświetleń"}
+                </span>
+              )}
             </h1>
             {msg && <p style={{ margin:"4px 0 0", fontSize:13, color: msg.includes("Błąd") ? "#ef4444" : "#16a34a" }}>{msg}</p>}
           </div>
