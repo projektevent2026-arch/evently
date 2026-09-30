@@ -322,7 +322,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
               )}
             </div>
 
-            {(event.organizer_name || event.website_url) && (() => {
+            {(event.organizer_name || event.website_url || event.created_by) && (() => {
               const href = event.website_url ? cleanUrlForDisplay(event.website_url).href : ""
               // 2026-09-30: dwa OSOBNE cele kliknięcia w tej karcie, nie
               // jeden — awatar+nazwa prowadzą do publicznego profilu
@@ -339,9 +339,9 @@ export default function EventPageClient({ slug }: { slug: string }) {
                       <Building2 size={22} color="#16a34a" />
                     )}
                   </div>
-                  {event.organizer_name && (
-                    <div style={{fontSize:15,fontWeight:700,color:"#111827"}}>{event.organizer_name}</div>
-                  )}
+                  <div style={{fontSize:15,fontWeight:700,color:"#111827"}}>
+                    {event.organizer_name || event.organizer_profile?.organization_name || "Zobacz profil organizatora"}
+                  </div>
                 </div>
               )
               return (

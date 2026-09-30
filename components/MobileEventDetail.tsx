@@ -260,7 +260,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                 zależało od tego, jak krótka/długa jest wyświetlana
                 etykieta. Gdy nie ma website_url, karta zostaje zwykłym,
                 nieklikalnym <div> — nie ma dokąd prowadzić. */}
-            {(event.organizer_name || event.website_url) && (() => {
+            {(event.organizer_name || event.website_url || event.created_by) && (() => {
               const { href, label } = event.website_url ? cleanUrlForDisplay(event.website_url) : { href: "", label: "" }
               // 2026-09-30: dwa OSOBNE cele — cała karta prowadzi do
               // publicznego profilu organizatora w Evently (wszystkie jego
@@ -278,9 +278,9 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                     )}
                   </div>
                   <div className="flex-1">
-                    {event.organizer_name && (
-                      <div className="text-[12px] font-bold text-white">{event.organizer_name}</div>
-                    )}
+                    <div className="text-[12px] font-bold text-white">
+                      {event.organizer_name || event.organizer_profile?.organization_name || "Zobacz profil organizatora"}
+                    </div>
                   </div>
                 </>
               )
