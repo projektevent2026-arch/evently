@@ -324,9 +324,14 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
             {(event.organizer_name || event.website_url) && (() => {
               const href = event.website_url ? cleanUrlForDisplay(event.website_url).href : ""
-              const rowStyle = {display:"flex",alignItems:"center",gap:14} as const
-              const row = (
-                <div style={rowStyle}>
+              // 2026-09-30: dwa OSOBNE cele kliknięcia w tej karcie, nie
+              // jeden — awatar+nazwa prowadzą do publicznego profilu
+              // organizatora w Evently (wszystkie jego wydarzenia), TYLKO
+              // gdy wydarzenie jest powiązane z prawdziwym kontem
+              // (created_by); "Strona organizatora" to osobny, mały link
+              // do ich WŁASNEJ zewnętrznej strony, niezależnie od tego.
+              const orgRow = (
+                <div style={{display:"flex",alignItems:"center",gap:14}}>
                   <div style={{width:48,height:48,borderRadius:12,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden"}}>
                     {event.organizer_profile?.avatar_url ? (
                       <img src={event.organizer_profile.avatar_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />
@@ -334,27 +339,24 @@ export default function EventPageClient({ slug }: { slug: string }) {
                       <Building2 size={22} color="#16a34a" />
                     )}
                   </div>
-                  <div>
-                    {event.organizer_name && (
-                      <div style={{fontSize:15,fontWeight:700,color:"#111827"}}>{event.organizer_name}</div>
-                    )}
-                    {event.website_url && (
-                      <span style={{fontSize:13,color:"#16a34a",display:"inline-flex",alignItems:"center",gap:4}}>
-                        ↗ Strona organizatora
-                      </span>
-                    )}
-                  </div>
+                  {event.organizer_name && (
+                    <div style={{fontSize:15,fontWeight:700,color:"#111827"}}>{event.organizer_name}</div>
+                  )}
                 </div>
               )
-              const cardStyle = {background:"white",borderRadius:18,padding:"20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"} as const
               return (
-                <div style={cardStyle}>
+                <div style={{background:"white",borderRadius:18,padding:"20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
                   <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:0.5,marginBottom:14}}>Organizator</div>
-                  {event.website_url ? (
-                    <a href={href} target="_blank" rel="noopener noreferrer" style={{textDecoration:"none", display:"block"}}>
-                      {row}
+                  {event.created_by ? (
+                    <Link href={`/organizator/${event.created_by}`} style={{textDecoration:"none", display:"block"}}>
+                      {orgRow}
+                    </Link>
+                  ) : orgRow}
+                  {event.website_url && (
+                    <a href={href} target="_blank" rel="noopener noreferrer" style={{fontSize:13,color:"#16a34a",display:"inline-flex",alignItems:"center",gap:4,marginTop:10,textDecoration:"none"}}>
+                      ↗ Strona organizatora
                     </a>
-                  ) : row}
+                  )}
                 </div>
               )
             })()}

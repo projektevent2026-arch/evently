@@ -262,6 +262,12 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                 nieklikalnym <div> — nie ma dokąd prowadzić. */}
             {(event.organizer_name || event.website_url) && (() => {
               const { href, label } = event.website_url ? cleanUrlForDisplay(event.website_url) : { href: "", label: "" }
+              // 2026-09-30: dwa OSOBNE cele — cała karta prowadzi do
+              // publicznego profilu organizatora w Evently (wszystkie jego
+              // wydarzenia), tylko gdy powiązane z prawdziwym kontem
+              // (created_by); strona zewnętrzna to osobny, mały link pod
+              // spodem, nie wewnątrz tej samej karty (dwa zagnieżdżone
+              // linki są nieprawidłowe w HTML).
               const inner = (
                 <>
                   <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden">
@@ -275,21 +281,25 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                     {event.organizer_name && (
                       <div className="text-[12px] font-bold text-white">{event.organizer_name}</div>
                     )}
-                    {event.website_url && (
-                      <div className="text-[10px] text-zinc-500">{label}</div>
-                    )}
                   </div>
                 </>
               )
-              return event.website_url ? (
-                <a href={href} target="_blank" rel="noopener noreferrer"
-                  className="mt-5 flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl p-3 active:bg-zinc-800 transition-colors">
-                  {inner}
-                </a>
-              ) : (
-                <div className="mt-5 flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl p-3">
-                  {inner}
-                </div>
+              const cardClass = "mt-5 flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl p-3"
+              return (
+                <>
+                  {event.created_by ? (
+                    <Link href={`/organizator/${event.created_by}`} className={cardClass + " active:bg-zinc-800 transition-colors"}>
+                      {inner}
+                    </Link>
+                  ) : (
+                    <div className={cardClass}>{inner}</div>
+                  )}
+                  {event.website_url && (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-[11px] text-green-400">
+                      ↗ {label}
+                    </a>
+                  )}
+                </>
               )
             })()}
 
