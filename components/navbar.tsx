@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { MapPin, Plus, Heart, User } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useFavorites } from "@/hooks/useFavorites"
 
@@ -18,6 +18,24 @@ export function Navbar() {
   // organizatorów (mają stronę profilu; admin na razie nie).
   const [avatarUrl, setAvatarUrl] = useState("")
   const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // 2026-09-30: nasłuch na całym dokumencie zamiast niewidocznej warstwy
+  // "fixed inset-0" — ta druga nie działała poprawnie, bo nagłówek ma
+  // backdrop-blur-xl, a filtr/backdrop-filter na przodku tworzy nowy
+  // "containing block" dla potomków position:fixed w przeglądarkach —
+  // fixed-warstwa była wtedy ograniczona do granic samego nagłówka
+  // (64px), nie całej strony, więc klik niżej na stronie jej nie trafiał.
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [menuOpen])
   // Ulubione na localStorage — NIE wymagają konta. Licznik zsynchronizowany z sercami.
   const { count } = useFavorites()
 
@@ -110,7 +128,7 @@ export function Navbar() {
           )}
 
           {user && isOrganizer ? (
-            <div className="relative">
+            <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen(v => !v)}
                 className="flex items-center justify-center size-8 rounded-full bg-muted overflow-hidden border border-border"
@@ -123,25 +141,21 @@ export function Navbar() {
                 )}
               </button>
               {menuOpen && (
-                <>
-                  {/* Niewidoczna warstwa zamykająca menu po kliknięciu gdziekolwiek indziej */}
-                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 top-10 z-50 w-44 rounded-lg border border-border bg-background shadow-lg py-1">
-                    <Link
-                      href="/moje-wydarzenia/profil"
-                      onClick={() => setMenuOpen(false)}
-                      className="block px-3 py-2 text-sm text-foreground hover:bg-muted"
-                    >
-                      Mój profil
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full text-left px-3 py-2 text-sm text-foreground hover:bg-muted"
-                    >
-                      Wyloguj się
-                    </button>
-                  </div>
-                </>
+                <div className="absolute right-0 top-10 z-50 w-44 rounded-lg border border-border bg-background shadow-lg py-1">
+                  <Link
+                    href="/moje-wydarzenia/profil"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-3 py-2 text-sm text-foreground hover:bg-muted"
+                  >
+                    Mój profil
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-3 py-2 text-sm text-foreground hover:bg-muted"
+                  >
+                    Wyloguj się
+                  </button>
+                </div>
               )}
             </div>
           ) : user ? (

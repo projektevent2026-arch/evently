@@ -3,6 +3,21 @@
 import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { MapPin } from "lucide-react"
+
+// 2026-09-30: logo linkujące do strony głównej — strona logowania nie
+// miała żadnej drogi powrotu poza przyciskiem "wstecz" przeglądarki.
+function Logo() {
+  return (
+    <Link href="/" className="mb-8 flex items-center gap-2 text-primary no-underline">
+      <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
+        <MapPin className="size-4 text-primary-foreground" />
+      </div>
+      <span className="text-lg font-bold">evently</span>
+    </Link>
+  )
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -59,6 +74,7 @@ export default function LoginPage() {
     return (
       <main className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-sm">
+          <Logo />
           <h1 className="mb-6 text-2xl font-bold">Zresetuj hasło</h1>
 
           {forgotSent ? (
@@ -101,6 +117,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
+        <Logo />
         <h1 className="mb-6 text-2xl font-bold">Zaloguj się</h1>
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <input
