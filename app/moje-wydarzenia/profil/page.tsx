@@ -93,7 +93,7 @@ export default function ProfilOrganizatora() {
               onChange={e => setOrgName(e.target.value)}
               placeholder="np. SOK Suwalski Ośrodek Kultury"
               maxLength={100}
-              style={{ width: "100%", padding: "8px 10px", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.9rem", marginBottom: 20, boxSizing: "border-box" }}
+              style={{ width: "100%", padding: "8px 10px", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.9rem", marginBottom: 20, boxSizing: "border-box", color: "#111827", background: "white" }}
             />
 
             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#374151", marginBottom: 6 }}>
