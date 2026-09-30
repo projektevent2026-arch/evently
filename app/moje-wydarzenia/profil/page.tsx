@@ -66,17 +66,28 @@ export default function ProfilOrganizatora() {
     setSaving(true)
     setMsg(null)
 
-    const { error } = await supabase
+    // 2026-09-30: .select() na końcu jest celowy — bez niego Supabase
+    // potrafi zwrócić "sukces" (error === null) nawet gdy RLS po cichu
+    // zablokował zapis i faktycznie zmieniło się 0 wierszy. Sprawdzenie
+    // długości zwróconych danych to jedyny sposób, żeby to odróżnić od
+    // prawdziwego zapisu — dokładnie ten sam wzorzec co przy usuwaniu
+    // wydarzenia w tym samym module.
+    const { data: updated, error } = await supabase
       .from("profiles")
       .update({
         organization_name: draftOrgName.trim() || null,
         avatar_url: draftAvatarUrl || null,
       })
       .eq("id", userId)
+      .select("organization_name, avatar_url")
 
     setSaving(false)
     if (error) {
       setMsg("Błąd zapisu: " + error.message)
+      return
+    }
+    if (!updated || updated.length === 0) {
+      setMsg("Błąd zapisu: brak uprawnień do zapisania profilu (RLS). Sprawdź regułę update na tabeli profiles.")
       return
     }
     setOrgName(draftOrgName.trim())
