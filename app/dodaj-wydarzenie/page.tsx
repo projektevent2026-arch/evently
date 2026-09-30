@@ -87,6 +87,10 @@ export default function DodajWydarzenie() {
   const [roleChecked, setRoleChecked] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [editNotAllowed, setEditNotAllowed] = useState(false)
+  // 2026-09-30: status wydarzenia w momencie wczytania edycji — potrzebny
+  // przy zapisie, żeby wiedzieć, czy zdjąć "archiwum" przy zmianie daty na
+  // przyszłą (patrz przy budowaniu payloadu update niżej).
+  const [existingStatus, setExistingStatus] = useState<string | null>(null)
   // Domyślnie true — baner "sprawdź dane" pokazuje się tylko PO skanie
   // plakatu, nigdy przy zwykłym, ręcznym wypełnianiu formularza.
   const [scanReviewed, setScanReviewed] = useState(true)
@@ -119,6 +123,7 @@ export default function DodajWydarzenie() {
           }
 
           setEditId(editParam)
+          setExistingStatus(existing.status || null)
           setForm({
             title: existing.title || "",
             description: existing.description || "",
@@ -376,7 +381,28 @@ try {
     // Edycja WŁASNEGO, już istniejącego wydarzenia — UPDATE, nie INSERT.
     // Dostęp do tego wydarzenia był już zweryfikowany przy wczytywaniu
     // (created_by === user.id), RLS to samo wymusza jeszcze raz po stronie bazy.
-    const { error: updateError } = await supabase.from("events").update({
+    // 2026-09-30: gdy organizator (tylko tu, nie w panelu admina — ten
+    // dotyka innego komponentu) przesuwa termin zarchiwizowanego
+    // wydarzenia na przyszłość, samo zdejmij "archiwum" i wróć do
+    // "published" — inaczej poprawna data i tak zostaje niewidoczna
+    // publicznie, co jest mylące. Świadomie TYLKO w tym kierunku
+    // (archived → published), nie odwrotnie — cofnięcie daty do
+    // przeszłości nie powinno nic samo archiwizować.
+    const shouldUnarchive = existingStatus === "archived" && new Date(start) > new Date()
+
+    // TYMCZASOWY LOG — do usunięcia po znalezieniu przyczyny
+    // (2026-09-30, auto-odarchiwizowanie nie działa u Rafała mimo daty
+    // w przyszłości).
+    console.log("[ARCHIVE DEBUG]", {
+      existingStatus,
+      start,
+      startParsed: new Date(start),
+      now: new Date(),
+      isFuture: new Date(start) > new Date(),
+      shouldUnarchive,
+    })
+
+    const { error: updateError, data: updatedRows } = await supabase.from("events").update({
       title: form.title,
       description: form.description || null,
       short_description: generateShortDescription(form.description) || null,
@@ -399,7 +425,10 @@ try {
       longitude: form.longitude ? parseFloat(form.longitude) : null,
       location_notes: form.location_notes.trim() || null,
       schedule: form.schedule && form.schedule.length ? form.schedule : null,
-    }).eq("id", editId)
+      ...(shouldUnarchive ? { status: "published" } : {}),
+    }).eq("id", editId).select("id, status")
+
+    console.log("[ARCHIVE DEBUG] wynik zapisu:", { updateError, updatedRows })
 
     if (updateError) {
       setError("Błąd zapisu: " + updateError.message)
