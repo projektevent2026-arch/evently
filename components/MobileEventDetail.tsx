@@ -85,6 +85,15 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.address, event.city].filter(Boolean).join(', '))}`
   const hasTabs = event.schedule && event.schedule.length > 0
   const tabs = hasTabs ? TABS : ['O wydarzeniu', 'Lokalizacja']
+  // 2026-09-29: event.schedule to tablica DNI ({day, label, items}), nie
+  // punktów programu — poniższy podgląd (pierwsze kilka punktów na
+  // głównej karcie, przed wejściem w zakładkę "Program") czytał .time/
+  // .title bezpośrednio z obiektu dnia, którego te pola w ogóle nie mają.
+  // Renderowało się jako puste kropki, bez godziny i tytułu. Spłaszczone
+  // tutaj do prawdziwej listy punktów, w kolejności dni.
+  const scheduleItemsFlat: any[] = hasTabs
+    ? event.schedule.flatMap((d: any) => d.items || [])
+    : []
 
   // Godzina w pasku info: z NAJBLIŻSZEGO terminu (nextOccurrence), nie z
   // surowych start_date/end_date — patrz komentarz w EventPageClient.tsx
@@ -228,7 +237,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
             <EventDatesList dates={event.event_dates} variant="dark" />
 
             {/* Schedule preview */}
-            {hasTabs && event.schedule?.slice(0, 4).map((item: any, i: number) => (
+            {scheduleItemsFlat.slice(0, 4).map((item: any, i: number) => (
               <div key={i} className="flex items-center gap-3 mb-3">
                 <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
                 <span className="text-[11px] font-bold text-green-400 min-w-[38px]">
@@ -237,7 +246,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                 <span className="text-[11px] text-zinc-300">{item.title || item.name}</span>
               </div>
             ))}
-            {hasTabs && event.schedule?.length > 4 && (
+            {scheduleItemsFlat.length > 4 && (
               <button
                 onClick={() => setActiveTab(1)}
                 className="text-[11px] text-green-400 font-semibold mt-1"

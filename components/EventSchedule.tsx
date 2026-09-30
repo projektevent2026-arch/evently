@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 
 interface ScheduleItem {
   time?: string
+  endTime?: string
   title: string
   description?: string
 }
@@ -270,6 +271,11 @@ export default function EventSchedule({ schedule, eventDate, variant = 'light' }
                         }}
                       >
                         {item.title}
+                        {item.endTime && (
+                          <span style={{ fontWeight: 400, fontSize: '0.8rem', color: t.desc, marginLeft: 6 }}>
+                            (do {item.endTime})
+                          </span>
+                        )}
                       </p>
                       {item.description && (
                         <p style={{ margin: '3px 0 0', fontSize: '0.85rem', color: t.desc, lineHeight: 1.5 }}>
