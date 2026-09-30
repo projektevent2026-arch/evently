@@ -390,19 +390,7 @@ try {
     // przeszłości nie powinno nic samo archiwizować.
     const shouldUnarchive = existingStatus === "archived" && new Date(start) > new Date()
 
-    // TYMCZASOWY LOG — do usunięcia po znalezieniu przyczyny
-    // (2026-09-30, auto-odarchiwizowanie nie działa u Rafała mimo daty
-    // w przyszłości).
-    console.log("[ARCHIVE DEBUG]", {
-      existingStatus,
-      start,
-      startParsed: new Date(start),
-      now: new Date(),
-      isFuture: new Date(start) > new Date(),
-      shouldUnarchive,
-    })
-
-    const { error: updateError, data: updatedRows } = await supabase.from("events").update({
+    const { error: updateError } = await supabase.from("events").update({
       title: form.title,
       description: form.description || null,
       short_description: generateShortDescription(form.description) || null,
@@ -426,9 +414,7 @@ try {
       location_notes: form.location_notes.trim() || null,
       schedule: form.schedule && form.schedule.length ? form.schedule : null,
       ...(shouldUnarchive ? { status: "published" } : {}),
-    }).eq("id", editId).select("id, status")
-
-    console.log("[ARCHIVE DEBUG] wynik zapisu:", { updateError, updatedRows })
+    }).eq("id", editId)
 
     if (updateError) {
       setError("Błąd zapisu: " + updateError.message)
