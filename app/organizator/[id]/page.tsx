@@ -26,7 +26,7 @@ export default function OrganizatorPage() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: profile }, { data: rawEvents }] = await Promise.all([
+      const [{ data: profile, error: profileError }, { data: rawEvents, error: eventsError }] = await Promise.all([
         supabase
           .from("public_organizer_profiles")
           .select("organization_name, avatar_url")
@@ -34,10 +34,15 @@ export default function OrganizatorPage() {
           .maybeSingle(),
         supabase
           .from("published_events_with_next_date")
-          .select("id, slug, title, next_date, next_start_time, schedule_type, city, cover_image_url, image_url, category, is_free")
+          .select("id, slug, title, next_date, next_start_time, schedule_type, city, cover_image_url, image_url, category, is_free, created_by")
           .eq("created_by", id)
           .order("next_date", { ascending: true }),
       ])
+
+      // TYMCZASOWY LOG — do usunięcia po znalezieniu przyczyny
+      // (2026-09-30, "Nie znaleziono organizatora" mimo że wydarzenie z
+      // tym created_by istnieje i jest widoczne publicznie).
+      console.log("[ORGANIZATOR DEBUG]", { id, profile, profileError, rawEvents, eventsError })
 
       // Brak profilu NIE oznacza braku wydarzeń — organizator mógł nigdy
       // nie ustawić nazwy/zdjęcia, a i tak realnie mieć opublikowane

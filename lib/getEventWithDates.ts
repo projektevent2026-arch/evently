@@ -105,11 +105,15 @@ export async function getEventWithDates(slug: string, isPreview: boolean = false
   // dalej pokazuje sam organizer_name z formularza jak dotąd.
   let organizerProfile: { organization_name: string | null; avatar_url: string | null } | null = null
   if (data.created_by) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("public_organizer_profiles")
       .select("organization_name, avatar_url")
       .eq("id", data.created_by)
       .maybeSingle()
+    // TYMCZASOWY LOG — do usunięcia po znalezieniu przyczyny (2026-09-30,
+    // karta Organizatora pokazuje tylko generyczny tekst zamiast
+    // zdjęcia/nazwy, mimo że profil powinien je mieć ustawione).
+    console.log("[ORGANIZATOR PROFILE DEBUG]", { created_by: data.created_by, profile, profileError })
     if (profile) organizerProfile = profile
   }
 
