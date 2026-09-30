@@ -47,6 +47,9 @@ export default function MojeWydarzenia() {
   const [statusTab, setStatusTab] = useState("all")
   const [catFilter, setCatFilter] = useState<"all" | CategoryKey>("all")
   const [sortBy, setSortBy] = useState("date_desc")
+  // 2026-09-30: zdjęcie profilowe do wizualnego znaku "jesteś zalogowany"
+  // w nagłówku — zamiast samego przycisku tekstowego "Mój profil".
+  const [avatarUrl, setAvatarUrl] = useState("")
 
   useEffect(() => {
     async function load() {
@@ -55,13 +58,17 @@ export default function MojeWydarzenia() {
 
       // Wszystkie statusy + deleted_at naraz (nie tylko is("deleted_at", null)
       // jak wcześniej) — inaczej zakładka "Kosz" nie miałaby czego pokazać.
-      const { data } = await supabase
-        .from("events")
-        .select("id, slug, title, start_date, status, deleted_at, cover_image_url, image_url, category, city, venue_name")
-        .eq("created_by", user.id)
-        .order("start_date", { ascending: false })
+      const [{ data }, { data: profile }] = await Promise.all([
+        supabase
+          .from("events")
+          .select("id, slug, title, start_date, status, deleted_at, cover_image_url, image_url, category, city, venue_name")
+          .eq("created_by", user.id)
+          .order("start_date", { ascending: false }),
+        supabase.from("profiles").select("avatar_url").eq("id", user.id).single(),
+      ])
 
       setEvents(data || [])
+      setAvatarUrl(profile?.avatar_url || "")
       setLoading(false)
     }
     load()
@@ -143,8 +150,15 @@ export default function MojeWydarzenia() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", flexWrap: "wrap", gap: 10 }}>
           <h1 style={{ fontSize: "1.5rem", fontWeight: 800, margin: 0 }}>Moje wydarzenia</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Link href="/moje-wydarzenia/profil" style={{ display: "flex", alignItems: "center", gap: 6, background: "white", border: "1px solid #e5e7eb", color: "#374151", borderRadius: 10, padding: "0.6rem 1rem", fontWeight: 600, fontSize: "0.85rem", textDecoration: "none" }}>
-              <User size={16} /> Mój profil
+            <Link href="/moje-wydarzenia/profil" title="Mój profil — jesteś zalogowany" style={{ display: "flex", alignItems: "center", gap: 6, background: "white", border: "1px solid #e5e7eb", color: "#374151", borderRadius: 10, padding: "0.5rem 1rem 0.5rem 0.5rem", fontWeight: 600, fontSize: "0.85rem", textDecoration: "none" }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover" }} />
+              ) : (
+                <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <User size={14} color="#9ca3af" />
+                </div>
+              )}
+              Mój profil
             </Link>
             <Link href="/dodaj-wydarzenie" style={{ display: "flex", alignItems: "center", gap: 6, background: "#16a34a", color: "white", borderRadius: 10, padding: "0.6rem 1rem", fontWeight: 600, fontSize: "0.85rem", textDecoration: "none" }}>
               <Plus size={16} /> Dodaj wydarzenie
