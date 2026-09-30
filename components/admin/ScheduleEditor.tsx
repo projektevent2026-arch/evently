@@ -5,6 +5,7 @@ import { Plus, Trash2 } from 'lucide-react'
 
 interface ScheduleItem {
   time: string
+  endTime?: string
   title: string
   description?: string
 }
@@ -41,7 +42,7 @@ export default function ScheduleEditor({ value, onChange }: ScheduleEditorProps)
 
   const addItem = (dayIndex: number) => {
     const updated = value.map((d, i) =>
-      i === dayIndex ? { ...d, items: [...d.items, { time: '12:00', title: '', description: '' }] } : d
+      i === dayIndex ? { ...d, items: [...d.items, { time: '12:00', endTime: '', title: '', description: '' }] } : d
     )
     onChange(updated)
   }
@@ -103,13 +104,25 @@ export default function ScheduleEditor({ value, onChange }: ScheduleEditorProps)
       <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {currentDay.items.map((item, j) => (
           <div key={j} style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#f9fafb', borderRadius: 8, padding: '6px 8px' }}>
-            {/* Time — input zamiast select: przyjmuje każde HH:MM (16:15, 16:45 itd.) */}
-            <input
-              type="time"
-              value={item.time}
-              onChange={e => updateItem(activeDay, j, 'time', e.target.value)}
-              style={{ padding: '0.4rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '0.85rem', background: 'white', color: '#16a34a', fontWeight: 600, width: 92, flexShrink: 0 }}
-            />
+            {/* Godziny: od (wymagana) + do (opcjonalna) — dopisane 2026-09-29.
+                Puste 'endTime' u istniejących wydarzeń renderuje się jak
+                dotąd, jedna godzina, więc nic starego się nie psuje. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0 }}>
+              <input
+                type="time"
+                value={item.time}
+                onChange={e => updateItem(activeDay, j, 'time', e.target.value)}
+                title="Od godziny"
+                style={{ padding: '0.4rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '0.85rem', background: 'white', color: '#16a34a', fontWeight: 600, width: 92 }}
+              />
+              <input
+                type="time"
+                value={item.endTime || ''}
+                onChange={e => updateItem(activeDay, j, 'endTime', e.target.value)}
+                title="Do godziny (opcjonalnie)"
+                style={{ padding: '0.4rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '0.8rem', background: 'white', color: '#6b7280', width: 92 }}
+              />
+            </div>
 
             {/* Title + description */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
