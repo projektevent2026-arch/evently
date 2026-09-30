@@ -23,6 +23,7 @@ export default function ProfilOrganizatora() {
   const [email, setEmail] = useState("")
   const [orgName, setOrgName] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
+  const [phone, setPhone] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -31,6 +32,7 @@ export default function ProfilOrganizatora() {
   // po prostu odrzucić zmiany, bez ponownego pobierania z bazy.
   const [draftOrgName, setDraftOrgName] = useState("")
   const [draftAvatarUrl, setDraftAvatarUrl] = useState("")
+  const [draftPhone, setDraftPhone] = useState("")
 
   useEffect(() => {
     async function load() {
@@ -41,13 +43,14 @@ export default function ProfilOrganizatora() {
 
       const { data } = await supabase
         .from("profiles")
-        .select("organization_name, avatar_url")
+        .select("organization_name, avatar_url, phone")
         .eq("id", user.id)
         .single()
 
       if (data) {
         setOrgName(data.organization_name || "")
         setAvatarUrl(data.avatar_url || "")
+        setPhone(data.phone || "")
       }
       setLoading(false)
     }
@@ -57,6 +60,7 @@ export default function ProfilOrganizatora() {
   function startEdit() {
     setDraftOrgName(orgName)
     setDraftAvatarUrl(avatarUrl)
+    setDraftPhone(phone)
     setMsg(null)
     setMode("edit")
   }
@@ -77,9 +81,10 @@ export default function ProfilOrganizatora() {
       .update({
         organization_name: draftOrgName.trim() || null,
         avatar_url: draftAvatarUrl || null,
+        phone: draftPhone.trim() || null,
       })
       .eq("id", userId)
-      .select("organization_name, avatar_url")
+      .select("organization_name, avatar_url, phone")
 
     setSaving(false)
     if (error) {
@@ -92,6 +97,7 @@ export default function ProfilOrganizatora() {
     }
     setOrgName(draftOrgName.trim())
     setAvatarUrl(draftAvatarUrl)
+    setPhone(draftPhone.trim())
     setMode("view")
   }
 
@@ -128,8 +134,11 @@ export default function ProfilOrganizatora() {
               <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "#111827" }}>
                 {orgName || "Nazwa organizacji nie ustawiona"}
               </div>
-              <div style={{ fontSize: "0.85rem", color: "#6b7280", marginTop: 2, marginBottom: 20 }}>
+              <div style={{ fontSize: "0.85rem", color: "#6b7280", marginTop: 2 }}>
                 {email}
+              </div>
+              <div style={{ fontSize: "0.85rem", color: phone ? "#374151" : "#9ca3af", marginTop: 2, marginBottom: 20 }}>
+                {phone || "Telefon nie ustawiony"}
               </div>
               <button
                 onClick={startEdit}
@@ -154,6 +163,18 @@ export default function ProfilOrganizatora() {
                 onChange={e => setDraftOrgName(e.target.value)}
                 placeholder="np. SOK Suwalski Ośrodek Kultury"
                 maxLength={100}
+                style={{ width: "100%", padding: "8px 10px", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.9rem", marginBottom: 20, boxSizing: "border-box", color: "#111827", background: "white" }}
+              />
+
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                Telefon kontaktowy
+              </label>
+              <input
+                value={draftPhone}
+                onChange={e => setDraftPhone(e.target.value)}
+                placeholder="np. 501 234 567"
+                type="tel"
+                maxLength={20}
                 style={{ width: "100%", padding: "8px 10px", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.9rem", marginBottom: 20, boxSizing: "border-box", color: "#111827", background: "white" }}
               />
 

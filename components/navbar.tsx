@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { MapPin, Plus, Heart } from "lucide-react"
+import { MapPin, Plus, Heart, User } from "lucide-react"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useFavorites } from "@/hooks/useFavorites"
@@ -13,6 +13,11 @@ export function Navbar() {
   // Osobna flaga od isAdmin — organizator dostaje inny link ("Moje
   // wydarzenia" zamiast "Panel"), bo nie ma dostępu do pełnego /admin.
   const [isOrganizer, setIsOrganizer] = useState(false)
+  // 2026-09-30: awatar + rozwijane menu (Mój profil / Wyloguj się) zamiast
+  // samego tekstowego "Wyloguj się" — wizualny znak zalogowania, tylko dla
+  // organizatorów (mają stronę profilu; admin na razie nie).
+  const [avatarUrl, setAvatarUrl] = useState("")
+  const [menuOpen, setMenuOpen] = useState(false)
   // Ulubione na localStorage — NIE wymagają konta. Licznik zsynchronizowany z sercami.
   const { count } = useFavorites()
 
@@ -22,12 +27,13 @@ export function Navbar() {
       if (data.user) {
         supabase
           .from("profiles")
-          .select("role")
+          .select("role, avatar_url")
           .eq("id", data.user.id)
           .single()
           .then(({ data: profile }) => {
             setIsAdmin(profile?.role === "admin" || profile?.role === "moderator")
             setIsOrganizer(profile?.role === "organizer")
+            setAvatarUrl(profile?.avatar_url || "")
           })
       }
     })
@@ -103,7 +109,42 @@ export function Navbar() {
             </Link>
           )}
 
-          {user ? (
+          {user && isOrganizer ? (
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen(v => !v)}
+                className="flex items-center justify-center size-8 rounded-full bg-muted overflow-hidden border border-border"
+                aria-label="Menu konta"
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="size-full object-cover" />
+                ) : (
+                  <User className="size-4 text-muted-foreground" />
+                )}
+              </button>
+              {menuOpen && (
+                <>
+                  {/* Niewidoczna warstwa zamykająca menu po kliknięciu gdziekolwiek indziej */}
+                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute right-0 top-10 z-50 w-44 rounded-lg border border-border bg-background shadow-lg py-1">
+                    <Link
+                      href="/moje-wydarzenia/profil"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-3 py-2 text-sm text-foreground hover:bg-muted"
+                    >
+                      Mój profil
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-3 py-2 text-sm text-foreground hover:bg-muted"
+                    >
+                      Wyloguj się
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : user ? (
             <button
               onClick={handleLogout}
               className="text-sm font-medium text-primary hover:underline"
