@@ -264,8 +264,12 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
               const { href, label } = event.website_url ? cleanUrlForDisplay(event.website_url) : { href: "", label: "" }
               const inner = (
                 <>
-                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-xl flex-shrink-0">
-                    🏛️
+                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden">
+                    {event.organizer_profile?.avatar_url ? (
+                      <img src={event.organizer_profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      "🏛️"
+                    )}
                   </div>
                   <div className="flex-1">
                     {event.organizer_name && (

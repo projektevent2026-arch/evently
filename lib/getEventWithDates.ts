@@ -94,5 +94,24 @@ export async function getEventWithDates(slug: string, isPreview: boolean = false
     }
   }
 
-  return { ...data, event_dates: sortedDates }
+  // 2026-09-30: zdjęcie/logo i nazwa organizacji organizatora, jeśli
+  // wydarzenie jest powiązane z prawdziwym kontem (created_by) i ten
+  // organizator ustawił je w swoim profilu (/moje-wydarzenia/profil).
+  // Osobne zapytanie do WĄSKIEGO widoku public_organizer_profiles (id,
+  // organization_name, avatar_url) — NIE do surowej tabeli profiles,
+  // która ma też telefon (ma zostać prywatny, patrz notatka projektu).
+  // Starsze wydarzenia bez created_by (dodane anonimowo) albo
+  // organizatorzy bez ustawionego profilu — po prostu pomijamy, strona
+  // dalej pokazuje sam organizer_name z formularza jak dotąd.
+  let organizerProfile: { organization_name: string | null; avatar_url: string | null } | null = null
+  if (data.created_by) {
+    const { data: profile } = await supabase
+      .from("public_organizer_profiles")
+      .select("organization_name, avatar_url")
+      .eq("id", data.created_by)
+      .maybeSingle()
+    if (profile) organizerProfile = profile
+  }
+
+  return { ...data, event_dates: sortedDates, organizer_profile: organizerProfile }
 }

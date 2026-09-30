@@ -327,8 +327,12 @@ export default function EventPageClient({ slug }: { slug: string }) {
               const rowStyle = {display:"flex",alignItems:"center",gap:14} as const
               const row = (
                 <div style={rowStyle}>
-                  <div style={{width:48,height:48,borderRadius:12,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                    <Building2 size={22} color="#16a34a" />
+                  <div style={{width:48,height:48,borderRadius:12,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden"}}>
+                    {event.organizer_profile?.avatar_url ? (
+                      <img src={event.organizer_profile.avatar_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                    ) : (
+                      <Building2 size={22} color="#16a34a" />
+                    )}
                   </div>
                   <div>
                     {event.organizer_name && (
