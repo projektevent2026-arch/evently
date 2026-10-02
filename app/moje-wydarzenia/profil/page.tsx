@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
+import { safeProfileUrl, displayUrl } from "@/lib/safeUrl"
 import { ArrowLeft, User, Pencil } from "lucide-react"
 import ImageUpload from "@/components/admin/ImageUpload"
 
@@ -18,12 +19,39 @@ import ImageUpload from "@/components/admin/ImageUpload"
 // podstawowe, na ile RODO pozwala — to własne dane usera, pokazywane jemu
 // samemu, nic nowego nie ujawniamy), edycja dopiero po kliknięciu
 // "Edytuj" — nie ląduje się od razu w formularzu.
+//
+// 2026-10-02: wersja 1 publicznego profilu — dochodzą opis, miasto oraz
+// linki (www, Facebook, Instagram). Wszystko oprócz telefonu jest PUBLICZNE
+// (widok public_organizer_profiles, migracja 0002), więc formularz mówi to
+// wprost. Linki są walidowane tu (safeProfileUrl) i dodatkowo ograniczeniami
+// CHECK w bazie — bez tej drugiej warstwy można je ominąć zapisem przez API.
+
+const inputStyle = {
+  width: "100%",
+  padding: "8px 10px",
+  border: "1px solid #e5e7eb",
+  borderRadius: 8,
+  fontSize: "0.9rem",
+  marginBottom: 20,
+  boxSizing: "border-box" as const,
+  color: "#111827",
+  background: "white",
+}
+const labelStyle = { display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#374151", marginBottom: 6 }
+const hintStyle = { fontSize: "0.78rem", color: "#6b7280", margin: "-14px 0 20px" }
+const sectionStyle = { fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" as const, color: "#6b7280", margin: "0 0 12px" }
+
 export default function ProfilOrganizatora() {
   const [userId, setUserId] = useState<string | null>(null)
   const [email, setEmail] = useState("")
   const [orgName, setOrgName] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
   const [phone, setPhone] = useState("")
+  const [bio, setBio] = useState("")
+  const [city, setCity] = useState("")
+  const [website, setWebsite] = useState("")
+  const [facebook, setFacebook] = useState("")
+  const [instagram, setInstagram] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -33,6 +61,11 @@ export default function ProfilOrganizatora() {
   const [draftOrgName, setDraftOrgName] = useState("")
   const [draftAvatarUrl, setDraftAvatarUrl] = useState("")
   const [draftPhone, setDraftPhone] = useState("")
+  const [draftBio, setDraftBio] = useState("")
+  const [draftCity, setDraftCity] = useState("")
+  const [draftWebsite, setDraftWebsite] = useState("")
+  const [draftFacebook, setDraftFacebook] = useState("")
+  const [draftInstagram, setDraftInstagram] = useState("")
 
   useEffect(() => {
     async function load() {
@@ -43,7 +76,7 @@ export default function ProfilOrganizatora() {
 
       const { data } = await supabase
         .from("profiles")
-        .select("organization_name, avatar_url, phone")
+        .select("organization_name, avatar_url, phone, bio, city, website_url, facebook_url, instagram_url")
         .eq("id", user.id)
         .single()
 
@@ -51,6 +84,11 @@ export default function ProfilOrganizatora() {
         setOrgName(data.organization_name || "")
         setAvatarUrl(data.avatar_url || "")
         setPhone(data.phone || "")
+        setBio(data.bio || "")
+        setCity(data.city || "")
+        setWebsite(data.website_url || "")
+        setFacebook(data.facebook_url || "")
+        setInstagram(data.instagram_url || "")
       }
       setLoading(false)
     }
@@ -61,14 +99,37 @@ export default function ProfilOrganizatora() {
     setDraftOrgName(orgName)
     setDraftAvatarUrl(avatarUrl)
     setDraftPhone(phone)
+    setDraftBio(bio)
+    setDraftCity(city)
+    setDraftWebsite(website)
+    setDraftFacebook(facebook)
+    setDraftInstagram(instagram)
     setMsg(null)
     setMode("edit")
   }
 
   async function handleSave() {
     if (!userId) return
-    setSaving(true)
     setMsg(null)
+
+    // Walidacja linków PRZED zapisem. Puste pole = brak linku (null).
+    const websiteNorm = draftWebsite.trim() ? safeProfileUrl(draftWebsite, "website") : null
+    if (draftWebsite.trim() && !websiteNorm) {
+      setMsg("Błąd: nieprawidłowy adres strony www (np. www.twojastrona.pl).")
+      return
+    }
+    const facebookNorm = draftFacebook.trim() ? safeProfileUrl(draftFacebook, "facebook") : null
+    if (draftFacebook.trim() && !facebookNorm) {
+      setMsg("Błąd: podaj adres profilu na Facebooku (np. facebook.com/twojaorganizacja).")
+      return
+    }
+    const instagramNorm = draftInstagram.trim() ? safeProfileUrl(draftInstagram, "instagram") : null
+    if (draftInstagram.trim() && !instagramNorm) {
+      setMsg("Błąd: podaj adres profilu na Instagramie (np. instagram.com/twojaorganizacja).")
+      return
+    }
+
+    setSaving(true)
 
     // 2026-09-30: .select() na końcu jest celowy — bez niego Supabase
     // potrafi zwrócić "sukces" (error === null) nawet gdy RLS po cichu
@@ -82,9 +143,14 @@ export default function ProfilOrganizatora() {
         organization_name: draftOrgName.trim() || null,
         avatar_url: draftAvatarUrl || null,
         phone: draftPhone.trim() || null,
+        bio: draftBio.trim() || null,
+        city: draftCity.trim() || null,
+        website_url: websiteNorm,
+        facebook_url: facebookNorm,
+        instagram_url: instagramNorm,
       })
       .eq("id", userId)
-      .select("organization_name, avatar_url, phone")
+      .select("organization_name, avatar_url, phone, bio, city, website_url, facebook_url, instagram_url")
 
     setSaving(false)
     if (error) {
@@ -98,8 +164,17 @@ export default function ProfilOrganizatora() {
     setOrgName(draftOrgName.trim())
     setAvatarUrl(draftAvatarUrl)
     setPhone(draftPhone.trim())
+    setBio(draftBio.trim())
+    setCity(draftCity.trim())
+    setWebsite(websiteNorm || "")
+    setFacebook(facebookNorm || "")
+    setInstagram(instagramNorm || "")
     setMode("view")
   }
+
+  const rowStyle = { display: "flex", justifyContent: "space-between", gap: 16, fontSize: "0.85rem", padding: "8px 0", borderTop: "1px solid #f3f4f6", textAlign: "left" as const }
+  const rowLabel = { color: "#6b7280", flexShrink: 0 }
+  const rowValue = (set: boolean) => ({ color: set ? "#374151" : "#9ca3af", textAlign: "right" as const, wordBreak: "break-word" as const })
 
   return (
     <div style={{ minHeight: "100vh", background: "#f6f8fa", fontFamily: "system-ui, sans-serif" }}>
@@ -121,7 +196,7 @@ export default function ProfilOrganizatora() {
         ) : mode === "view" ? (
           <>
             <p style={{ fontSize: "0.85rem", color: "#6b7280", margin: "0 0 24px" }}>
-              Podstawowe dane konta. Nazwa i zdjęcie opcjonalne, widoczne dla administratora.
+              Nazwa, zdjęcie, opis, miasto i linki są publiczne: widać je na Twojej stronie organizatora i przy Twoich wydarzeniach. E-mail i telefon widzi tylko administrator.
             </p>
             <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
               {avatarUrl ? (
@@ -137,50 +212,68 @@ export default function ProfilOrganizatora() {
               <div style={{ fontSize: "0.85rem", color: "#6b7280", marginTop: 2 }}>
                 {email}
               </div>
-              <div style={{ fontSize: "0.85rem", color: phone ? "#374151" : "#9ca3af", marginTop: 2, marginBottom: 20 }}>
+              <div style={{ fontSize: "0.85rem", color: phone ? "#374151" : "#9ca3af", marginTop: 2, marginBottom: 16 }}>
                 {phone || "Telefon nie ustawiony"}
               </div>
+
+              <div style={{ width: "100%", marginBottom: 16 }}>
+                <div style={rowStyle}>
+                  <span style={rowLabel}>Opis</span>
+                  <span style={{ ...rowValue(!!bio), whiteSpace: "pre-line" }}>{bio || "brak"}</span>
+                </div>
+                <div style={rowStyle}>
+                  <span style={rowLabel}>Miasto</span>
+                  <span style={rowValue(!!city)}>{city || "brak"}</span>
+                </div>
+                <div style={rowStyle}>
+                  <span style={rowLabel}>Strona www</span>
+                  <span style={rowValue(!!website)}>{website ? displayUrl(website) : "brak"}</span>
+                </div>
+                <div style={rowStyle}>
+                  <span style={rowLabel}>Facebook</span>
+                  <span style={rowValue(!!facebook)}>{facebook ? displayUrl(facebook) : "brak"}</span>
+                </div>
+                <div style={rowStyle}>
+                  <span style={rowLabel}>Instagram</span>
+                  <span style={rowValue(!!instagram)}>{instagram ? displayUrl(instagram) : "brak"}</span>
+                </div>
+              </div>
+
               <button
                 onClick={startEdit}
                 style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 16px", background: "white", border: "1px solid #e5e7eb", color: "#374151", borderRadius: 8, fontWeight: 600, fontSize: "0.85rem", cursor: "pointer" }}
               >
                 <Pencil size={14} /> Edytuj profil
               </button>
+              {(orgName || avatarUrl) && (
+                <Link
+                  href={`/organizator/${userId}`}
+                  style={{ marginTop: 14, fontSize: "0.85rem", color: "#16a34a", textDecoration: "none", fontWeight: 600 }}
+                >
+                  Zobacz swoją stronę publiczną →
+                </Link>
+              )}
             </div>
           </>
 
         ) : (
           <>
             <p style={{ fontSize: "0.85rem", color: "#6b7280", margin: "0 0 24px" }}>
-              Oba pola opcjonalne. Widoczne dla administratora i (w przyszłości) przy Twoich wydarzeniach.
+              Wszystkie pola są opcjonalne. Część publiczna będzie widoczna dla każdego w internecie, więc nie wpisuj tu nic, czego nie chcesz pokazywać publicznie.
             </p>
             <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20 }}>
-              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                Nazwa organizacji
-              </label>
+              <p style={sectionStyle}>Publiczne</p>
+
+              <label style={labelStyle}>Nazwa organizacji</label>
               <input
                 value={draftOrgName}
                 onChange={e => setDraftOrgName(e.target.value)}
                 placeholder="np. SOK Suwalski Ośrodek Kultury"
                 maxLength={100}
-                style={{ width: "100%", padding: "8px 10px", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.9rem", marginBottom: 20, boxSizing: "border-box", color: "#111827", background: "white" }}
+                style={inputStyle}
               />
 
-              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                Telefon kontaktowy
-              </label>
-              <input
-                value={draftPhone}
-                onChange={e => setDraftPhone(e.target.value)}
-                placeholder="np. 501 234 567"
-                type="tel"
-                maxLength={20}
-                style={{ width: "100%", padding: "8px 10px", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: "0.9rem", marginBottom: 20, boxSizing: "border-box", color: "#111827", background: "white" }}
-              />
-
-              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                Zdjęcie profilowe
-              </label>
+              <label style={labelStyle}>Zdjęcie profilowe</label>
               {draftAvatarUrl && (
                 <img src={draftAvatarUrl} alt="" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", marginBottom: 10, background: "#f3f4f6" }} />
               )}
@@ -194,6 +287,76 @@ export default function ProfilOrganizatora() {
                   Usuń zdjęcie
                 </button>
               )}
+
+              <label style={{ ...labelStyle, marginTop: 12 }}>Opis</label>
+              <textarea
+                value={draftBio}
+                onChange={e => setDraftBio(e.target.value)}
+                placeholder="Czym się zajmujecie, co organizujecie."
+                maxLength={500}
+                rows={4}
+                style={{ ...inputStyle, marginBottom: 4, resize: "vertical", fontFamily: "inherit" }}
+              />
+              <p style={{ ...hintStyle, margin: "0 0 20px", textAlign: "right" }}>{draftBio.length}/500</p>
+
+              <label style={labelStyle}>Miasto</label>
+              <input
+                value={draftCity}
+                onChange={e => setDraftCity(e.target.value)}
+                placeholder="np. Suwałki"
+                maxLength={80}
+                style={inputStyle}
+              />
+
+              <label style={labelStyle}>Strona www</label>
+              <input
+                value={draftWebsite}
+                onChange={e => setDraftWebsite(e.target.value)}
+                placeholder="www.twojastrona.pl"
+                type="text"
+                inputMode="url"
+                autoCapitalize="none"
+                maxLength={200}
+                style={inputStyle}
+              />
+
+              <label style={labelStyle}>Facebook</label>
+              <input
+                value={draftFacebook}
+                onChange={e => setDraftFacebook(e.target.value)}
+                placeholder="facebook.com/twojaorganizacja"
+                type="text"
+                inputMode="url"
+                autoCapitalize="none"
+                maxLength={200}
+                style={inputStyle}
+              />
+
+              <label style={labelStyle}>Instagram</label>
+              <input
+                value={draftInstagram}
+                onChange={e => setDraftInstagram(e.target.value)}
+                placeholder="instagram.com/twojaorganizacja"
+                type="text"
+                inputMode="url"
+                autoCapitalize="none"
+                maxLength={200}
+                style={inputStyle}
+              />
+
+              <p style={{ ...sectionStyle, marginTop: 8 }}>Niepubliczne (tylko administrator)</p>
+
+              <label style={labelStyle}>
+                Telefon kontaktowy
+              </label>
+              <input
+                value={draftPhone}
+                onChange={e => setDraftPhone(e.target.value)}
+                placeholder="np. 501 234 567"
+                type="tel"
+                maxLength={20}
+                style={inputStyle}
+              />
 
               <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
                 <button
