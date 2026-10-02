@@ -324,6 +324,11 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
             {(event.organizer_name || event.website_url || event.created_by) && (() => {
               const href = event.website_url ? cleanUrlForDisplay(event.website_url).href : ""
+              // 2026-10-02: do etykiety linku tylko domena (bez ścieżki) — pełna
+              // ścieżka (np. soksuwalki.eu/class/pchli-targ-202695/) to szum.
+              const host = (() => {
+                try { return new URL(href).hostname.replace(/^www\./, "") } catch { return href }
+              })()
               // 2026-09-30: dwa OSOBNE cele kliknięcia w tej karcie, nie
               // jeden — awatar+nazwa prowadzą do publicznego profilu
               // organizatora w Evently (wszystkie jego wydarzenia), TYLKO
@@ -347,14 +352,15 @@ export default function EventPageClient({ slug }: { slug: string }) {
               return (
                 <div style={{background:"white",borderRadius:18,padding:"20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
                   <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:0.5,marginBottom:14}}>Organizator</div>
-                  {event.created_by ? (
+                  {event.created_by && event.organizer_profile ? (
                     <Link href={`/organizator/${event.created_by}`} style={{textDecoration:"none", display:"block"}}>
                       {orgRow}
                     </Link>
                   ) : orgRow}
                   {event.website_url && (
-                    <a href={href} target="_blank" rel="noopener noreferrer" style={{fontSize:13,color:"#16a34a",display:"inline-flex",alignItems:"center",gap:4,marginTop:10,textDecoration:"none"}}>
-                      ↗ Strona organizatora
+                    <a href={href} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginTop:12,padding:"10px 14px",border:"1px solid #e5e7eb",borderRadius:12,fontSize:13,fontWeight:600,color:"#16a34a",textDecoration:"none"}}>
+                      <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Więcej informacji · {host}</span>
+                      <span aria-hidden="true">↗</span>
                     </a>
                   )}
                 </div>

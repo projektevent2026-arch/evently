@@ -262,6 +262,11 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                 nieklikalnym <div> — nie ma dokąd prowadzić. */}
             {(event.organizer_name || event.website_url || event.created_by) && (() => {
               const { href, label } = event.website_url ? cleanUrlForDisplay(event.website_url) : { href: "", label: "" }
+              // 2026-10-02: do etykiety linku tylko domena (bez ścieżki) — pełna
+              // ścieżka (np. soksuwalki.eu/class/pchli-targ-202695/) to szum.
+              const host = (() => {
+                try { return new URL(href).hostname.replace(/^www\./, "") } catch { return label }
+              })()
               // 2026-09-30: dwa OSOBNE cele — cała karta prowadzi do
               // publicznego profilu organizatora w Evently (wszystkie jego
               // wydarzenia), tylko gdy powiązane z prawdziwym kontem
@@ -287,7 +292,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
               const cardClass = "mt-5 flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl p-3"
               return (
                 <>
-                  {event.created_by ? (
+                  {event.created_by && event.organizer_profile ? (
                     <Link href={`/organizator/${event.created_by}`} className={cardClass + " active:bg-zinc-800 transition-colors"}>
                       {inner}
                     </Link>
@@ -295,8 +300,14 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                     <div className={cardClass}>{inner}</div>
                   )}
                   {event.website_url && (
-                    <a href={href} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-[11px] text-green-400">
-                      ↗ {label}
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-3 text-[13px] text-green-400 transition-colors active:bg-zinc-800"
+                    >
+                      <span className="min-w-0 truncate">Więcej informacji · {host}</span>
+                      <span aria-hidden="true">↗</span>
                     </a>
                   )}
                 </>
