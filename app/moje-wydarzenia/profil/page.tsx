@@ -174,7 +174,7 @@ export default function ProfilOrganizatora() {
 
   const rowStyle = { display: "flex", justifyContent: "space-between", gap: 16, fontSize: "0.85rem", padding: "8px 0", borderTop: "1px solid #f3f4f6", textAlign: "left" as const }
   const rowLabel = { color: "#6b7280", flexShrink: 0 }
-  const rowValue = (set: boolean) => ({ color: set ? "#374151" : "#9ca3af", textAlign: "right" as const, wordBreak: "break-word" as const })
+  const rowValue = (set: boolean) => ({ color: set ? "#374151" : "#9ca3af", textAlign: "right" as const, wordBreak: "break-word" as const, overflowWrap: "anywhere" as const, minWidth: 0 })
 
   return (
     <div style={{ minHeight: "100vh", background: "#f6f8fa", fontFamily: "system-ui, sans-serif" }}>

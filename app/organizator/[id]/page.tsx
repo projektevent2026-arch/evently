@@ -150,7 +150,7 @@ export default function OrganizatorPage() {
                 )}
               </div>
               <div className="min-w-0">
-                <h1 className="text-2xl font-bold text-foreground">{orgName || "Organizator"}</h1>
+                <h1 className="break-words text-2xl font-bold text-foreground [overflow-wrap:anywhere]">{orgName || "Organizator"}</h1>
                 <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
                   {city && (
                     <>
@@ -192,7 +192,7 @@ export default function OrganizatorPage() {
 
             {activeTab === "about" ? (
               <div className="max-w-xl space-y-4 rounded-2xl border border-border bg-card p-5">
-                {bio && <p className="whitespace-pre-line text-[15px] leading-relaxed text-foreground">{bio}</p>}
+                {bio && <p className="whitespace-pre-line break-words text-[15px] leading-relaxed text-foreground [overflow-wrap:anywhere]">{bio}</p>}
 
                 {bio && (websiteUrl || facebookUrl || instagramUrl) && <div className="h-px bg-border" />}
 
