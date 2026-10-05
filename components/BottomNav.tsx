@@ -26,7 +26,11 @@ export default function BottomNav() {
     <nav
       id="app-bottom-nav"
       className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#161616] border-t border-[#222]"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      // 2026-10-02: eksperyment na cienką jasną kreskę pod paskiem. Pasek wchodzi 1 px poniżej
+      // krawędzi okna i dostaje 1 px dodatkowego paddingu, żeby zakryć ewentualną szczelinę
+      // z zaokrągleń przy ułamkowym skalowaniu ekranu. Jeśli nic nie zmieni, cofnij do samego
+      // paddingBottom: 'env(safe-area-inset-bottom)'.
+      style={{ bottom: -1, paddingBottom: 'calc(env(safe-area-inset-bottom) + 1px)' }}
     >
       <div className="flex items-center justify-around h-14 px-2">
 
