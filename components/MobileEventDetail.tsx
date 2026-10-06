@@ -260,7 +260,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                 zależało od tego, jak krótka/długa jest wyświetlana
                 etykieta. Gdy nie ma website_url, karta zostaje zwykłym,
                 nieklikalnym <div> — nie ma dokąd prowadzić. */}
-            {(event.organizer_name || event.website_url || event.created_by) && (() => {
+            {(event.organizer_name || event.website_url || event.organizer_profile) && (() => {
               const { href, label } = event.website_url ? cleanUrlForDisplay(event.website_url) : { href: "", label: "" }
               // 2026-10-02: do etykiety linku tylko domena (bez ścieżki) — pełna
               // ścieżka (np. soksuwalki.eu/class/pchli-targ-202695/) to szum.
@@ -273,6 +273,10 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
               // (created_by); strona zewnętrzna to osobny, mały link pod
               // spodem, nie wewnątrz tej samej karty (dwa zagnieżdżone
               // linki są nieprawidłowe w HTML).
+              // 2026-10-06: etykieta "profil organizatora" tylko gdy karta faktycznie jest linkiem.
+              // Bez nazwy i bez profilu nie pokazujemy karty organizatora wcale (zostaje sam link zewnętrzny).
+              const orgLabel = event.organizer_name || event.organizer_profile?.organization_name || null
+              const hasProfileLink = !!(event.created_by && event.organizer_profile)
               const inner = (
                 <>
                   <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden">
@@ -284,7 +288,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                   </div>
                   <div className="flex-1">
                     <div className="text-[12px] font-bold text-white">
-                      {event.organizer_name || event.organizer_profile?.organization_name || "Zobacz profil organizatora"}
+                      {orgLabel || "Profil organizatora"}
                     </div>
                   </div>
                 </>
@@ -292,13 +296,13 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
               const cardClass = "mt-5 flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl p-3"
               return (
                 <>
-                  {event.created_by && event.organizer_profile ? (
+                  {hasProfileLink ? (
                     <Link href={`/organizator/${event.created_by}`} className={cardClass + " active:bg-zinc-800 transition-colors"}>
                       {inner}
                     </Link>
-                  ) : (
+                  ) : orgLabel ? (
                     <div className={cardClass}>{inner}</div>
-                  )}
+                  ) : null}
                   {event.website_url && (
                     <a
                       href={href}

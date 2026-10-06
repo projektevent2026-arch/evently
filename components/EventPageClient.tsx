@@ -263,15 +263,20 @@ export default function EventPageClient({ slug }: { slug: string }) {
                         : <span style={{color:"#9ca3af"}}>Brak opisu.</span>}
                     </p>
                     <EventDatesList dates={event.event_dates} variant="light" />
-                    {(event.is_free || !event.price_from) && (
+                    {(event.is_free || event.venue_name) && (
                       <div style={{marginTop:24}}>
                         <div style={{fontSize:13,fontWeight:700,color:"#16a34a",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
                           Przydatne informacje
                         </div>
                         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                          <div style={{display:"flex",alignItems:"center",gap:8,fontSize:14,color:"#374151"}}>
-                            <span style={{color:"#16a34a"}}>✓</span> Wstep wolny
-                          </div>
+                          {/* 2026-10-06: "Wstęp wolny" tylko gdy wydarzenie faktycznie jest bezpłatne.
+                              Wcześniej warunek (is_free || !price_from) pokazywał to też przy płatnych
+                              wydarzeniach bez podanej ceny. */}
+                          {event.is_free && (
+                            <div style={{display:"flex",alignItems:"center",gap:8,fontSize:14,color:"#374151"}}>
+                              <span style={{color:"#16a34a"}}>✓</span> Wstęp wolny
+                            </div>
+                          )}
                           {event.venue_name && (
                             <div style={{display:"flex",alignItems:"center",gap:8,fontSize:14,color:"#374151"}}>
                               <span style={{color:"#16a34a"}}>✓</span> {event.venue_name}
@@ -322,7 +327,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
               )}
             </div>
 
-            {(event.organizer_name || event.website_url || event.created_by) && (() => {
+            {(event.organizer_name || event.website_url || event.organizer_profile) && (() => {
               const href = event.website_url ? cleanUrlForDisplay(event.website_url).href : ""
               // 2026-10-02: do etykiety linku tylko domena (bez ścieżki) — pełna
               // ścieżka (np. soksuwalki.eu/class/pchli-targ-202695/) to szum.
@@ -335,6 +340,10 @@ export default function EventPageClient({ slug }: { slug: string }) {
               // gdy wydarzenie jest powiązane z prawdziwym kontem
               // (created_by); "Strona organizatora" to osobny, mały link
               // do ich WŁASNEJ zewnętrznej strony, niezależnie od tego.
+              // 2026-10-06: etykieta "profil organizatora" tylko gdy wiersz faktycznie jest linkiem.
+              // Bez nazwy i bez profilu nie pokazujemy wiersza wcale (zostaje sam link zewnętrzny).
+              const orgLabel = event.organizer_name || event.organizer_profile?.organization_name || null
+              const hasProfileLink = !!(event.created_by && event.organizer_profile)
               const orgRow = (
                 <div style={{display:"flex",alignItems:"center",gap:14}}>
                   <div style={{width:48,height:48,borderRadius:12,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden"}}>
@@ -345,18 +354,20 @@ export default function EventPageClient({ slug }: { slug: string }) {
                     )}
                   </div>
                   <div style={{fontSize:15,fontWeight:700,color:"#111827"}}>
-                    {event.organizer_name || event.organizer_profile?.organization_name || "Zobacz profil organizatora"}
+                    {orgLabel || "Profil organizatora"}
                   </div>
                 </div>
               )
               return (
                 <div style={{background:"white",borderRadius:18,padding:"20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
-                  <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:0.5,marginBottom:14}}>Organizator</div>
-                  {event.created_by && event.organizer_profile ? (
+                  {(orgLabel || hasProfileLink) && (
+                    <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:0.5,marginBottom:14}}>Organizator</div>
+                  )}
+                  {hasProfileLink ? (
                     <Link href={`/organizator/${event.created_by}`} style={{textDecoration:"none", display:"block"}}>
                       {orgRow}
                     </Link>
-                  ) : orgRow}
+                  ) : orgLabel ? orgRow : null}
                   {event.website_url && (
                     <a href={href} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginTop:12,padding:"10px 14px",border:"1px solid #e5e7eb",borderRadius:12,fontSize:13,fontWeight:600,color:"#16a34a",textDecoration:"none"}}>
                       <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Więcej informacji · {host}</span>
