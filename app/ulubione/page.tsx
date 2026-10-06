@@ -48,6 +48,23 @@ function upcomingWord(n: number): string {
   return n === 1 ? 'nadchodzące' : 'nadchodzących'
 }
 
+// 2026-10-04: wydarzenie, które DZIŚ już się skończyło (np. koniec 13:00, a jest 16:00),
+// zostawało w ulubionych do północy, bo porównywaliśmy same daty. Teraz termin
+// z dzisiejszą datą liczy się jako minięty, gdy minęła jego godzina końca. Termin bez
+// godziny końca nadal liczy się do końca dnia (jak dotąd). Czas lokalny urządzenia,
+// ten sam co w todayStr().
+function nowClock(): string {
+  const d = new Date()
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function termEnded(dateOnly: string, endTime: string | null | undefined): boolean {
+  const today = todayStr()
+  if (dateOnly < today) return true
+  if (dateOnly === today && endTime) return endTime.slice(0, 5) < nowClock()
+  return false
+}
+
 // Efektywny termin wydarzenia do wyświetlenia/grupowania:
 // - jeśli event ma wiersze w event_dates (cykliczny) -> najbliższy NADCHODZĄCY
 //   termin, a jeśli wszystkie już minęły -> ostatni z przeszłych (ten sam
@@ -57,21 +74,29 @@ function upcomingWord(n: number): string {
 //   -> start_date/end_date z events, a godzina wyciągana przez fmtClock()
 //   z tych samych pól — NIE z e.start_time/e.end_time (patrz komentarz przy
 //   interfejsie Event wyżej).
-function effectiveInfo(e: Event): { date: string; endDate: string; time: string | null; endTime: string | null } {
+function effectiveInfo(e: Event): { date: string; endDate: string; time: string | null; endTime: string | null; ended: boolean } {
   const dates = e.event_dates
   if (dates && dates.length > 0) {
-    const today = todayStr()
     const sorted = [...dates].sort((a, b) => a.date.localeCompare(b.date))
-    const upcoming = sorted.filter(d => d.date.slice(0, 10) >= today)
+    const upcoming = sorted.filter(d => !termEnded(d.date.slice(0, 10), d.end_time))
     const chosen = upcoming.length > 0 ? upcoming[0] : sorted[sorted.length - 1]
     const dateOnly = chosen.date.slice(0, 10)
-    return { date: dateOnly, endDate: dateOnly, time: chosen.start_time, endTime: chosen.end_time }
+    return {
+      date: dateOnly,
+      endDate: dateOnly,
+      time: chosen.start_time,
+      endTime: chosen.end_time,
+      ended: termEnded(dateOnly, chosen.end_time),
+    }
   }
+  const endDate = (e.end_date || e.start_date).slice(0, 10)
+  const endTime = fmtClock(e.end_date) || null
   return {
     date: e.start_date.slice(0, 10),
-    endDate: (e.end_date || e.start_date).slice(0, 10),
+    endDate,
     time: fmtClock(e.start_date) || null,
-    endTime: fmtClock(e.end_date) || null,
+    endTime,
+    ended: termEnded(endDate, endTime),
   }
 }
 
@@ -91,7 +116,7 @@ const BUCKET_LABELS: Record<Bucket, string> = {
 
 function bucketFor(info: ReturnType<typeof effectiveInfo>): Bucket {
   const today = todayStr()
-  if (info.endDate < today) return 'past'
+  if (info.ended) return 'past'
 
   const weekEnd = addDaysStr(today, 7)
   const monthEnd = endOfMonthStr(today)
