@@ -1,31 +1,37 @@
+import { cache } from "react"
 import { createClient } from "@supabase/supabase-js"
 import type { Metadata } from "next"
 import EventDetailWrapper from "@/components/EventDetailWrapper"
-import { publishedFilter } from "@/lib/publishedFilter"
+import EndedEvent from "@/components/EndedEvent"
+import { eventState } from "@/lib/eventState"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+// 2026-10-07: jedno zapytanie na żądanie (cache z Reacta) zamiast osobnych dla metadanych i strony.
+// Pobieramy wydarzenie BEZ filtra statusu, bo musimy odróżnić "opublikowane" od "zarchiwizowane"
+// (strona "wydarzenie zakończone"). To celowe odstępstwo od publishedFilter(): o tym, co z wiersza
+// wolno pokazać, decyduje eventState() z lib/eventState.ts, a usunięte, oczekujące i szkice dają
+// "hidden", czyli to samo co dotąd (nic nie ujawniamy).
+const getEvent = cache(async (slug: string) => {
+  const { data } = await supabase
+    .from("public_events")
+    .select("title, short_description, cover_image_url, city, start_date, status, deleted_at")
+    .eq(/^[0-9a-f-]{36}$/i.test(slug) ? "id" : "slug", slug)
+    .maybeSingle()
+  return data
+})
+
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
   const { slug } = await params
+  const event = await getEvent(slug)
+  const state = eventState(event)
 
-  // 2026-09-28: było .from("events") bez filtra statusu/deleted_at —
-  // metadane (tagi OG dla Facebooka/Twittera/WhatsAppa) generowały się
-  // nawet dla wydarzeń oczekujących na moderację albo już usuniętych,
-  // niezależnie od tego, że sama treść strony (EventDetailWrapper) już
-  // dawno przeszła na public_events + publishedFilter. Teraz to samo
-  // źródło i ten sam filtr w obu miejscach.
-  const { data: event } = await publishedFilter(
-    supabase.from("public_events").select("title, short_description, cover_image_url, city, start_date")
-  )
-    .eq(/^[0-9a-f-]{36}$/i.test(slug) ? "id" : "slug", slug)
-    .single()
-
-  if (!event) {
+  if (!event || state === "hidden") {
     return {
       title: "Wydarzenie | Evently",
       description: "Odkrywaj lokalne wydarzenia w swojej okolicy.",
@@ -38,8 +44,11 @@ export async function generateMetadata(
       })
     : ""
 
-  const description = event.short_description
-    || `${date}${event.city ? ` · ${event.city}` : ""}`
+  // Zakończone wydarzenie: podgląd linku (Facebook, Messenger) zostaje z tytułem i zdjęciem,
+  // ale z informacją, że już się odbyło, i bez indeksowania przez wyszukiwarki.
+  const description = state === "ended"
+    ? "To wydarzenie już się odbyło."
+    : event.short_description || `${date}${event.city ? ` · ${event.city}` : ""}`
 
   const image = event.cover_image_url
     || "https://evently-silk-omega.vercel.app/og-default.jpg"
@@ -47,6 +56,7 @@ export async function generateMetadata(
   return {
     title: `${event.title} | Evently`,
     description,
+    ...(state === "ended" ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       title: event.title,
       description,
@@ -68,5 +78,18 @@ export default async function EventPage(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params
+  const event = await getEvent(slug)
+
+  if (event && eventState(event) === "ended") {
+    // Ten sam widok co lista na stronie głównej: tylko opublikowane i jeszcze nie zakończone terminy.
+    const { data: upcoming } = await supabase
+      .from("published_events_with_next_date")
+      .select("id, slug, title, city, next_date, next_start_time")
+      .order("next_date", { ascending: true })
+      .limit(4)
+
+    return <EndedEvent title={event.title} city={event.city} upcoming={upcoming ?? []} />
+  }
+
   return <EventDetailWrapper slug={slug} />
 }
