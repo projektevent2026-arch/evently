@@ -308,7 +308,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-3 text-[13px] text-green-400 transition-colors active:bg-zinc-800"
+                      className={`${orgLabel || hasProfileLink ? "mt-2" : "mt-5"} flex min-h-11 items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-3 text-[13px] text-green-400 transition-colors active:bg-zinc-800`}
                     >
                       <span className="min-w-0 truncate">Więcej informacji · {host}</span>
                       <span aria-hidden="true">↗</span>

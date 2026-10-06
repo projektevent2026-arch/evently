@@ -369,7 +369,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
                     </Link>
                   ) : orgLabel ? orgRow : null}
                   {event.website_url && (
-                    <a href={href} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginTop:12,padding:"10px 14px",border:"1px solid #e5e7eb",borderRadius:12,fontSize:13,fontWeight:600,color:"#16a34a",textDecoration:"none"}}>
+                    <a href={href} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginTop:(orgLabel || hasProfileLink) ? 12 : 0,padding:"10px 14px",border:"1px solid #e5e7eb",borderRadius:12,fontSize:13,fontWeight:600,color:"#16a34a",textDecoration:"none"}}>
                       <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Więcej informacji · {host}</span>
                       <span aria-hidden="true">↗</span>
                     </a>
