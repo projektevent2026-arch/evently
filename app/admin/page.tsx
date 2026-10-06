@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { revalidateHome } from "@/lib/revalidateHome"
 import { supabase } from "@/lib/supabase"
+import { RoleBadge } from "@/components/RoleBadge"
 import { Plus, MapPin, Trash2, Edit, Copy, Check, X, Eye, RotateCcw } from "lucide-react"
 
 // Sprowadza dowolną (także starą/legacy) kategorię z bazy do 4 docelowych
@@ -341,6 +342,7 @@ export default function AdminPage() {
             <MapPin size={16} color="white" />
           </div>
           <span style={{ fontWeight: 700, fontSize: "1.1rem", color: "#16a34a" }}>evently</span>
+          <RoleBadge />
         </div>
         <a href="/" style={navItem(false)}>Panel główny</a>
         <button onClick={() => setOnlyMine(false)} style={{ ...navItem(!onlyMine), width: "100%", textAlign: "left", border: "none", background: !onlyMine ? "#f0fdf4" : "transparent" }}>Wydarzenia</button>

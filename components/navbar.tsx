@@ -6,6 +6,7 @@ import { MapPin, Plus, Heart, User } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useFavorites } from "@/hooks/useFavorites"
+import { RoleBadge } from "@/components/RoleBadge"
 
 export function Navbar() {
   const [user, setUser] = useState<any>(null)
@@ -110,12 +111,15 @@ export function Navbar() {
           </Link>
 
           {user && isAdmin && (
-            <Link
-              href="/admin"
-              className="hidden sm:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Panel
-            </Link>
+            <>
+              <Link
+                href="/admin"
+                className="hidden sm:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Panel
+              </Link>
+              <RoleBadge className="hidden sm:inline-block" />
+            </>
           )}
 
           {user && isOrganizer && (

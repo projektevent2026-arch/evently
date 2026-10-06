@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { MapPin } from "lucide-react"
+import { RoleBadge } from "@/components/RoleBadge"
 
 const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   admin:      { label: "Admin",       color: "#6b7280", bg: "#f3f4f6" },
@@ -86,6 +87,7 @@ export default function AdminUzytkownicy() {
             <MapPin size={16} color="white" />
           </div>
           <span style={{ fontWeight: 700, fontSize: "1.1rem", color: "#16a34a" }}>evently</span>
+          <RoleBadge />
         </div>
         <a href="/" style={{ padding: "0.6rem 0.75rem", borderRadius: 8, fontSize: "0.9rem", color: "#374151", textDecoration: "none" }}>Panel główny</a>
         <a href="/admin" style={{ padding: "0.6rem 0.75rem", borderRadius: 8, fontSize: "0.9rem", color: "#374151", textDecoration: "none" }}>Wydarzenia</a>
