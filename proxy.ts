@@ -2,7 +2,10 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 
-export async function middleware(req: NextRequest) {
+// 2026-10-07: Next.js 16 zmienił nazwę konwencji: plik middleware.ts to teraz proxy.ts, a eksportowana
+// funkcja nazywa się proxy (działa w runtime Node.js, nie Edge). Logika jest identyczna jak w poprzednim
+// middleware.ts, zmieniły się tylko nazwa pliku i funkcji.
+export async function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname
   const isAdminPath = path.startsWith("/admin")
   const isAddPath = path.startsWith("/dodaj-wydarzenie")
