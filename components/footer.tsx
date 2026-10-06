@@ -19,6 +19,7 @@ export function Footer() {
 
           <nav className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground" aria-label="Stopka">
             <a href="/kontakt" className="transition-colors hover:text-primary">Kontakt</a>
+            <a href="/faq" className="transition-colors hover:text-primary">FAQ</a>
             <a href="/kontakt#zglos-tresc" className="transition-colors hover:text-primary">Zgłoś treść</a>
             <a href="/regulamin" className="transition-colors hover:text-primary">Regulamin</a>
             <a href="/polityka-prywatnosci" className="transition-colors hover:text-primary">Polityka prywatności</a>

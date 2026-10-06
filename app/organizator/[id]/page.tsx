@@ -29,6 +29,7 @@ type OrganizerProfile = {
   website_url: string | null
   facebook_url: string | null
   instagram_url: string | null
+  cover_url: string | null
 }
 
 function FacebookIcon() {
@@ -64,7 +65,7 @@ export default function OrganizatorPage() {
       const [{ data: profileData }, { data: rawEvents }] = await Promise.all([
         supabase
           .from("public_organizer_profiles")
-          .select("organization_name, avatar_url, bio, city, website_url, facebook_url, instagram_url")
+          .select("organization_name, avatar_url, bio, city, website_url, facebook_url, instagram_url, cover_url")
           .eq("id", id)
           .maybeSingle(),
         supabase
@@ -110,6 +111,8 @@ export default function OrganizatorPage() {
 
   const orgName = profile?.organization_name || null
   const avatarUrl = profile?.avatar_url || null
+  // 2026-10-06: zdjęcie w tle. Jak awatar pochodzi z naszego uploadu; dodatkowo wpuszczamy tylko https.
+  const coverUrl = profile?.cover_url && /^https:\/\//i.test(profile.cover_url) ? profile.cover_url : null
   const bio = profile?.bio?.trim() || null
   const city = profile?.city?.trim() || null
   const websiteUrl = safeProfileUrl(profile?.website_url, "website")
@@ -141,8 +144,19 @@ export default function OrganizatorPage() {
           <p className="text-muted-foreground">Nie znaleziono organizatora.</p>
         ) : (
           <>
-            <div className="mb-6 flex items-center gap-4">
-              <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#f0fdf4]">
+            {/* 2026-10-06: z okładką: baner u góry, okrągły awatar nachodzący na jego dolną krawędź,
+                nazwa pod spodem. Bez okładki: dotychczasowy, kompaktowy układ (awatar obok nazwy). */}
+            {coverUrl && (
+              <div className="h-32 w-full overflow-hidden rounded-2xl bg-muted sm:h-48">
+                <img src={coverUrl} alt="" className="size-full object-cover" />
+              </div>
+            )}
+            <div className={coverUrl ? "mb-6 px-2 sm:px-4" : "mb-6 flex items-center gap-4"}>
+              <div
+                className={`flex shrink-0 items-center justify-center overflow-hidden bg-[#f0fdf4] ${
+                  coverUrl ? "-mt-10 mb-3 size-20 rounded-full border-4 border-background sm:-mt-12 sm:size-24" : "size-16 rounded-full"
+                }`}
+              >
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="" className="size-full object-cover" />
                 ) : (

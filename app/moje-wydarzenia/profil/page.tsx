@@ -46,6 +46,7 @@ export default function ProfilOrganizatora() {
   const [email, setEmail] = useState("")
   const [orgName, setOrgName] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
+  const [coverUrl, setCoverUrl] = useState("")
   const [phone, setPhone] = useState("")
   const [bio, setBio] = useState("")
   const [city, setCity] = useState("")
@@ -60,6 +61,7 @@ export default function ProfilOrganizatora() {
   // po prostu odrzucić zmiany, bez ponownego pobierania z bazy.
   const [draftOrgName, setDraftOrgName] = useState("")
   const [draftAvatarUrl, setDraftAvatarUrl] = useState("")
+  const [draftCoverUrl, setDraftCoverUrl] = useState("")
   const [draftPhone, setDraftPhone] = useState("")
   const [draftBio, setDraftBio] = useState("")
   const [draftCity, setDraftCity] = useState("")
@@ -76,13 +78,14 @@ export default function ProfilOrganizatora() {
 
       const { data } = await supabase
         .from("profiles")
-        .select("organization_name, avatar_url, phone, bio, city, website_url, facebook_url, instagram_url")
+        .select("organization_name, avatar_url, cover_url, phone, bio, city, website_url, facebook_url, instagram_url")
         .eq("id", user.id)
         .single()
 
       if (data) {
         setOrgName(data.organization_name || "")
         setAvatarUrl(data.avatar_url || "")
+        setCoverUrl(data.cover_url || "")
         setPhone(data.phone || "")
         setBio(data.bio || "")
         setCity(data.city || "")
@@ -98,6 +101,7 @@ export default function ProfilOrganizatora() {
   function startEdit() {
     setDraftOrgName(orgName)
     setDraftAvatarUrl(avatarUrl)
+    setDraftCoverUrl(coverUrl)
     setDraftPhone(phone)
     setDraftBio(bio)
     setDraftCity(city)
@@ -142,6 +146,7 @@ export default function ProfilOrganizatora() {
       .update({
         organization_name: draftOrgName.trim() || null,
         avatar_url: draftAvatarUrl || null,
+        cover_url: draftCoverUrl || null,
         phone: draftPhone.trim() || null,
         bio: draftBio.trim() || null,
         city: draftCity.trim() || null,
@@ -150,7 +155,7 @@ export default function ProfilOrganizatora() {
         instagram_url: instagramNorm,
       })
       .eq("id", userId)
-      .select("organization_name, avatar_url, phone, bio, city, website_url, facebook_url, instagram_url")
+      .select("organization_name, avatar_url, cover_url, phone, bio, city, website_url, facebook_url, instagram_url")
 
     setSaving(false)
     if (error) {
@@ -163,6 +168,7 @@ export default function ProfilOrganizatora() {
     }
     setOrgName(draftOrgName.trim())
     setAvatarUrl(draftAvatarUrl)
+    setCoverUrl(draftCoverUrl)
     setPhone(draftPhone.trim())
     setBio(draftBio.trim())
     setCity(draftCity.trim())
@@ -196,9 +202,12 @@ export default function ProfilOrganizatora() {
         ) : mode === "view" ? (
           <>
             <p style={{ fontSize: "0.85rem", color: "#6b7280", margin: "0 0 24px" }}>
-              Nazwa, zdjęcie, opis, miasto i linki są publiczne: widać je na Twojej stronie organizatora i przy Twoich wydarzeniach. E-mail i telefon widzi tylko administrator.
+              Nazwa, zdjęcia, opis, miasto i linki są publiczne: widać je na Twojej stronie organizatora i przy Twoich wydarzeniach. E-mail i telefon widzi tylko administrator.
             </p>
             <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              {coverUrl && (
+                <img src={coverUrl} alt="" style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 10, marginBottom: 14, background: "#f3f4f6" }} />
+              )}
               {avatarUrl ? (
                 <img src={avatarUrl} alt="" style={{ width: 88, height: 88, borderRadius: "50%", objectFit: "cover", marginBottom: 14, background: "#f3f4f6" }} />
               ) : (
@@ -285,6 +294,21 @@ export default function ProfilOrganizatora() {
                   style={{ background: "none", border: "none", color: "#ef4444", fontSize: "0.8rem", cursor: "pointer", padding: "4px 0", marginBottom: 10 }}
                 >
                   Usuń zdjęcie
+                </button>
+              )}
+
+              <label style={{ ...labelStyle, marginTop: 12 }}>Zdjęcie w tle (poziome, np. 1500×500)</label>
+              {draftCoverUrl && (
+                <img src={draftCoverUrl} alt="" style={{ width: "100%", height: 100, objectFit: "cover", borderRadius: 10, marginBottom: 10, background: "#f3f4f6" }} />
+              )}
+              <ImageUpload currentUrl={draftCoverUrl} onUploadComplete={setDraftCoverUrl} />
+              {draftCoverUrl && (
+                <button
+                  type="button"
+                  onClick={() => setDraftCoverUrl("")}
+                  style={{ background: "none", border: "none", color: "#ef4444", fontSize: "0.8rem", cursor: "pointer", padding: "4px 0", marginBottom: 10 }}
+                >
+                  Usuń zdjęcie w tle
                 </button>
               )}
 
