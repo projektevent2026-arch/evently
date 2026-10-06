@@ -55,6 +55,18 @@ const emptyForm = {
   schedule: [] as any[],
 }
 
+// 2026-10-07: e-mail kontaktowy zgłaszającego trzymamy w osobnej tabeli event_contacts (RLS: personel
+// i właściciel wydarzenia), a nie w events.organizer_email, bo tabela events jest czytelna dla każdego
+// zalogowanego. Błąd zapisu e-maila celowo NIE przerywa zapisu wydarzenia (e-mail jest opcjonalny),
+// ale trafia do konsoli, żeby zepsuta polityka nie przepadła bez śladu.
+async function saveContactEmail(eventId: string, email: string) {
+  const value = email.trim()
+  const { error } = value
+    ? await supabase.from("event_contacts").upsert({ event_id: eventId, email: value }, { onConflict: "event_id" })
+    : await supabase.from("event_contacts").delete().eq("event_id", eventId)
+  if (error) console.error("[Evently] Nie udało się zapisać e-maila kontaktowego:", error.message)
+}
+
 export default function DodajWydarzenie() {
   const [form, setForm] = useState(emptyForm)
   const [dates, setDates] = useState<DateEntry[]>([{ date: "", from: "", to: "" }])
@@ -122,6 +134,13 @@ export default function DodajWydarzenie() {
             return
           }
 
+          // e-mail kontaktowy z osobnej tabeli (widzi go tylko właściciel i personel)
+          const { data: contact } = await supabase
+            .from("event_contacts")
+            .select("email")
+            .eq("event_id", editParam)
+            .maybeSingle()
+
           setEditId(editParam)
           setExistingStatus(existing.status || null)
           setForm({
@@ -136,7 +155,7 @@ export default function DodajWydarzenie() {
             ticket_url: existing.ticket_url || "",
             website_url: existing.website_url || "",
             organizer_name: existing.organizer_name || "",
-            organizer_email: existing.organizer_email || "",
+            organizer_email: contact?.email || "",
             price_from: existing.price_from != null ? String(existing.price_from) : "0",
             is_free: existing.is_free,
             latitude: existing.latitude != null ? String(existing.latitude) : "",
@@ -406,7 +425,6 @@ try {
       ticket_url: safeUrl(form.ticket_url),
       website_url: safeUrl(form.website_url),
       organizer_name: form.organizer_name || null,
-      organizer_email: form.organizer_email || null,
       is_free: form.is_free,
       price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
       latitude: form.latitude ? parseFloat(form.latitude) : null,
@@ -421,6 +439,8 @@ try {
       setSubmitting(false)
       return
     }
+
+    await saveContactEmail(editId, form.organizer_email)
 
     // 2026-09-28: usuń-i-wstaw terminów przez jedną transakcyjną funkcję
     // (replace_event_dates) zamiast dwóch osobnych zapytań — wcześniej,
@@ -472,7 +492,6 @@ try {
     ticket_url: safeUrl(form.ticket_url),
     website_url: safeUrl(form.website_url),
     organizer_name: form.organizer_name || null,
-    organizer_email: form.organizer_email || null,
     is_free: form.is_free,
     price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
     latitude: form.latitude ? parseFloat(form.latitude) : null,
@@ -520,6 +539,14 @@ try {
         setError("Wydarzenie zapisane, ale wystąpił błąd zapisu terminów: " + datesError.message)
         setSubmitting(false)
         return
+      }
+
+      // Zwykły insert (nie upsert): anonim dopisuje kontakt tylko do własnego, jeszcze oczekującego zgłoszenia.
+      if (form.organizer_email.trim()) {
+        const { error: contactError } = await supabase
+          .from("event_contacts")
+          .insert({ event_id: savedEvent.id, email: form.organizer_email.trim() })
+        if (contactError) console.error("[Evently] Nie udało się zapisać e-maila kontaktowego:", contactError.message)
       }
     }
 

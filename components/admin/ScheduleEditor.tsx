@@ -110,7 +110,7 @@ export default function ScheduleEditor({ value, onChange }: ScheduleEditorProps)
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0 }}>
               <input
                 type="time"
-                value={item.time}
+                value={item.time ?? ''}
                 onChange={e => updateItem(activeDay, j, 'time', e.target.value)}
                 title="Od godziny"
                 style={{ padding: '0.4rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '0.85rem', background: 'white', color: '#16a34a', fontWeight: 600, width: 92 }}
@@ -128,7 +128,7 @@ export default function ScheduleEditor({ value, onChange }: ScheduleEditorProps)
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
               <input
                 placeholder="Nazwa punktu programu *"
-                value={item.title}
+                value={item.title ?? ''}
                 onChange={e => updateItem(activeDay, j, 'title', e.target.value)}
                 style={{ padding: '0.4rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box', color: '#111827', fontWeight: 500, background: 'white' }}
               />
