@@ -589,7 +589,7 @@ try {
           <p style={{color:"#6b7280",lineHeight:1.6,marginBottom:24}}>
             {userRole === "organizer"
               ? (editId ? "Zmiany zostały zapisane." : "Twoje wydarzenie zostało opublikowane.")
-              : "Twoje wydarzenie zostało przesłane do weryfikacji. Nasz zespół sprawdzi je i opublikuje w ciągu 24 godzin."}
+              : "Twoje wydarzenie zostało przesłane do weryfikacji. Sprawdzimy je i opublikujemy tak szybko, jak to możliwe."}
           </p>
           <Link href="/" style={{display:"inline-block",background:"#16a34a",color:"white",padding:"0.75rem 2rem",borderRadius:10,fontWeight:700,textDecoration:"none",fontSize:"0.95rem"}}>
             Wróć do strony głównej
