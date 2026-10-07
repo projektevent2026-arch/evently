@@ -294,9 +294,11 @@ export default function EventPageClient({ slug }: { slug: string }) {
             </div>
 
             <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-              {event.ticket_url && !event.is_free && (
+              {/* 2026-10-07: link z pola "Link do biletów" pokazuje się też przy wydarzeniach bezpłatnych jako
+                  "Rejestracja" (dotąd był wtedy w ogóle niewidoczny). Przy płatnych dalej "Kup bilety". */}
+              {event.ticket_url && (
                 <a href={event.ticket_url} target="_blank" rel="noopener noreferrer" style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px 16px",background:"#16a34a",borderRadius:14,fontSize:14,color:"white",fontWeight:700,textDecoration:"none",boxShadow:"0 4px 14px rgba(22,163,74,0.35)",minWidth:160}}>
-                  Kup bilety
+                  {event.is_free ? "Rejestracja" : "Kup bilety"}
                 </a>
               )}
               <AddToCalendarButton event={event} variant="light" />

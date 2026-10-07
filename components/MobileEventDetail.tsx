@@ -322,14 +322,15 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                 (jak na desktopie) — wcześniej każdy był osobnym, pełnoszerokim
                 przyciskiem pod spodem. */}
             <div className="mt-5 flex gap-2">
-              {event.ticket_url && !event.is_free && (
+              {/* 2026-10-07: jak na desktopie: przy wydarzeniach bezpłatnych ten sam link to "Rejestracja". */}
+              {event.ticket_url && (
                 <a
                   href={event.ticket_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 py-3.5 rounded-2xl text-[14px] font-black flex items-center justify-center gap-2 bg-green-500 text-black"
                 >
-                  🎟️ Kup bilety
+                  {event.is_free ? "📝 Rejestracja" : "🎟️ Kup bilety"}
                 </a>
               )}
               <AddToCalendarButton event={event} variant="dark" />

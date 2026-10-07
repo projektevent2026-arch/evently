@@ -1014,7 +1014,7 @@ try {
 
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
                 <div>
-                  <label style={lbl} htmlFor="ticket_url">Link do biletów</label>
+                  <label style={lbl} htmlFor="ticket_url">{form.is_free ? "Link do rejestracji" : "Link do biletów"}</label>
                   <input id="ticket_url" name="ticket_url" value={form.ticket_url} onChange={handleChange}
                     placeholder="https://..." style={inp} />
                 </div>

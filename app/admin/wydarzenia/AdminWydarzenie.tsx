@@ -912,7 +912,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
               </div>
 
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-                <Field label="Link do biletów" htmlFor="ticket_url">
+                <Field label={form.is_free ? "Link do rejestracji" : "Link do biletów"} htmlFor="ticket_url">
                   <input id="ticket_url" name="ticket_url" value={form.ticket_url} onChange={handleChange} placeholder="https://..." style={inp} />
                 </Field>
                 <Field label="Strona www" htmlFor="website_url">
