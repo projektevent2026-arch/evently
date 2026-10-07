@@ -6,6 +6,7 @@ import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { safeProfileUrl, displayUrl } from "@/lib/safeUrl"
 import { EventCard, type EventData } from "@/components/event-card"
+import { MobileEventRow, type MobileEventRowData } from "@/components/MobileEventRow"
 import { ArrowLeft, Building2, Globe, MapPin } from "lucide-react"
 
 // 2026-09-30: publiczna strona organizatora — "zobacz wszystkie jego
@@ -58,6 +59,8 @@ export default function OrganizatorPage() {
   const [notFound, setNotFound] = useState(false)
   const [profile, setProfile] = useState<OrganizerProfile | null>(null)
   const [events, setEvents] = useState<EventData[]>([])
+  // Surowe wiersze dla kompaktowego widoku na telefon (ten sam układ co lista na stronie głównej).
+  const [eventRows, setEventRows] = useState<MobileEventRowData[]>([])
   const [tab, setTab] = useState<"events" | "about">("events")
 
   useEffect(() => {
@@ -70,7 +73,7 @@ export default function OrganizatorPage() {
           .maybeSingle(),
         supabase
           .from("published_events_with_next_date")
-          .select("id, slug, title, next_date, next_start_time, schedule_type, city, cover_image_url, image_url, category, is_free, created_by")
+          .select("id, slug, title, next_date, next_start_time, next_end_time, schedule_type, venue_name, address, city, cover_image_url, image_url, category, is_free, created_by")
           .eq("created_by", id)
           .order("next_date", { ascending: true }),
       ])
@@ -86,6 +89,7 @@ export default function OrganizatorPage() {
       }
 
       setProfile(profileData ? (profileData as OrganizerProfile) : null)
+      setEventRows((rawEvents || []) as MobileEventRowData[])
       setEvents(
         (rawEvents || []).map((e: any) => ({
           id: e.id,
@@ -258,11 +262,19 @@ export default function OrganizatorPage() {
             ) : events.length === 0 ? (
               <p className="text-muted-foreground">Ten organizator nie ma jeszcze opublikowanych wydarzeń.</p>
             ) : (
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {events.map((event) => (
-                  <EventCard key={event.id} event={event} initialGoing={false} />
-                ))}
-              </div>
+              <>
+                {/* Telefon: kompaktowe wiersze jak na stronie głównej. Komputer i tablet: siatka dużych kart. */}
+                <div className="md:hidden">
+                  {eventRows.map((row) => (
+                    <MobileEventRow key={row.id} event={row} />
+                  ))}
+                </div>
+                <div className="hidden gap-5 md:grid md:grid-cols-2 lg:grid-cols-3">
+                  {events.map((event) => (
+                    <EventCard key={event.id} event={event} initialGoing={false} />
+                  ))}
+                </div>
+              </>
             )}
           </>
         )}
