@@ -161,11 +161,18 @@ export default function EventMap() {
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
-    if (!mapRef.current || mapInstanceRef.current) return
+
+    // 2026-10-07: efekt jest asynchroniczny (dynamiczny import przed L.map). W trybie deweloperskim React
+    // uruchamia efekt dwa razy (montaż, czyszczenie, ponowny montaż), to samo robi odświeżanie kodu na gorąco.
+    // Bez tej flagi oba przebiegi docierały do L.map na tym samym kontenerze, a drugi kończył się błędem
+    // "Map container is already initialized". Flaga unieważnia przebieg, który został posprzątany, zanim zdążył
+    // utworzyć mapę.
+    let cancelled = false
 
     async function initMap() {
       const L = (await import('leaflet')).default
       await import('leaflet.markercluster')
+      if (cancelled || !mapRef.current || mapInstanceRef.current) return
 
       const center = urlCenter ?? userPosition ?? ([54.1, 22.93] as [number, number])
       const map = L.map(mapRef.current!, { center, zoom: urlCenter ? 13 : 11, zoomControl: false })
@@ -199,6 +206,7 @@ export default function EventMap() {
 
     initMap()
     return () => {
+      cancelled = true
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null
@@ -402,7 +410,10 @@ export default function EventMap() {
   const activeTimeLabel = TIME_FILTERS.find(t => t.key === urlTime)?.label ?? 'Wszystkie'
 
   return (
-    <div className="relative flex flex-col h-screen overflow-hidden">
+    // 2026-10-07: z-0 zamyka warstwy mapy (Leaflet używa z-index 400 i więcej) w osobnym kontekście,
+    // dzięki czemu dolne menu (z-50) jest NAD mapą, a nie pod nią. Dolny odstęp na telefonie (pb) zostawia
+    // miejsce na to menu, żeby jego wysokość nie zasłaniała dołu mapy (przyciski, prawa autorska).
+    <div className="relative z-0 flex flex-col h-dvh overflow-hidden pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
       <div ref={filterBarRef} className="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-gray-200 px-3 py-2">
 
 <Link href="/" className="flex items-center gap-2 mb-2">
