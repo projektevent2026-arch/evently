@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Space_Grotesk } from 'next/font/google'
 import { AnalyticsWithOptOut } from '@/components/AnalyticsWithOptOut'
 import BottomNav from '@/components/BottomNav'
+import { SiteFooter } from '@/components/SiteFooter'
 import './globals.css'
 // 2026-09-22: usunięty stąd import "leaflet/dist/leaflet.css" — ładował się
 // GLOBALNIE na każdej stronie (nawet /login, /regulamin, gdzie nie ma
@@ -49,6 +50,7 @@ export default function RootLayout({
     <html lang="pl" className="dark">
       <body className={`${_inter.variable} ${_spaceGrotesk.variable} font-sans antialiased`}>
         {children}
+        <SiteFooter />
         <BottomNav />
         {/* beforeSend + localStorage("va-disable") — przeniesione do
             osobnego komponentu klienckiego (AnalyticsWithOptOut), bo ten

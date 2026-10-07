@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Compass, Map, PlusCircle, Heart } from 'lucide-react'
+import { Compass, Map, PlusCircle, Heart, Ellipsis } from 'lucide-react'
 import { useFavorites } from '@/hooks/useFavorites'
 
 export default function BottomNav() {
@@ -11,6 +11,10 @@ export default function BottomNav() {
 
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href)
+
+  // "Więcej": ekran z kontem i informacjami (kontakt, FAQ, regulamin, polityka prywatności). Zakładka jest aktywna
+  // także na tych stronach, bo semantycznie do niej należą.
+  const moreActive = ['/wiecej', '/kontakt', '/faq', '/regulamin', '/polityka-prywatnosci'].some(p => pathname.startsWith(p))
 
   // Wszystkie taby mają teraz JEDEN styl. Wcześniej „Dodaj" był wypukłym zielonym kołem,
   // co przy 4 pozycjach rozwalało symetrię paska.
@@ -74,6 +78,15 @@ export default function BottomNav() {
         <Link href="/mapa" className={linkClass('/mapa')}>
           <Map size={22} />
           <span className={labelClass('/mapa')}>Mapa</span>
+        </Link>
+
+        {/* Więcej */}
+        <Link
+          href="/wiecej"
+          className={`flex flex-col items-center gap-0.5 flex-1 pt-2 ${moreActive ? 'text-green-500' : 'text-[#555]'}`}
+        >
+          <Ellipsis size={22} />
+          <span className={`text-[10px] font-medium ${moreActive ? 'text-green-500' : 'text-[#555]'}`}>Więcej</span>
         </Link>
 
       </div>

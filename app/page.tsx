@@ -3,7 +3,6 @@ import { Navbar } from "@/components/navbar"
 import { HeroSection } from "@/components/hero-section"
 import { EventsGrid } from "@/components/events-grid"
 import { LocationSidebar } from "@/components/location-sidebar"
-import { Footer } from "@/components/footer"
 import { MobileHome } from "@/components/MobileHome"
 import { getPublishedEvents } from "@/lib/getPublishedEvents"
 
@@ -57,7 +56,6 @@ export default async function HomePage() {
             </div>
           </div>
         </main>
-        <Footer />
       </div>
     </>
   )
