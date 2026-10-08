@@ -187,7 +187,7 @@ export default function MojeWydarzenia() {
         </div>
 
         {/* Zakładki statusu */}
-        <div style={{ display: "flex", gap: 6, marginBottom: 10, overflowX: "auto", paddingBottom: 2 }}>
+        <div className="scrollbar-hide" style={{ display: "flex", gap: 6, marginBottom: 10, overflowX: "auto", paddingBottom: 2 }}>
           {STATUS_TABS.map(t => (
             <span key={t.id} onClick={() => setStatusTab(t.id)} style={pillStyle(statusTab === t.id)}>
               {t.label}
@@ -197,7 +197,7 @@ export default function MojeWydarzenia() {
 
         {/* Kategorie + sortowanie */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
+        <div className="scrollbar-hide" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
             {CAT_PILLS.map(c => (
               <span key={c.id} onClick={() => setCatFilter(c.id)} style={pillStyle(catFilter === c.id)}>
                 {c.label}
