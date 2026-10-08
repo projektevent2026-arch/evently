@@ -184,7 +184,7 @@ export default function ProfilOrganizatora() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f6f8fa", fontFamily: "system-ui, sans-serif" }}>
-      <div style={{ maxWidth: 480, margin: "0 auto", padding: "1.5rem" }}>
+      <div style={{ maxWidth: 480, margin: "0 auto", padding: "1.5rem 1.5rem calc(6rem + env(safe-area-inset-bottom))" }}>
         <Link
           href="/moje-wydarzenia"
           style={{ display: "flex", alignItems: "center", gap: 6, color: "#6b7280", textDecoration: "none", fontSize: "0.85rem", marginBottom: "1.5rem" }}
