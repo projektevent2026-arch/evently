@@ -5,7 +5,7 @@ import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { revalidateHome } from "@/lib/revalidateHome"
 import { normalizeCategory, CATEGORY_LABELS, type CategoryKey } from "@/lib/eventCategory"
-import { MapPin, Pencil, Plus, Trash2, User, Search, Eye } from "lucide-react"
+import { MapPin, Pencil, Plus, Trash2, User, Search, Eye, RotateCcw } from "lucide-react"
 
 // 2026-09-29: dociągnięte do poziomu panelu admina (szukaj/filtry/
 // sortowanie/podgląd), na wyraźną prośbę — wcześniej to była gołą listą
@@ -96,35 +96,44 @@ export default function MojeWydarzenia() {
       return (b.start_date || "").localeCompare(a.start_date || "")
     })
 
-  async function handleDelete(id: string, title: string) {
-    const confirmed = window.confirm(`Na pewno usunąć „${title}"? Tej operacji nie można cofnąć.`)
-    if (!confirmed) return
-
+  // "Usuń" = przeniesienie do kosza (deleted_at), tak samo jak w panelu admina.
+  // Wcześniej to było trwałe DELETE, którego baza organizatorowi nie pozwala
+  // (RLS: kasować wydarzenia może tylko admin/moderator), a co gorsza kod
+  // najpierw kasował terminy z event_dates (to organizatorowi wolno), więc po
+  // nieudanym usunięciu wydarzenie zostawało BEZ dat i znikało ze strony
+  // głównej. Teraz terminów nie ruszamy, a kosz czyści się sam po 30 dniach
+  // (purge_trash). Z kosza można wydarzenie przywrócić.
+  async function setTrashed(id: string, trashed: boolean) {
     setDeleteError(null)
     setDeletingId(id)
 
-    const { error: datesError } = await supabase.from("event_dates").delete().eq("event_id", id)
-    if (datesError) {
-      setDeleteError("Nie udało się usunąć: " + datesError.message)
-      setDeletingId(null)
-      return
-    }
+    const deletedAt = trashed ? new Date().toISOString() : null
+    const { data, error } = await supabase
+      .from("events")
+      .update({ deleted_at: deletedAt })
+      .eq("id", id)
+      .select("id")
 
-    const { data: deletedEvent, error: eventError } = await supabase.from("events").delete().eq("id", id).select("id")
-    if (eventError) {
-      setDeleteError("Nie udało się usunąć: " + eventError.message)
-      setDeletingId(null)
-      return
-    }
-    if (!deletedEvent || deletedEvent.length === 0) {
-      setDeleteError("Nie udało się usunąć — brak uprawnień do tego wydarzenia.")
-      setDeletingId(null)
-      return
-    }
-
-    setEvents(prev => prev.filter(e => e.id !== id))
     setDeletingId(null)
+
+    if (error || !data || data.length === 0) {
+      const msg = "Nie udało się " + (trashed ? "usunąć" : "przywrócić") + " wydarzenia" + (error ? ": " + error.message : " — brak uprawnień do tego wydarzenia.")
+      setDeleteError(msg)
+      // Komunikat na górze listy łatwo przeoczyć, gdy kliknięto przycisk niżej.
+      window.alert(msg)
+      return
+    }
+
+    setEvents(prev => prev.map(e => (e.id === id ? { ...e, deleted_at: deletedAt } : e)))
     revalidateHome()
+  }
+
+  function handleDelete(id: string, title: string) {
+    const confirmed = window.confirm(
+      `Przenieść „${title}" do kosza?\n\nWydarzenie zniknie ze strony. W koszu będzie przez 30 dni i możesz je stamtąd przywrócić.`
+    )
+    if (!confirmed) return
+    void setTrashed(id, true)
   }
 
   const pillStyle = (active: boolean) => ({
@@ -259,20 +268,33 @@ export default function MojeWydarzenia() {
                         <Eye size={14} /> Podgląd
                       </a>
                     )}
-                    <Link
-                      href={`/dodaj-wydarzenie?edit=${event.id}`}
-                      style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f1f1f", border: "1px solid #333", color: "white", borderRadius: 8, padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, textDecoration: "none" }}
-                    >
-                      <Pencil size={14} /> Edytuj
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(event.id, event.title)}
-                      disabled={deletingId === event.id}
-                      style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f1f1f", border: "1px solid #7f1d1d", color: "#ef4444", borderRadius: 8, padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, cursor: deletingId === event.id ? "not-allowed" : "pointer", opacity: deletingId === event.id ? 0.6 : 1 }}
-                    >
-                      <Trash2 size={14} /> {deletingId === event.id ? "Usuwanie..." : "Usuń"}
-                    </button>
+                    {event.deleted_at ? (
+                      <button
+                        type="button"
+                        onClick={() => setTrashed(event.id, false)}
+                        disabled={deletingId === event.id}
+                        style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f1f1f", border: "1px solid #14532d", color: "#22c55e", borderRadius: 8, padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, cursor: deletingId === event.id ? "not-allowed" : "pointer", opacity: deletingId === event.id ? 0.6 : 1 }}
+                      >
+                        <RotateCcw size={14} /> {deletingId === event.id ? "Przywracanie..." : "Przywróć"}
+                      </button>
+                    ) : (
+                      <>
+                        <Link
+                          href={`/dodaj-wydarzenie?edit=${event.id}`}
+                          style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f1f1f", border: "1px solid #333", color: "white", borderRadius: 8, padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, textDecoration: "none" }}
+                        >
+                          <Pencil size={14} /> Edytuj
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(event.id, event.title)}
+                          disabled={deletingId === event.id}
+                          style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f1f1f", border: "1px solid #7f1d1d", color: "#ef4444", borderRadius: 8, padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, cursor: deletingId === event.id ? "not-allowed" : "pointer", opacity: deletingId === event.id ? 0.6 : 1 }}
+                        >
+                          <Trash2 size={14} /> {deletingId === event.id ? "Usuwanie..." : "Usuń"}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
