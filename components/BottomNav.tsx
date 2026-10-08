@@ -64,7 +64,14 @@ export default function BottomNav() {
             isActive('/dodaj-wydarzenie') || pathname.startsWith('/admin/wydarzenia') ? 'text-green-500' : 'text-[#555]'
           }`}
         >
-          <PlusCircle size={22} />
+          {/* Ikona większa (30 px zamiast 22) i zawsze zielona, bo to główna akcja
+              aplikacji. Stały slot 22 px: większa ikona wystaje poza niego równo
+              z góry i z dołu (puste marginesy ikony), więc podpisy wszystkich
+              pięciu zakładek zostają w jednej linii. Stan aktywny pokazuje
+              podpis. */}
+          <span className="flex h-[22px] items-center justify-center">
+            <PlusCircle size={30} strokeWidth={2} className="text-green-500" />
+          </span>
           <span
             className={`text-[10px] font-medium ${
               isActive('/dodaj-wydarzenie') || pathname.startsWith('/admin/wydarzenia') ? 'text-green-500' : 'text-[#555]'
