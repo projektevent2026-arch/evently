@@ -344,8 +344,20 @@ export default function EventPageClient({ slug }: { slug: string }) {
               // do ich WŁASNEJ zewnętrznej strony, niezależnie od tego.
               // 2026-10-06: etykieta "profil organizatora" tylko gdy wiersz faktycznie jest linkiem.
               // Bez nazwy i bez profilu nie pokazujemy wiersza wcale (zostaje sam link zewnętrzny).
-              const orgLabel = event.organizer_name || event.organizer_profile?.organization_name || null
+              // 2026-10-08: logo i nazwa w karcie ZAWSZE z profilu konta (spójnie ze sobą),
+              // gdy wydarzenie ma konto z profilem. Pole "Organizator" przy wydarzeniu
+              // (organizer_name) jest wtedy tylko dopiskiem "Organizator wydarzenia: …",
+              // i to tylko gdy różni się od nazwy w karcie (np. gmina, zespół). Bez konta
+              // zostaje jak dotąd: sama nazwa z wydarzenia. Wcześniej logo z profilu mogło
+              // stać obok nazwy innego podmiotu, z linkiem do profilu tego pierwszego.
               const hasProfileLink = !!(event.created_by && event.organizer_profile)
+              const profileName = event.organizer_profile?.organization_name?.trim() || null
+              const eventOrgName = event.organizer_name?.trim() || null
+              const orgLabel = hasProfileLink ? (profileName || eventOrgName) : eventOrgName
+              const extraOrg =
+                hasProfileLink && eventOrgName && orgLabel && eventOrgName.toLowerCase() !== orgLabel.toLowerCase()
+                  ? eventOrgName
+                  : null
               const orgRow = (
                 <div style={{display:"flex",alignItems:"center",gap:14}}>
                   <div style={{width:48,height:48,borderRadius:12,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden"}}>
@@ -370,6 +382,11 @@ export default function EventPageClient({ slug }: { slug: string }) {
                       {orgRow}
                     </Link>
                   ) : orgLabel ? orgRow : null}
+                  {extraOrg && (
+                    <div style={{marginTop:10,fontSize:13,color:"#6b7280"}}>
+                      Organizator wydarzenia: <strong style={{color:"#111827",fontWeight:700}}>{extraOrg}</strong>
+                    </div>
+                  )}
                   {event.website_url && (
                     <a href={href} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginTop:(orgLabel || hasProfileLink) ? 12 : 0,padding:"10px 14px",border:"1px solid #e5e7eb",borderRadius:12,fontSize:13,fontWeight:600,color:"#16a34a",textDecoration:"none"}}>
                       <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Więcej informacji · {host}</span>

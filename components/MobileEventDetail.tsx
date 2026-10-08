@@ -275,8 +275,20 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
               // linki są nieprawidłowe w HTML).
               // 2026-10-06: etykieta "profil organizatora" tylko gdy karta faktycznie jest linkiem.
               // Bez nazwy i bez profilu nie pokazujemy karty organizatora wcale (zostaje sam link zewnętrzny).
-              const orgLabel = event.organizer_name || event.organizer_profile?.organization_name || null
+              // 2026-10-08: logo i nazwa w karcie ZAWSZE z profilu konta (spójnie ze sobą),
+              // gdy wydarzenie ma konto z profilem. Pole "Organizator" przy wydarzeniu
+              // (organizer_name) jest wtedy tylko dopiskiem "Organizator wydarzenia: …",
+              // i to tylko gdy różni się od nazwy w karcie (np. gmina, zespół). Bez konta
+              // zostaje jak dotąd: sama nazwa z wydarzenia. Wcześniej logo z profilu mogło
+              // stać obok nazwy innego podmiotu, z linkiem do profilu tego pierwszego.
               const hasProfileLink = !!(event.created_by && event.organizer_profile)
+              const profileName = event.organizer_profile?.organization_name?.trim() || null
+              const eventOrgName = event.organizer_name?.trim() || null
+              const orgLabel = hasProfileLink ? (profileName || eventOrgName) : eventOrgName
+              const extraOrg =
+                hasProfileLink && eventOrgName && orgLabel && eventOrgName.toLowerCase() !== orgLabel.toLowerCase()
+                  ? eventOrgName
+                  : null
               const inner = (
                 <>
                   <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden">
@@ -303,6 +315,11 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                   ) : orgLabel ? (
                     <div className={cardClass}>{inner}</div>
                   ) : null}
+                  {extraOrg && (
+                    <div className="mt-2 px-1 text-[12px] text-zinc-400">
+                      Organizator wydarzenia: <span className="font-bold text-zinc-200">{extraOrg}</span>
+                    </div>
+                  )}
                   {event.website_url && (
                     <a
                       href={href}
