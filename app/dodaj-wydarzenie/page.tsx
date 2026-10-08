@@ -13,6 +13,7 @@ import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/schedu
 import { toggleBoldSelection } from "@/lib/eventFormat"
 import { geocodeAddress } from "@/lib/geocodeAddress"
 import { revalidateHome } from "@/lib/revalidateHome"
+import { publishedFilter } from "@/lib/publishedFilter"
 
 const LocationPicker = dynamic(
   () => import("@/components/admin/LocationPicker"),
@@ -67,6 +68,83 @@ async function saveContactEmail(eventId: string, email: string) {
   if (error) console.error("[Evently] Nie udało się zapisać e-maila kontaktowego:", error.message)
 }
 
+// 2026-10-08: ostrzeżenie o możliwym duplikacie. Przy DODAWANIU nowego wydarzenia (nie przy edycji)
+// szukamy opublikowanych wydarzeń z którymkolwiek z tych samych terminów i podobnym tytułem.
+// To tylko OSTRZEŻENIE, nigdy blokada: cykliczne imprezy (ten sam tytuł, to samo miejsce, co tydzień)
+// są w pełni legalne, więc decyzja zawsze zostaje po stronie osoby dodającej.
+// Widzi tylko wydarzenia opublikowane (widok public_events) — dwa zgłoszenia publiczne oczekujące
+// na moderację nie zobaczą się nawzajem. Błąd zapytania NIE blokuje zapisu (fail-open).
+type DuplicateCandidate = {
+  id: string
+  title: string
+  slug: string
+  city: string | null
+  venue_name: string | null
+  image_url: string | null
+  cover_image_url: string | null
+}
+
+function normalizeTitle(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/ł/g, "l")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function titlesLookSimilar(a: string, b: string): boolean {
+  const x = normalizeTitle(a)
+  const y = normalizeTitle(b)
+  if (!x || !y) return false
+  if (x === y) return true
+  const shorter = x.length <= y.length ? x : y
+  const longer = x.length <= y.length ? y : x
+  if (shorter.length >= 8 && longer.includes(shorter)) return true
+  const tx = new Set(x.split(" ").filter(w => w.length > 2))
+  const ty = new Set(y.split(" ").filter(w => w.length > 2))
+  if (tx.size === 0 || ty.size === 0) return false
+  let common = 0
+  tx.forEach(w => { if (ty.has(w)) common++ })
+  return common / (tx.size + ty.size - common) >= 0.6
+}
+
+async function findDuplicateCandidates(title: string, dateList: string[]): Promise<DuplicateCandidate[]> {
+  try {
+    const uniqueDates = Array.from(new Set(dateList.filter(Boolean)))
+    if (!title.trim() || uniqueDates.length === 0) return []
+    const { data, error } = await publishedFilter(
+      supabase
+        .from("public_events")
+        .select("id, title, slug, city, venue_name, image_url, cover_image_url, event_dates!inner(date)")
+        .in("event_dates.date", uniqueDates)
+    ).limit(50)
+    if (error) {
+      console.error("[Evently] Sprawdzanie duplikatów nie powiodło się:", error.message)
+      return []
+    }
+    const seen = new Set<string>()
+    const out: DuplicateCandidate[] = []
+    for (const row of (data ?? []) as any[]) {
+      if (seen.has(row.id) || !row.slug) continue
+      if (!titlesLookSimilar(title, row.title ?? "")) continue
+      seen.add(row.id)
+      out.push({
+        id: row.id, title: row.title, slug: row.slug, city: row.city ?? null,
+        venue_name: row.venue_name ?? null, image_url: row.image_url ?? null,
+        cover_image_url: row.cover_image_url ?? null,
+      })
+      if (out.length >= 3) break
+    }
+    return out
+  } catch (err) {
+    console.error("[Evently] Sprawdzanie duplikatów nie powiodło się:", err)
+    return []
+  }
+}
+
 export default function DodajWydarzenie() {
   const [form, setForm] = useState(emptyForm)
   const [dates, setDates] = useState<DateEntry[]>([{ date: "", from: "", to: "" }])
@@ -74,6 +152,9 @@ export default function DodajWydarzenie() {
   const [geocoding, setGeocoding] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [dupes, setDupes] = useState<DuplicateCandidate[] | null>(null)
+  const skipDupCheck = useRef(false)
+  const dupBoxRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState("")
   const [improvingDesc, setImprovingDesc] = useState(false)
   const [improveError, setImproveError] = useState("")
@@ -192,8 +273,14 @@ export default function DodajWydarzenie() {
   }, [])
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
 
+  // Po pojawieniu się ostrzeżenia o duplikacie przewiń do niego (przycisk wysyłania jest na dole formularza).
+  useEffect(() => {
+    if (dupes && dupes.length > 0) dupBoxRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+  }, [dupes])
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>) => {
     const { name, value, type } = e.target
+    if (name === "title") setDupes(null)
     const checked = (e.target as HTMLInputElement).checked
     setForm(prev => ({
       ...prev,
@@ -356,6 +443,9 @@ export default function DodajWydarzenie() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // "To inne wydarzenie, dodaj mimo to" ustawia ten znacznik tuż przed wysłaniem formularza.
+    const skipDup = skipDupCheck.current
+    skipDupCheck.current = false
 
 
 // Walidacja: przynajmniej jeden termin z datą
@@ -379,6 +469,18 @@ if (validDates.some(d => !d.from)) {
   setActiveTab("basic")
   return
 }
+
+// Ostrzeżenie o duplikacie: tylko przy nowym wydarzeniu, nie przy edycji.
+if (!editId && !skipDup) {
+  setSubmitting(true)
+  const found = await findDuplicateCandidates(form.title, validDates.map(d => d.date))
+  if (found.length > 0) {
+    setDupes(found)
+    setSubmitting(false)
+    return
+  }
+}
+setDupes(null)
 
 setSubmitting(true)
 setError("")
@@ -1030,6 +1132,49 @@ try {
               </div>
 
               {error && <p style={{color:"#ef4444",fontSize:"0.875rem",margin:0}}>{error}</p>}
+
+              {dupes && dupes.length > 0 && (
+                <div ref={dupBoxRef} role="alert" style={{background:"#fffbeb",border:"1px solid #fcd34d",borderRadius:12,padding:"1rem"}}>
+                  <p style={{margin:"0 0 0.75rem",fontWeight:700,fontSize:"0.95rem",color:"#92400e"}}>
+                    ⚠️ {dupes.length === 1 ? "Takie wydarzenie już jest w Evently" : "Podobne wydarzenia już są w Evently"}
+                  </p>
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {dupes.map(d => {
+                      const thumb = d.image_url || d.cover_image_url
+                      return (
+                        <div key={d.id} style={{display:"flex",alignItems:"center",gap:12,background:"white",border:"1px solid #fde68a",borderRadius:10,padding:"0.6rem"}}>
+                          {thumb
+                            // eslint-disable-next-line @next/next/no-img-element
+                            ? <img src={thumb} alt="" width={56} height={56} style={{width:56,height:56,objectFit:"cover",borderRadius:8,flexShrink:0}} />
+                            : <div style={{width:56,height:56,borderRadius:8,background:"#f3f4f6",flexShrink:0}} />}
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:600,fontSize:"0.9rem",color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title}</div>
+                            <div style={{fontSize:"0.8rem",color:"#6b7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                              {[d.city, d.venue_name].filter(Boolean).join(" · ")}
+                            </div>
+                          </div>
+                          <a href={`/events/${d.slug}`} target="_blank" rel="noopener noreferrer"
+                            style={{fontSize:"0.85rem",fontWeight:600,color:"#16a34a",textDecoration:"none",whiteSpace:"nowrap",padding:"0.4rem 0.2rem"}}>
+                            Zobacz ↗
+                          </a>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <p style={{margin:"0.75rem 0",fontSize:"0.85rem",color:"#78350f",lineHeight:1.5}}>
+                    Jeśli to to samo wydarzenie, nie dodawaj go drugi raz. Jeśli inne (np. inna godzina albo miejsce), dodaj mimo to.
+                  </p>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <button type="button" onClick={() => setDupes(null)} style={{padding:"0.6rem 1rem",background:"white",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontWeight:600,fontSize:"0.85rem",color:"#374151"}}>
+                      Wróć do formularza
+                    </button>
+                    <button type="submit" disabled={submitting} onClick={() => { skipDupCheck.current = true }}
+                      style={{padding:"0.6rem 1rem",background:"#16a34a",color:"white",border:"none",borderRadius:8,cursor:"pointer",fontWeight:600,fontSize:"0.85rem",opacity:submitting?0.7:1}}>
+                      To inne wydarzenie, dodaj mimo to
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:"0.5rem",borderTop:"1px solid #f3f4f6"}}>
                 <button type="button" onClick={() => setActiveTab("location")} style={backBtn}>← Wstecz</button>
