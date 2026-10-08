@@ -346,10 +346,11 @@ export function MobileHome({ initialEvents }: { initialEvents?: Event[] }) {
   // przetrwa odświeżenie — tu robimy to przez localStorage, bo ten komponent
   // nie operuje na parametrach URL.
   const [radius, setRadius] = useState(() => {
-    if (typeof window === 'undefined') return 25
+    // Domyślny promień 50 km (było 25): Puńsk (27,5 km), Sejny (27 km) i Augustów (30 km) leżą poza 25 km od Suwałk, więc ich wydarzenia były domyślnie niewidoczne.
+    if (typeof window === 'undefined') return 50
     const saved = localStorage.getItem('evently_radius')
     const parsed = saved ? parseInt(saved, 10) : NaN
-    return [5, 10, 25, 50].includes(parsed) ? parsed : 25
+    return [5, 10, 25, 50].includes(parsed) ? parsed : 50
   })
   const [activeDate, setActiveDate] = useState<'all'|'today'|'tomorrow'|'weekend'|'custom'>('all')
   const [customDate, setCustomDate] = useState('')

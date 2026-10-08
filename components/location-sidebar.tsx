@@ -19,6 +19,7 @@ const MiniMap = dynamic(() => import("@/components/MiniMap"), {
   ),
 })
 
+// Domyślny promień 50 km (było 25): Puńsk (27,5 km), Sejny (27 km) i Augustów (30 km) leżą poza 25 km od Suwałk, więc ich wydarzenia były domyślnie niewidoczne.
 const RADII = [5, 10, 25, 50]
 const SUWALKI_COORDS: [number, number] = [54.1113, 22.9302]
 
@@ -67,8 +68,8 @@ export function LocationSidebar() {
   // mimo że hero-section.tsx i tak pokazywało "Suwałki" jako pozornie już
   // ustawioną lokalizację. Teraz: domyślnie Suwałki naprawdę, od razu.
   const initialCity = searchParams.get("city") || "Suwałki"
-  const initialRadiusRaw = parseInt(searchParams.get("radius") || "25", 10)
-  const initialRadius = RADII.includes(initialRadiusRaw) ? initialRadiusRaw : 25
+  const initialRadiusRaw = parseInt(searchParams.get("radius") || "50", 10)
+  const initialRadius = RADII.includes(initialRadiusRaw) ? initialRadiusRaw : 50
   const urlLat = searchParams.get("lat")
   const urlLng = searchParams.get("lng")
   const initialCenter: [number, number] = (urlLat && urlLng)
@@ -94,8 +95,8 @@ export function LocationSidebar() {
     // z zewnątrz (nie tylko przy starcie).
     useEffect(() => {
       const urlCity = searchParams.get("city") || "Suwałki"
-      const urlRadiusRaw = parseInt(searchParams.get("radius") || "25", 10)
-      const urlRadius = RADII.includes(urlRadiusRaw) ? urlRadiusRaw : 25
+      const urlRadiusRaw = parseInt(searchParams.get("radius") || "50", 10)
+      const urlRadius = RADII.includes(urlRadiusRaw) ? urlRadiusRaw : 50
       const uLat = searchParams.get("lat")
       const uLng = searchParams.get("lng")
       setCity(urlCity)

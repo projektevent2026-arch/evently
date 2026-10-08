@@ -109,8 +109,9 @@ export default function EventMap() {
   const [locLoading,   setLocLoading]   = useState(false)
   const [searchInput,  setSearchInput]  = useState(() => searchParams.get('q') ?? '')
   const [radiusValue,  setRadiusValue]  = useState(() => {
-    const r = parseFloat(searchParams.get('radius') ?? '25')
-    return isNaN(r) ? 25 : r
+    // Domyślny promień 50 km (było 25): Puńsk (27,5 km), Sejny (27 km) i Augustów (30 km) leżą poza 25 km od Suwałk, więc ich wydarzenia były domyślnie niewidoczne.
+    const r = parseFloat(searchParams.get('radius') ?? '50')
+    return isNaN(r) ? 50 : r
   })
   const [gpsLoading, setGpsLoading] = useState(false)
   const [customDate, setCustomDate] = useState('')

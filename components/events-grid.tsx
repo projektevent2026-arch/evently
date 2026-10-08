@@ -122,7 +122,8 @@ export function EventsGrid({ initialEvents }: { initialEvents?: any[] }) {
   const urlLng = parseFloat(searchParams.get("lng") || "")
   const filterLat = isNaN(urlLat) ? SUWALKI_LAT : urlLat
   const filterLng = isNaN(urlLng) ? SUWALKI_LNG : urlLng
-  const filterRadius = parseFloat(searchParams.get("radius") || "25")
+  // Domyślny promień 50 km (było 25): Puńsk (27,5 km), Sejny (27 km) i Augustów (30 km) leżą poza 25 km od Suwałk, więc ich wydarzenia były domyślnie niewidoczne.
+  const filterRadius = parseFloat(searchParams.get("radius") || "50")
   const hasLocationFilter = !isNaN(filterLat) && !isNaN(filterLng)
 
   // Pierwszy render: jeśli mamy initialEvents z SSR (app/page.tsx), od
