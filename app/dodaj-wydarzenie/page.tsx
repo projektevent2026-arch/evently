@@ -594,6 +594,10 @@ try {
           <Link href="/" style={{display:"inline-block",background:"#16a34a",color:"white",padding:"0.75rem 2rem",borderRadius:10,fontWeight:700,textDecoration:"none",fontSize:"0.95rem"}}>
             Wróć do strony głównej
           </Link>
+          <p style={{marginTop:20,marginBottom:0,fontSize:"0.85rem",color:"#6b7280"}}>
+            Masz uwagi albo pomysł?{" "}
+            <Link href="/kontakt#inne" style={{color:"#16a34a",fontWeight:600}}>Napisz do nas</Link>
+          </p>
         </div>
       </div>
     )
