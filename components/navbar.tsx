@@ -111,15 +111,9 @@ export function Navbar() {
           </Link>
 
           {user && isAdmin && (
-            <>
-              <Link
-                href="/admin"
-                className="hidden sm:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Panel
-              </Link>
-              <RoleBadge className="hidden sm:inline-block" />
-            </>
+            // Osobnego napisu "Panel" już nie ma: odznaka (Administrator/Moderator)
+            // jest linkiem do /admin. Poniżej breakpointu sm panel jest w "Więcej".
+            <RoleBadge href="/admin" className="hidden sm:inline-block" />
           )}
 
           {user && isOrganizer && (

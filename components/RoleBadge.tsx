@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 
@@ -14,7 +15,10 @@ const LABELS: Record<string, string> = {
   moderator: "Moderator",
 }
 
-export function RoleBadge({ className = "" }: { className?: string }) {
+// Bez `href` odznaka jest zwykłą etykietą (strony admina). Z `href` staje się
+// linkiem, np. w górnym pasku: kliknięcie "Administrator" prowadzi do panelu,
+// więc osobny napis "Panel" nie jest potrzebny.
+export function RoleBadge({ className = "", href }: { className?: string; href?: string }) {
   const [label, setLabel] = useState<string | null>(null)
 
   useEffect(() => {
@@ -40,11 +44,21 @@ export function RoleBadge({ className = "" }: { className?: string }) {
 
   if (!label) return null
 
-  return (
-    <span
-      className={`whitespace-nowrap rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] font-semibold leading-none text-primary ${className}`}
-    >
-      {label}
-    </span>
-  )
+  const base =
+    "whitespace-nowrap rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] font-semibold leading-none text-primary"
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        title="Przejdź do panelu"
+        aria-label={`${label}: przejdź do panelu`}
+        className={`${base} transition-colors hover:bg-primary/20 ${className}`}
+      >
+        {label}
+      </Link>
+    )
+  }
+
+  return <span className={`${base} ${className}`}>{label}</span>
 }
