@@ -25,6 +25,7 @@ export default function AdminUzytkownicy() {
   const [error, setError] = useState("")
   const [savingId, setSavingId] = useState<string | null>(null)
   const [pendingRole, setPendingRole] = useState<Record<string, string>>({})
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
@@ -34,6 +35,7 @@ export default function AdminUzytkownicy() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Błąd pobierania")
       setUsers(data.users)
+      setCurrentUserId(data.currentUserId ?? null)
     } catch (e: any) {
       setError(e.message)
     }
@@ -45,6 +47,7 @@ export default function AdminUzytkownicy() {
   const handleSave = async (id: string) => {
     const role = pendingRole[id]
     if (!role) return
+    if (id === currentUserId) return
     setSavingId(id)
     try {
       const res = await fetch(`/api/admin/users/${id}/role`, {
@@ -107,6 +110,7 @@ export default function AdminUzytkownicy() {
             {users.map(u => {
               const current = ROLE_LABELS[u.role] || ROLE_LABELS.user
               const editing = pendingRole[u.id] !== undefined
+              const isSelf = u.id === currentUserId
               return (
                 <div key={u.id} className="admin-user-row" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid #f3f4f6" }}>
                   <div className="admin-user-email-block" style={{ flex: 1, minWidth: 0 }}>
@@ -123,23 +127,31 @@ export default function AdminUzytkownicy() {
                   <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: "0.75rem", fontWeight: 600, background: current.bg, color: current.color, flexShrink: 0 }}>
                     {current.label}
                   </span>
-                  <select
-                    value={pendingRole[u.id] ?? u.role}
-                    onChange={e => setPendingRole(prev => ({ ...prev, [u.id]: e.target.value }))}
-                    style={{ padding: "6px 8px", borderRadius: 8, border: "1px solid #e5e7eb", fontSize: "0.8rem", background: "white", color: "#111827" }}
-                  >
-                    <option value="user">Użytkownik</option>
-                    <option value="organizer">Organizator</option>
-                    <option value="moderator">Moderator</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                  <button
-                    onClick={() => handleSave(u.id)}
-                    disabled={!editing || savingId === u.id}
-                    style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: editing ? "#16a34a" : "#e5e7eb", color: editing ? "white" : "#9ca3af", fontSize: "0.8rem", fontWeight: 600, cursor: editing ? "pointer" : "default", flexShrink: 0 }}
-                  >
-                    {savingId === u.id ? "Zapisywanie..." : "Zapisz"}
-                  </button>
+                  {isSelf ? (
+                    <span style={{ fontSize: "0.75rem", color: "#9ca3af", flexShrink: 0 }}>
+                      To Twoje konto — rolę zmienia inny administrator
+                    </span>
+                  ) : (
+                    <>
+                      <select
+                        value={pendingRole[u.id] ?? u.role}
+                        onChange={e => setPendingRole(prev => ({ ...prev, [u.id]: e.target.value }))}
+                        style={{ padding: "6px 8px", borderRadius: 8, border: "1px solid #e5e7eb", fontSize: "0.8rem", background: "white", color: "#111827" }}
+                      >
+                        <option value="user">Użytkownik</option>
+                        <option value="organizer">Organizator</option>
+                        <option value="moderator">Moderator</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      <button
+                        onClick={() => handleSave(u.id)}
+                        disabled={!editing || savingId === u.id}
+                        style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: editing ? "#16a34a" : "#e5e7eb", color: editing ? "white" : "#9ca3af", fontSize: "0.8rem", fontWeight: 600, cursor: editing ? "pointer" : "default", flexShrink: 0 }}
+                      >
+                        {savingId === u.id ? "Zapisywanie..." : "Zapisz"}
+                      </button>
+                    </>
+                  )}
                 </div>
               )
             })}

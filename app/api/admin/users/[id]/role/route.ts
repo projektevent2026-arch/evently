@@ -23,13 +23,17 @@ export async function PATCH(
     return NextResponse.json({ error: "Nieprawidłowa rola." }, { status: 400 })
   }
 
-  // Nie pozwalamy zalogowanemu adminowi odebrać samemu sobie dostępu do
-  // panelu z tego panelu — jedyny sposób cofnięcia takiej pomyłki byłby
-  // wtedy ręcznie, przez dashboard Supabase.
-  if (id === auth.userId && !["admin", "moderator"].includes(newRole)) {
+  // Nikt nie zmienia własnej roli — ani w dół, ani w górę. Wcześniejsza
+  // wersja blokowała tylko zejście poniżej moderatora, więc admin mógł
+  // przez pomyłkę zmienić samego siebie na moderatora i od tej chwili
+  // tracił prawo do zarządzania rolami (naprawa wymagała SQL w Supabase).
+  // Skutek uboczny, który jest zamierzony: zalogowany admin zawsze
+  // pozostaje adminem, więc z panelu nie da się zejść do zera adminów.
+  // Własną rolę zmienia się wyłącznie ręcznie w bazie (SQL Editor).
+  if (id === auth.userId) {
     return NextResponse.json(
-      { error: "Nie możesz odebrać samemu sobie roli administratora/moderatora z tego panelu." },
-      { status: 400 }
+      { error: "Nie możesz zmienić własnej roli." },
+      { status: 403 }
     )
   }
 

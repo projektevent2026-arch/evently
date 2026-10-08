@@ -45,5 +45,7 @@ export async function GET() {
     })
     .sort((a: any, b: any) => (b.created_at || "").localeCompare(a.created_at || ""))
 
-  return NextResponse.json({ users: merged })
+  // currentUserId: panel użytkowników blokuje edycję roli własnego konta
+  // (egzekwuje to i tak API zmiany roli — to tylko podpowiedź dla UI).
+  return NextResponse.json({ users: merged, currentUserId: auth.userId })
 }
