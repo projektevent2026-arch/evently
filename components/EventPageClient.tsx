@@ -33,7 +33,40 @@ export default function EventPageClient({ slug }: { slug: string }) {
       const data = await getEventWithDates(slug, isPreview)
       if (data) {
         setEvent(data)
-        const { data: similar } = await publishedFilter(supabase.from("public_events").select("*")).neq("id", data.id).limit(4)
+        // 2026-10-08: "Podobne" = ta sama kategoria i/lub ta sama miejscowość, tylko wydarzenia z przyszłym
+        // terminem. Kolejność: najpierw najlepsze dopasowanie (kategoria + miejscowość), potem najbliższa data;
+        // bez powtórzeń tytułów. Wcześniej: dowolne 4 opublikowane wydarzenia, bez żadnego kryterium.
+        // Jeśli nic nie pasuje, sekcja w ogóle się nie pokazuje (lepiej nic niż losowe wydarzenia).
+        const nowD = new Date()
+        const todayStr = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, "0")}-${String(nowD.getDate()).padStart(2, "0")}`
+        const { data: pool, error: similarError } = await publishedFilter(
+          supabase
+            .from("public_events")
+            .select("*, event_dates!inner(date, start_time)")
+            .gte("event_dates.date", todayStr)
+        ).neq("id", data.id).limit(60)
+        if (similarError) console.error("[Evently] Nie udało się pobrać podobnych wydarzeń:", similarError.message)
+        const myCat = data.category ? normalizeCategory(data.category) : ""
+        const myCity = (data.city || "").trim().toLowerCase()
+        const seenTitles = new Set<string>()
+        const similar = ((pool || []) as any[])
+          .map((ev: any) => {
+            const next = [...(ev.event_dates || [])].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)))[0]
+            const sameCat = !!myCat && !!ev.category && normalizeCategory(ev.category) === myCat
+            const sameCity = !!myCity && (ev.city || "").trim().toLowerCase() === myCity
+            return { ev, next, score: (sameCat ? 2 : 0) + (sameCity ? 1 : 0) }
+          })
+          .filter((x: any) => x.next && x.score > 0)
+          .sort((a: any, b: any) => b.score - a.score || String(a.next.date).localeCompare(String(b.next.date)))
+          .filter((x: any) => {
+            const key = String(x.ev.title || "").trim().toLowerCase()
+            if (seenTitles.has(key)) return false
+            seenTitles.add(key)
+            return true
+          })
+          .slice(0, 4)
+          // start_date karty = najbliższy PRZYSZŁY termin (dla wydarzeń cyklicznych surowy start_date bywa dawno minięty)
+          .map((x: any) => ({ ...x.ev, start_date: `${x.next.date}T${String(x.next.start_time || "00:00").slice(0, 5)}` }))
         // Mapowanie na EventData — TEN SAM kształt i TA SAMA karta (EventCard),
         // której używa strona główna. Wcześniej ta sekcja renderowała własny,
         // ręcznie napisany blok JSX (inny styl, brak koloru pilności, brak
@@ -149,7 +182,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </Link>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {dateBadge && <span style={{background:"#16a34a",color:"white",fontSize:12,fontWeight:700,padding:"5px 14px",borderRadius:20,letterSpacing:0.3}}>{dateBadge}</span>}
-            {timeLabel && <span style={{background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",fontSize:12,padding:"5px 12px",borderRadius:20,border:"1px solid rgba(255,255,255,0.15)"}}>{timeLabel}</span>}
+            {/* 2026-10-08: pigułka z godziną usunięta — ta sama godzina jest w pasku informacji pod zdjęciem. */}
           </div>
         </div>
 
@@ -316,7 +349,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
                   {event.city && event.address && <div style={{fontSize:13,color:"#6b7280",marginTop:2}}>{event.city}</div>}
                 </div>
                 <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:13,color:"#16a34a",fontWeight:700,textDecoration:"none",display:"flex",alignItems:"center",gap:5}}>
-                  <Navigation size={13} /> Jak dojechac
+                  <Navigation size={13} /> Jak dojechać
                 </a>
               </div>
               {event.location_notes && (
