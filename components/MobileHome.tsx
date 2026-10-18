@@ -7,7 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useFavorites } from '@/hooks/useFavorites'
 import PosterModal from '@/components/PosterModal'
-import { dateBadgeParts, isToday, isTomorrow, isThisWeekend, isSameLocalDate, haversineKm, formatDist } from '@/lib/eventFormat'
+import { dateBadgeParts, isToday, isTomorrow, isThisWeekend, isSameLocalDate, haversineKm, formatDist, pluralWydarzenia } from '@/lib/eventFormat'
 import { normalizeCategory, CATEGORY_LABELS as CAT_LABELS, CATEGORY_BADGE_CLASSES as CAT_COLORS } from '@/lib/eventCategory'
 
 interface Event {
@@ -100,7 +100,7 @@ async function fetchEventsWithRetry(): Promise<Event[]> {
 // nie dostawało współrzędnych -> brak dystansu i filtra promienia.
 async function geocodeCity(query: string): Promise<[number, number] | null> {
   try {
-    const url = `/api/nominatim?op=search&q=${encodeURIComponent(query)}&limit=1`
+    const url = `/api/nominatim?op=search&q=${encodeURIComponent(query)}&limit=1&fallback=world`
     const res = await fetch(url)
     const data = await res.json()
     if (Array.isArray(data) && data[0]) {
@@ -501,6 +501,16 @@ export function MobileHome({ initialEvents }: { initialEvents?: Event[] }) {
       ? haversineKm(effLat, effLon, e.latitude, e.longitude) : null
   }))
 
+  // Promień decyduje TYLKO promień (bez chipów daty/kategorii): jeśli w wybranym
+  // 50 km nie ma nic ze znaną odległością, rozszerzamy raz do 100 km.
+  const RADIUS_FALLBACK = 100
+  const isSearching = search.trim() !== ''
+  const cityUnknown = !gpsActive && !gpsLoading && !cityLoading && effLat === null
+  const countWithin = (r: number) =>
+    withDistance.filter(e => e.distance !== null && e.distance <= r).length
+  const expanded = !cityUnknown && !isSearching && radius === 50 && countWithin(50) === 0
+  const effRadius = expanded ? RADIUS_FALLBACK : radius
+
   // Filtry wspólne dla listy I dla liczenia kategorii (patrz categoryCounts
   // niżej) — wydzielone, żeby nie utrzymywać dwóch kopii tych samych
   // czterech warunków. Celowo BEZ filtra kategorii — to jest właśnie ta
@@ -509,7 +519,8 @@ export function MobileHome({ initialEvents }: { initialEvents?: Event[] }) {
   const passesNonCategoryFilters = (e: typeof withDistance[number]) => {
     // Przy aktywnym wyszukiwaniu promień nie odcina — szukasz konkretnej rzeczy,
     // masz ją znaleźć niezależnie od odległości. Dystans dalej liczy się na karcie.
-    if (!search.trim() && e.distance !== null && e.distance > radius) return false
+    if (cityUnknown && !isSearching) return false
+    if (!isSearching && e.distance !== null && e.distance > effRadius) return false
     if (activeDate === 'today' && !isToday(e.next_date)) return false
     if (activeDate === 'tomorrow' && !isTomorrow(e.next_date)) return false
     if (activeDate === 'weekend' && !isThisWeekend(e.next_date)) return false
@@ -580,8 +591,8 @@ export function MobileHome({ initialEvents }: { initialEvents?: Event[] }) {
           <span className="text-[13px] text-green-500 font-semibold">
             {gpsLoading || cityLoading ? '📡 Szukam...' : city} ▾
           </span>
-          <span className="text-[11px] text-zinc-600">• {radius} km</span>
-          <span className="text-[11px] text-zinc-500 ml-1">{filtered.length} wydarzeń</span>
+          {!cityUnknown && <span className="text-[11px] text-zinc-600">• {effRadius} km</span>}
+          <span className="text-[11px] text-zinc-500 ml-1">{filtered.length} {pluralWydarzenia(filtered.length)}</span>
         </button>
 
         <h1 className="text-[22px] font-black leading-tight tracking-tight mb-3">
@@ -678,14 +689,31 @@ export function MobileHome({ initialEvents }: { initialEvents?: Event[] }) {
               Spróbuj ponownie
             </button>
           </div>
+        ) : cityUnknown && !isSearching ? (
+          <div className="text-center py-16">
+            <div className="text-4xl mb-3">📍</div>
+            <p className="text-zinc-400 text-sm font-semibold">Nie znaleziono tego miasta</p>
+            <p className="text-zinc-600 text-xs mt-1">Wybierz inne miasto z listy albo użyj lokalizacji GPS</p>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-4xl mb-3">🔍</div>
-            <p className="text-zinc-400 text-sm font-semibold">Brak wydarzeń</p>
-            <p className="text-zinc-600 text-xs mt-1">Spróbuj zwiększyć promień lub zmień filtry</p>
+            <p className="text-zinc-400 text-sm font-semibold">
+              {countWithin(effRadius) === 0 && !isSearching
+                ? `Brak wydarzeń w promieniu ${effRadius} km`
+                : 'Brak wydarzeń dla wybranych filtrów'}
+            </p>
+            <p className="text-zinc-600 text-xs mt-1">Zmień filtry lub miasto</p>
           </div>
         ) : (
-          filtered.map(e => <EventCard key={e.id} event={e} distance={e.distance} />)
+          <>
+            {expanded && (
+              <p className="text-[11px] text-zinc-500 mb-2">
+                W promieniu {radius} km nic nie ma, pokazujemy do {effRadius} km.
+              </p>
+            )}
+            {filtered.map(e => <EventCard key={e.id} event={e} distance={e.distance} />)}
+          </>
         )}
       </div>
 

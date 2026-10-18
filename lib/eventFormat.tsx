@@ -522,3 +522,11 @@ export function outlookCalendarUrl(event: any): string {
 
   return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`
 }
+// 1 wydarzenie; 2–4 (oprócz 12–14) wydarzenia; reszta i 0 wydarzeń
+export function pluralWydarzenia(n: number): string {
+  const m10 = n % 10
+  const m100 = n % 100
+  if (n === 1) return 'wydarzenie'
+  if (m10 >= 2 && m10 <= 4 && !(m100 >= 12 && m100 <= 14)) return 'wydarzenia'
+  return 'wydarzeń'
+}

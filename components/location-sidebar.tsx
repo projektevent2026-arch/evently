@@ -32,7 +32,7 @@ interface GeoResult {
 async function searchNominatim(query: string): Promise<GeoResult[]> {
   const url =
     `/api/nominatim?op=search&q=${encodeURIComponent(query)}` +
-    `&limit=8&featureType=settlement&addressdetails=1`
+    `&limit=8&featureType=settlement&addressdetails=1&fallback=world`
 
   const res = await fetch(url)
   const data = await res.json()

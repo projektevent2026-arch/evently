@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { EventCard, type EventData } from "@/components/event-card"
 import { supabase } from "@/lib/supabase"
 import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
-import { isToday, isTomorrow, isThisWeekend, isSameLocalDate, haversineKm } from "@/lib/eventFormat"
+import { isToday, isTomorrow, isThisWeekend, isSameLocalDate, haversineKm, pluralWydarzenia } from "@/lib/eventFormat"
 
 const CATEGORIES = ["kultura", "muzyka", "sport", "festyny", "targi"]
 
@@ -52,6 +52,16 @@ async function fetchPublishedEvents(): Promise<any[]> {
   throw lastErr ?? new Error("fetch events failed")
 }
 
+// 50 km bez żadnego wydarzenia ze współrzędnymi -> raz rozszerzamy do 100 km.
+// Decyzja zależy WYŁĄCZNIE od promienia (nie od chipów daty/kategorii).
+function effectiveRadius(data: any[], lat: number, lng: number, radius: number) {
+  if (radius !== 50) return radius
+  const near = data.some(
+    (e) => e.latitude && e.longitude && haversineKm(lat, lng, e.latitude, e.longitude) <= 50
+  )
+  return near ? radius : 100
+}
+
 // Filtrowanie po lokalizacji (haversine) + mapowanie surowych wierszy z
 // published_events_with_next_date na EventData używane przez <EventCard>.
 // Wydzielone z loadEvents 2026-09-22, żeby dokładnie ta sama logika dała
@@ -64,12 +74,13 @@ function mapEvents(
   params: { filterLat: number; filterLng: number; filterRadius: number; hasLocationFilter: boolean; q: string }
 ) {
   const { filterLat, filterLng, filterRadius, hasLocationFilter, q } = params
+  const usedRadius = effectiveRadius(data, filterLat, filterLng, filterRadius)
   return data
     .filter((e) => {
       if (q) return true
       if (!hasLocationFilter) return true
       if (!e.latitude || !e.longitude) return true
-      return haversineKm(filterLat, filterLng, e.latitude, e.longitude) <= filterRadius
+      return haversineKm(filterLat, filterLng, e.latitude, e.longitude) <= usedRadius
     })
     .map((e) => ({
       id: e.id,
@@ -133,6 +144,9 @@ export function EventsGrid({ initialEvents }: { initialEvents?: any[] }) {
   const [events, setEvents] = useState<EventData[]>(() =>
     initialEvents ? mapEvents(initialEvents, { filterLat, filterLng, filterRadius, hasLocationFilter, q }) : []
   )
+  const [radiusUsed, setRadiusUsed] = useState<number>(() =>
+    initialEvents ? effectiveRadius(initialEvents, filterLat, filterLng, filterRadius) : filterRadius
+  )
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [activeDate, setActiveDate] = useState("all")
   const [customDate, setCustomDate] = useState("")
@@ -190,6 +204,8 @@ export function EventsGrid({ initialEvents }: { initialEvents?: any[] }) {
     try {
       const data = await fetchPublishedEvents()
       const mapped = mapEvents(data, { filterLat, filterLng, filterRadius, hasLocationFilter, q })
+
+      setRadiusUsed(effectiveRadius(data, filterLat, filterLng, filterRadius))
 
       setEvents(mapped)
 
@@ -260,8 +276,9 @@ export function EventsGrid({ initialEvents }: { initialEvents?: any[] }) {
           {q ? `Wyniki dla "${q}"` : "Nadchodzące wydarzenia"}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {filtered.length} {filtered.length === 1 ? "wydarzenie" : filtered.length < 5 ? "wydarzenia" : "wydarzeń"}
-          {hasLocationFilter && ` w promieniu ${filterRadius} km`}
+          {filtered.length} {pluralWydarzenia(filtered.length)}
+          {hasLocationFilter && !q && ` w promieniu ${radiusUsed} km`}
+          {!q && radiusUsed !== filterRadius && ` (w ${filterRadius} km nic nie ma)`}
           {refreshing && <span className="ml-2 text-xs opacity-70">· odświeżam…</span>}
         </p>
       </div>
@@ -356,7 +373,7 @@ export function EventsGrid({ initialEvents }: { initialEvents?: any[] }) {
             <p className="text-4xl mb-4">📭</p>
             <p className="text-lg font-semibold text-foreground mb-2">Brak wydarzeń</p>
             <p className="text-sm text-muted-foreground">
-              {hasLocationFilter ? `Nie ma wydarzeń w promieniu ${filterRadius} km.` : "Nie ma wydarzeń spełniających kryteria."}
+              {hasLocationFilter ? `Nie ma wydarzeń w promieniu ${radiusUsed} km.` : "Nie ma wydarzeń spełniających kryteria."}
             </p>
           </div>
         )}

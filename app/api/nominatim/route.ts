@@ -74,17 +74,34 @@ export async function GET(req: NextRequest) {
       const featureType = params.get('featureType')
       const addressdetails = params.get('addressdetails')
 
-      let url =
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}` +
-        `&format=json&limit=${limit}&countrycodes=pl&accept-language=pl`
-      if (featureType) url += `&featureType=${encodeURIComponent(featureType)}`
-      if (addressdetails) url += `&addressdetails=${encodeURIComponent(addressdetails)}`
+      // 2026-10-18: domyślnie szukamy tylko w Polsce (countrycodes=pl), żeby
+      // "Ełk" trafiał w polski Ełk. Wywołujący może dodać fallback=world —
+      // wtedy, GDY Polska nic nie zwróci, szukamy drugi raz bez ograniczenia
+      // kraju (np. Antwerpia). Bez tego parametru zachowanie jest jak dawniej.
+      const fallbackWorld = params.get('fallback') === 'world'
 
-      const res = await fetch(url, { headers: NOMINATIM_HEADERS, signal: AbortSignal.timeout(5000) })
+      const buildUrl = (polandOnly: boolean) => {
+        let u =
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}` +
+          `&format=json&limit=${limit}${polandOnly ? '&countrycodes=pl' : ''}&accept-language=pl`
+        if (featureType) u += `&featureType=${encodeURIComponent(featureType)}`
+        if (addressdetails) u += `&addressdetails=${encodeURIComponent(addressdetails)}`
+        return u
+      }
+
+      const res = await fetch(buildUrl(true), { headers: NOMINATIM_HEADERS, signal: AbortSignal.timeout(5000) })
       if (!res.ok) {
         return NextResponse.json({ error: `Nominatim: ${res.status}` }, { status: 502 })
       }
-      const data = await res.json()
+      let data = await res.json()
+
+      if (fallbackWorld && Array.isArray(data) && data.length === 0) {
+        const res2 = await fetch(buildUrl(false), { headers: NOMINATIM_HEADERS, signal: AbortSignal.timeout(5000) })
+        if (!res2.ok) {
+          return NextResponse.json({ error: `Nominatim: ${res2.status}` }, { status: 502 })
+        }
+        data = await res2.json()
+      }
       return NextResponse.json(data)
     }
 
