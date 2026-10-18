@@ -9,6 +9,7 @@ import { MapPin } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 import EventSchedule from '@/components/EventSchedule'
+import { isRedundantSchedule } from '@/lib/scheduleRedundancy'
 import { useFavorites } from '@/hooks/useFavorites'
 import { getEventWithDates } from '@/lib/getEventWithDates'
 import EventDatesList from '@/components/EventDatesList'
@@ -83,7 +84,8 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
   const tagColor = CATEGORY_BADGE_CLASSES[cat]
   const tagLabel = CATEGORY_LABELS[cat]
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.address, event.city].filter(Boolean).join(', '))}`
-  const hasTabs = event.schedule && event.schedule.length > 0
+  // 2026-10-08: program z jednym punktem powtarzającym tytuł wydarzenia nie jest pokazywany (zakładka ani podgląd).
+  const hasTabs = event.schedule && event.schedule.length > 0 && !isRedundantSchedule(event.schedule, event.title)
   const tabs = hasTabs ? TABS : ['O wydarzeniu', 'Lokalizacja']
   // 2026-09-29: event.schedule to tablica DNI ({day, label, items}), nie
   // punktów programu — poniższy podgląd (pierwsze kilka punktów na

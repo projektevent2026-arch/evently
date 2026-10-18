@@ -16,6 +16,7 @@ import dynamic from "next/dynamic"
 import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, durationBetween, nextTermInfo, nextOccurrence, linkify, effectiveStartDate, isToday, isTomorrow, cleanUrlForDisplay } from "@/lib/eventFormat"
 import { publishedFilter } from "@/lib/publishedFilter"
 import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
+import { isRedundantSchedule } from "@/lib/scheduleRedundancy"
 
 const EventMap = dynamic(() => import("@/components/event-map").then(m => m.EventMap), { ssr: false })
 
@@ -126,7 +127,8 @@ export default function EventPageClient({ slug }: { slug: string }) {
   const badgeDate = effectiveStartDate(event.event_dates, event.start_date)
   const dateBadge = isToday(badgeDate) ? "DZIS" : isTomorrow(badgeDate) ? "JUTRO" : null
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.address,event.city].filter(Boolean).join(", "))}`
-  const hasTabs = event.schedule && event.schedule.length > 0
+  // 2026-10-08: program z jednym punktem powtarzającym tytuł wydarzenia nie jest pokazywany (zakładka ani podgląd).
+  const hasTabs = event.schedule && event.schedule.length > 0 && !isRedundantSchedule(event.schedule, event.title)
   // Godzina w pasku info: z NAJBLIŻSZEGO terminu (nextOccurrence), nie z
   // surowych events.start_date/end_date — dla cyklu te pola to sklejenie
   // godziny startu PIERWSZEGO terminu z godziną końca OSTATNIEGO, więc jeśli
