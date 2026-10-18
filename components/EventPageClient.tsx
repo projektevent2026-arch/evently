@@ -395,13 +395,13 @@ export default function EventPageClient({ slug }: { slug: string }) {
                   : null
               const orgRow = (
                 <div style={{display:"flex",alignItems:"center",gap:14}}>
-                  <div style={{width:48,height:48,borderRadius:12,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden"}}>
-                    {event.organizer_profile?.avatar_url ? (
-                      <img src={event.organizer_profile.avatar_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />
-                    ) : (
-                      <Building2 size={22} color="#16a34a" />
-                    )}
-                  </div>
+              <div style={{width:48,height:48,boxSizing:"border-box",borderRadius:12,background:event.organizer_profile?.avatar_url ? "#ffffff" : "#f0fdf4",border:event.organizer_profile?.avatar_url ? "1px solid #e5e7eb" : "none",padding:event.organizer_profile?.avatar_url ? 4 : 0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden"}}>
+  {event.organizer_profile?.avatar_url ? (
+    <img src={event.organizer_profile.avatar_url} alt="" style={{display:"block",width:"100%",height:"100%",objectFit:"contain"}} />
+  ) : (
+    <Building2 size={22} color="#16a34a" />
+  )}
+</div>
                   <div style={{fontSize:15,fontWeight:700,color:"#111827"}}>
                     {orgLabel || "Profil organizatora"}
                   </div>

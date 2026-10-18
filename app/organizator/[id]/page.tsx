@@ -156,17 +156,19 @@ export default function OrganizatorPage() {
               </div>
             )}
             <div className={coverUrl ? "mb-6 px-2 sm:px-4" : "mb-6 flex items-center gap-4"}>
-              <div
-                className={`flex shrink-0 items-center justify-center overflow-hidden bg-[#f0fdf4] ${
-                  coverUrl ? "-mt-10 mb-3 size-20 rounded-full border-4 border-background sm:-mt-12 sm:size-24" : "size-16 rounded-full"
-                }`}
-              >
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="" className="size-full object-cover" />
-                ) : (
-                  <Building2 size={28} className="text-primary" />
-                )}
-              </div>
+            <div
+  className={`flex shrink-0 items-center justify-center overflow-hidden ${
+    avatarUrl ? "bg-white p-2" : "bg-[#f0fdf4]"
+  } ${
+    coverUrl ? "-mt-10 mb-3 size-20 rounded-full border-4 border-background sm:-mt-12 sm:size-24" : "size-16 rounded-full"
+  }`}
+>
+  {avatarUrl ? (
+    <img src={avatarUrl} alt="" className="block size-full object-contain" />
+  ) : (
+    <Building2 size={28} className="text-primary" />
+  )}
+</div>
               <div className="min-w-0">
                 <h1 className="break-words text-2xl font-bold text-foreground [overflow-wrap:anywhere]">{orgName || "Organizator"}</h1>
                 <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">

@@ -293,13 +293,15 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                   : null
               const inner = (
                 <>
-                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden">
-                    {event.organizer_profile?.avatar_url ? (
-                      <img src={event.organizer_profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      "🏛️"
-                    )}
-                  </div>
+         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 overflow-hidden ${
+  event.organizer_profile?.avatar_url ? "bg-white p-1" : "bg-green-500/10"
+}`}>
+  {event.organizer_profile?.avatar_url ? (
+    <img src={event.organizer_profile.avatar_url} alt="" className="block w-full h-full object-contain" />
+  ) : (
+    "🏛️"
+  )}
+</div>
                   <div className="flex-1">
                     <div className="text-[12px] font-bold text-white">
                       {orgLabel || "Profil organizatora"}

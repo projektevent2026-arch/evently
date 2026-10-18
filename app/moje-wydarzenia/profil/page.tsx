@@ -209,7 +209,7 @@ export default function ProfilOrganizatora() {
                 <img src={coverUrl} alt="" style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 10, marginBottom: 14, background: "#f3f4f6" }} />
               )}
               {avatarUrl ? (
-                <img src={avatarUrl} alt="" style={{ width: 88, height: 88, borderRadius: "50%", objectFit: "cover", marginBottom: 14, background: "#f3f4f6" }} />
+                <img src={avatarUrl} alt="" style={{ width: 88, height: 88, boxSizing: "border-box", padding: 10, borderRadius: "50%", objectFit: "contain", marginBottom: 14, background: "#ffffff", border: "1px solid #e5e7eb" }} />
               ) : (
                 <div style={{ width: 88, height: 88, borderRadius: "50%", background: "#f3f4f6", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <User size={36} color="#9ca3af" />
@@ -284,7 +284,7 @@ export default function ProfilOrganizatora() {
 
               <label style={labelStyle}>Zdjęcie profilowe</label>
               {draftAvatarUrl && (
-                <img src={draftAvatarUrl} alt="" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", marginBottom: 10, background: "#f3f4f6" }} />
+               <img src={draftAvatarUrl} alt="" style={{ width: 72, height: 72, boxSizing: "border-box", padding: 8, borderRadius: "50%", objectFit: "contain", marginBottom: 10, background: "#ffffff", border: "1px solid #e5e7eb" }} />
               )}
               <ImageUpload currentUrl={draftAvatarUrl} onUploadComplete={setDraftAvatarUrl} />
               {draftAvatarUrl && (
