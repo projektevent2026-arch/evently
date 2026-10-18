@@ -568,7 +568,7 @@ try {
     // Edycja organizatora publikuje się od razu — strona główna musi się
     // dowiedzieć o tym natychmiast, nie dopiero za 60s (revalidate w
     // app/page.tsx).
-    revalidateHome()
+    await revalidateHome()
     setSubmitted(true)
     setSubmitting(false)
     return
@@ -655,7 +655,7 @@ try {
     // Organizator publikuje od razu — strona główna musi się dowiedzieć
     // natychmiast. Zwykłe zgłoszenie (status "pending") nie jest jeszcze
     // widoczne publicznie, więc nie ma czego odświeżać.
-    if (isOrganizer) revalidateHome()
+    if (isOrganizer) await revalidateHome()
     setSubmitted(true)
   } catch (err) {
     setError("Błąd sieci. Sprawdź połączenie i spróbuj ponownie.")
@@ -693,9 +693,13 @@ try {
               ? (editId ? "Zmiany zostały zapisane." : "Twoje wydarzenie zostało opublikowane.")
               : "Twoje wydarzenie zostało przesłane do weryfikacji. Sprawdzimy je i opublikujemy tak szybko, jak to możliwe."}
           </p>
-          <Link href="/" style={{display:"inline-block",background:"#16a34a",color:"white",padding:"0.75rem 2rem",borderRadius:10,fontWeight:700,textDecoration:"none",fontSize:"0.95rem"}}>
+          {/* 2026-10-08: zwykły <a> zamiast <Link> — pełne przejście z pobraniem strony z serwera. <Link> korzystał z
+              pamięci podręcznej routera w przeglądarce (do 5 minut dla stron statycznych) i pokazywał stronę główną
+              sprzed dodania wydarzenia, dopóki ktoś nie odświeżył jej ręcznie. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/" style={{display:"inline-block",background:"#16a34a",color:"white",padding:"0.75rem 2rem",borderRadius:10,fontWeight:700,textDecoration:"none",fontSize:"0.95rem"}}>
             Wróć do strony głównej
-          </Link>
+          </a>
           <p style={{marginTop:20,marginBottom:0,fontSize:"0.85rem",color:"#6b7280"}}>
             Masz uwagi albo pomysł?{" "}
             <Link href="/kontakt#inne" style={{color:"#16a34a",fontWeight:600}}>Napisz do nas</Link>
