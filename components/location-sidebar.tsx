@@ -29,6 +29,16 @@ interface GeoResult {
   label: string
 }
 
+// Typy wyników Nominatima, które są miejscowościami. Wszystko inne
+// (state = prowincja/województwo, county = powiat, country) wycinamy z
+// podpowiedzi: ich środek geometryczny leży daleko od miasta o tej samej
+// nazwie (np. prowincja Antwerpia ~26 km od miasta Antwerpia).
+const SETTLEMENT_TYPES = new Set([
+  "city", "town", "village", "hamlet", "suburb", "city_district",
+  "borough", "quarter", "neighbourhood", "municipality", "locality",
+  "isolated_dwelling",
+])
+
 async function searchNominatim(query: string): Promise<GeoResult[]> {
   const url =
     `/api/nominatim?op=search&q=${encodeURIComponent(query)}` +
@@ -37,11 +47,19 @@ async function searchNominatim(query: string): Promise<GeoResult[]> {
   const res = await fetch(url)
   const data = await res.json()
 
-  return (data as any[])
+  // Jeśli Nominatim nie zwróci pola addresstype albo po filtrze nic nie
+  // zostanie, zostawiamy wszystkie wyniki jak dawniej.
+  const raw = data as any[]
+  const onlyPlaces = raw.filter((item) => !item.addresstype || SETTLEMENT_TYPES.has(item.addresstype))
+  const items = onlyPlaces.length > 0 ? onlyPlaces : raw
+
+  return items
     .map((item) => {
       const a = item.address || {}
       const place = a.city || a.town || a.village || a.municipality || item.name || ""
-      const region = a.state || ""
+      // Gdy "state" ma tę samą nazwę co miejscowość (np. Antwerpia w Belgii),
+      // pokazujemy kraj zamiast powtórzenia.
+      const region = (a.state && a.state !== place) ? a.state : (a.country || "")
       return {
         lat: parseFloat(item.lat),
         lng: parseFloat(item.lon),
