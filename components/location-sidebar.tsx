@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { MapPin, Navigation, ChevronDown } from "lucide-react"
 
 // 2026-09-22: dodany `loading` — bez tego, zanim JS doczyta chunk MiniMapy
@@ -46,6 +46,10 @@ async function searchNominatim(query: string): Promise<GeoResult[]> {
 
   const res = await fetch(url)
   const data = await res.json()
+  if (!Array.isArray(data)) {
+    // np. 429 z naszego limitera albo 502 z Nominatima: { error: "..." }
+    throw new Error(typeof data?.error === "string" ? data.error : "Błąd wyszukiwania")
+  }
 
   // Jeśli Nominatim nie zwróci pola addresstype albo po filtrze nic nie
   // zostanie, zostawiamy wszystkie wyniki jak dawniej.
@@ -100,6 +104,12 @@ export function LocationSidebar() {
     const [suggestions, setSuggestions] = useState<GeoResult[]>([])
     const [showSuggestions, setShowSuggestions] = useState(false)
     const [searching, setSearching] = useState(false)
+    const [searchError, setSearchError] = useState("")
+    // Debounce podpowiedzi: wcześniej zapytanie szło po KAŻDEJ literze, co
+    // szybko wyczerpywało limit /api/nominatim (429) i łamało zasady
+    // publicznego Nominatima. Teraz jedno zapytanie po przerwie w pisaniu.
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const reqIdRef = useRef(0)
     const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(initialCenter)
     const [sidebarOpen, setSidebarOpen] = useState(false)
   
@@ -147,24 +157,33 @@ export function LocationSidebar() {
     )
   }
 
-  const handleCityChange = async (val: string) => {
+  const handleCityChange = (val: string) => {
     setCity(val)
+    setSearchError("")
+    if (debounceRef.current) clearTimeout(debounceRef.current)
     if (val.trim().length < 3) {
+      reqIdRef.current++
       setSuggestions([])
       setShowSuggestions(false)
       return
     }
-    try {
-      const results = await searchNominatim(val.trim())
-      const unique = results.filter(
-        (r, i, arr) => arr.findIndex(x => x.label === r.label) === i
-      )
-      setSuggestions(unique)
-      setShowSuggestions(unique.length > 0)
-    } catch {
-      setSuggestions([])
-      setShowSuggestions(false)
-    }
+    debounceRef.current = setTimeout(async () => {
+      const myId = ++reqIdRef.current
+      try {
+        const results = await searchNominatim(val.trim())
+        if (myId !== reqIdRef.current) return // nowsze zapytanie już poszło
+        const unique = results.filter(
+          (r, i, arr) => arr.findIndex(x => x.label === r.label) === i
+        )
+        setSuggestions(unique)
+        setShowSuggestions(unique.length > 0)
+      } catch (err) {
+        if (myId !== reqIdRef.current) return
+        setSuggestions([])
+        setShowSuggestions(false)
+        setSearchError("Wyszukiwanie chwilowo niedostępne. Spróbuj za chwilę.")
+      }
+    }, 450)
   }
 
   const applyCity = (r: GeoResult) => {
@@ -181,15 +200,20 @@ export function LocationSidebar() {
 
   const handleCitySearch = async () => {
     if (!city.trim()) return
+    if (debounceRef.current) clearTimeout(debounceRef.current)
     if (suggestions.length > 0) {
       applyCity(suggestions[0])
       return
     }
     setSearching(true)
+    setSearchError("")
     try {
       const results = await searchNominatim(city.trim())
       if (results[0]) applyCity(results[0])
-    } catch {}
+      else setSearchError("Nie znaleziono takiego miejsca.")
+    } catch {
+      setSearchError("Wyszukiwanie chwilowo niedostępne. Spróbuj za chwilę.")
+    }
     setSearching(false)
   }
 
@@ -228,6 +252,9 @@ export function LocationSidebar() {
           />
           {searching && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          )}
+          {searchError && (
+            <p className="mt-1.5 text-xs text-muted-foreground">{searchError}</p>
           )}
           {showSuggestions && suggestions.length > 0 && (
             <ul className="absolute z-10 mt-1 w-full rounded-xl border border-border bg-background shadow-md overflow-hidden">
