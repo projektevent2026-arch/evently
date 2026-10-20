@@ -1,59 +1,100 @@
-'use client'
+"use client"
 
-import PosterButton from '@/components/PosterButton'
 import EventHero from '@/components/EventHero'
-import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { MapPin } from 'lucide-react'
-import dynamic from 'next/dynamic'
-import { supabase } from '@/lib/supabase'
+import { Calendar, Clock, MapPin, Tag, Ticket, Building2, Navigation } from "lucide-react"
 import EventSchedule from '@/components/EventSchedule'
-import { isRedundantSchedule } from '@/lib/scheduleRedundancy'
-import { useFavorites } from '@/hooks/useFavorites'
-import { getEventWithDates } from '@/lib/getEventWithDates'
-import EventDatesList from '@/components/EventDatesList'
-import AddToCalendarButton from '@/components/AddToCalendarButton'
-import { dateRange, isMultiDay, weekdayName, fmtClock, durationBetween, nextTermInfo, nextOccurrence, linkify, cleanUrlForDisplay } from '@/lib/eventFormat'
-import { normalizeCategory, CATEGORY_LABELS, CATEGORY_BADGE_CLASSES, type CategoryKey } from '@/lib/eventCategory'
-import { safeTel, telHref } from '@/lib/safeTel'
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
+import { supabase } from "@/lib/supabase"
+import { getEventWithDates } from "@/lib/getEventWithDates"
+import EventDatesList from "@/components/EventDatesList"
+import { EventCard, type EventData } from "@/components/event-card"
+import AddToCalendarButton from "@/components/AddToCalendarButton"
+import Link from "next/link"
+import Image from "next/image"
+import dynamic from "next/dynamic"
+import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, durationBetween, nextTermInfo, nextOccurrence, linkify, effectiveStartDate, isToday, isTomorrow, cleanUrlForDisplay } from "@/lib/eventFormat"
+import { publishedFilter } from "@/lib/publishedFilter"
+import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
+import { isRedundantSchedule } from "@/lib/scheduleRedundancy"
+import { safeTel, telHref } from "@/lib/safeTel"
+import { formatPrice } from "@/lib/formatPrice"
 
-const EventMap = dynamic(() => import('@/components/event-map').then(m => m.EventMap), { ssr: false })
+const EventMap = dynamic(() => import("@/components/event-map").then(m => m.EventMap), { ssr: false })
 
-const TABS = ['O wydarzeniu', 'Program', 'Lokalizacja']
-
-// Gradient tła hero per kategoria — używany tylko tutaj, więc zostaje
-// lokalny (nie w lib/eventCategory.ts). Rekeyowany na kanoniczne 4
-// kategorie: wcześniej "technology" nie miało własnego wpisu i dostawało
-// domyślny, szary gradient — teraz spójnie dostaje ten sam co "festyny".
-const CAT_GRADIENT: Record<CategoryKey, string> = {
-  muzyka: 'from-[#060e18] via-[#0e2040] to-[#2d5cbf]',
-  sport: 'from-[#060f1a] via-[#0a1f35] to-[#1a3a5c]',
-  kultura: 'from-[#120820] via-[#1e1040] to-[#3d1a6e]',
-  festyny: 'from-[#1a0a00] via-[#2d1800] to-[#4a2800]',
-  targi: 'from-[#0f1419] via-[#1f2937] to-[#3f4a5c]',
-}
-
-export default function MobileEventDetail({ slug }: { slug: string }) {
-  const router = useRouter()
+export default function EventPageClient({ slug }: { slug: string }) {
   const searchParams = useSearchParams()
   const isPreview = searchParams.get('preview') === '1'
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState(0)
-  // Ulubione na localStorage — bez kont. Zsynchronizowane z kartami i stroną /ulubione.
-  const { isFavorite, toggleFavorite } = useFavorites()
+  const [activeTab, setActiveTab] = useState("details")
+  const [similarEvents, setSimilarEvents] = useState<EventData[]>([])
+  const [showPoster, setShowPoster] = useState(false)
+  const [phoneCopied, setPhoneCopied] = useState(false)
 
   useEffect(() => {
-    async function load() {
+    async function fetchEvent() {
       const data = await getEventWithDates(slug, isPreview)
       if (data) {
         setEvent(data)
-        // Pobieranie RSVP (kto idzie) usunięte — RSVP wraca w tier D razem z kontami.
+        // 2026-10-08: "Podobne" = ta sama kategoria i/lub ta sama miejscowość, tylko wydarzenia z przyszłym
+        // terminem. Kolejność: najpierw najlepsze dopasowanie (kategoria + miejscowość), potem najbliższa data;
+        // bez powtórzeń tytułów. Wcześniej: dowolne 4 opublikowane wydarzenia, bez żadnego kryterium.
+        // Jeśli nic nie pasuje, sekcja w ogóle się nie pokazuje (lepiej nic niż losowe wydarzenia).
+        const nowD = new Date()
+        const todayStr = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, "0")}-${String(nowD.getDate()).padStart(2, "0")}`
+        const { data: pool, error: similarError } = await publishedFilter(
+          supabase
+            .from("public_events")
+            .select("*, event_dates!inner(date, start_time)")
+            .gte("event_dates.date", todayStr)
+        ).neq("id", data.id).limit(60)
+        if (similarError) console.error("[Evently] Nie udało się pobrać podobnych wydarzeń:", similarError.message)
+        const myCat = data.category ? normalizeCategory(data.category) : ""
+        const myCity = (data.city || "").trim().toLowerCase()
+        const seenTitles = new Set<string>()
+        const similar = ((pool || []) as any[])
+          .map((ev: any) => {
+            const next = [...(ev.event_dates || [])].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)))[0]
+            const sameCat = !!myCat && !!ev.category && normalizeCategory(ev.category) === myCat
+            const sameCity = !!myCity && (ev.city || "").trim().toLowerCase() === myCity
+            return { ev, next, score: (sameCat ? 2 : 0) + (sameCity ? 1 : 0) }
+          })
+          .filter((x: any) => x.next && x.score > 0)
+          .sort((a: any, b: any) => b.score - a.score || String(a.next.date).localeCompare(String(b.next.date)))
+          .filter((x: any) => {
+            const key = String(x.ev.title || "").trim().toLowerCase()
+            if (seenTitles.has(key)) return false
+            seenTitles.add(key)
+            return true
+          })
+          .slice(0, 4)
+          // start_date karty = najbliższy PRZYSZŁY termin (dla wydarzeń cyklicznych surowy start_date bywa dawno minięty)
+          .map((x: any) => ({ ...x.ev, start_date: `${x.next.date}T${String(x.next.start_time || "00:00").slice(0, 5)}` }))
+        // Mapowanie na EventData — TEN SAM kształt i TA SAMA karta (EventCard),
+        // której używa strona główna. Wcześniej ta sekcja renderowała własny,
+        // ręcznie napisany blok JSX (inny styl, brak koloru pilności, brak
+        // ceny) — dwa różne wyglądy kart w jednej apce. To naprawia spójność.
+        const mapped: EventData[] = (similar || []).map((ev: any) => ({
+          id: ev.id,
+          slug: ev.slug,
+          title: ev.title,
+          date: "",
+          start_date: ev.start_date,
+          start_time: fmtClock(ev.start_date) || null,
+          schedule_type: ev.schedule_type,
+          city: ev.city,
+          image: ev.cover_image_url || "/images/event-concert.jpg",
+          image_url: ev.image_url || null,
+          interested: 0,
+          category: ev.category || "Inne",
+          price: ev.is_free ? "Wstęp wolny" : "Wstęp płatny",
+        }))
+        setSimilarEvents(mapped)
       }
       setLoading(false)
     }
-    load()
+    fetchEvent()
   }, [slug, isPreview])
 
   const handleShare = async () => {
@@ -61,224 +102,311 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
     else navigator.clipboard.writeText(window.location.href)
   }
 
-  if (loading) return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-      <div className="text-green-500 text-sm animate-pulse">Ładowanie...</div>
-    </div>
-  )
+  // Desktop: numer telefonu kopiujemy do schowka (tel: na komputerze zwykle nic nie robi albo
+  // otwiera obcą aplikację). Na telefonie jest osobny komponent (MobileEventDetail) z przyciskiem „Zadzwoń".
+  const copyPhone = async () => {
+    const p = safeTel(event?.reservation_phone)
+    if (!p) return
+    try {
+      await navigator.clipboard.writeText(p)
+      setPhoneCopied(true)
+      setTimeout(() => setPhoneCopied(false), 2000)
+    } catch {}
+  }
 
+  // Wersja pełna (dzień tygodnia + data) — używana tylko tutaj (panel
+  // "Szczegóły"), nie duplikowana w MobileEventDetail, więc zostaje lokalna.
+  const fmt = (d:string) => d ? new Date(d).toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long",year:"numeric"}) : ""
+
+  const nextTerm = nextTermInfo(event?.event_dates)
+
+  if (loading) return <div style={{display:"flex",minHeight:"100vh",alignItems:"center",justifyContent:"center"}}><p style={{color:"#6b7280",fontSize:14}}>Ladowanie...</p></div>
   if (!event) return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-5 px-6 text-center">
-      <Link href="/" className="inline-flex items-center gap-2 text-white text-lg font-bold no-underline">
-        <span className="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center flex-shrink-0">
+    <div style={{display:"flex",flexDirection:"column",gap:20,minHeight:"100vh",alignItems:"center",justifyContent:"center",background:"#0a0a0a",padding:"0 20px",textAlign:"center"}}>
+      <Link href="/" style={{display:"inline-flex",alignItems:"center",gap:8,textDecoration:"none",color:"white",fontSize:18,fontWeight:700}}>
+        <span style={{display:"flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:9,background:"#16a34a",flexShrink:0}}>
           <MapPin size={18} color="white" />
         </span>
         evently
       </Link>
-      <div className="text-zinc-500 text-sm">Nie znaleziono wydarzenia.</div>
-      <Link href="/" className="text-green-500 font-semibold text-sm no-underline">Zobacz wszystkie wydarzenia →</Link>
+      <p style={{color:"#6b7280",margin:0}}>Nie znaleziono wydarzenia.</p>
+      <Link href="/" style={{color:"#16a34a",fontWeight:600,textDecoration:"none",fontSize:14}}>Zobacz wszystkie wydarzenia →</Link>
     </div>
   )
 
-  const cat = normalizeCategory(event.category)
-  const gradient = CAT_GRADIENT[cat]
-  const tagColor = CATEGORY_BADGE_CLASSES[cat]
-  const tagLabel = CATEGORY_LABELS[cat]
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.address, event.city].filter(Boolean).join(', '))}`
+  // Data użyta do badge "DZIŚ/JUTRO" na hero: dla wydarzenia cyklicznego
+  // to najbliższy nadchodzący termin z event_dates, NIE surowe start_date
+  // (które jest pierwszym, historycznym terminem całej serii — stąd
+  // wcześniej badge prawie nigdy się nie zapalał dla cykli, patrz
+  // effectiveStartDate() w lib/eventFormat.tsx).
+  const badgeDate = effectiveStartDate(event.event_dates, event.start_date)
+  const dateBadge = isToday(badgeDate) ? "DZIS" : isTomorrow(badgeDate) ? "JUTRO" : null
+  const phone = safeTel(event.reservation_phone)
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.address,event.city].filter(Boolean).join(", "))}`
   // 2026-10-08: program z jednym punktem powtarzającym tytuł wydarzenia nie jest pokazywany (zakładka ani podgląd).
   const hasTabs = event.schedule && event.schedule.length > 0 && !isRedundantSchedule(event.schedule, event.title)
-  const tabs = hasTabs ? TABS : ['O wydarzeniu', 'Lokalizacja']
-  // 2026-09-29: event.schedule to tablica DNI ({day, label, items}), nie
-  // punktów programu — poniższy podgląd (pierwsze kilka punktów na
-  // głównej karcie, przed wejściem w zakładkę "Program") czytał .time/
-  // .title bezpośrednio z obiektu dnia, którego te pola w ogóle nie mają.
-  // Renderowało się jako puste kropki, bez godziny i tytułu. Spłaszczone
-  // tutaj do prawdziwej listy punktów, w kolejności dni.
-  const scheduleItemsFlat: any[] = hasTabs
-    ? event.schedule.flatMap((d: any) => d.items || [])
-    : []
-
   // Godzina w pasku info: z NAJBLIŻSZEGO terminu (nextOccurrence), nie z
-  // surowych start_date/end_date — patrz komentarz w EventPageClient.tsx
-  // przy tej samej poprawce.
+  // surowych events.start_date/end_date — dla cyklu te pola to sklejenie
+  // godziny startu PIERWSZEGO terminu z godziną końca OSTATNIEGO, więc jeśli
+  // ostatni termin miał puste "Do godziny", cały zakres i czas trwania znikały.
   const occ = nextOccurrence(event)
   const timeLabel = occ.startTime
-    ? (occ.endTime && occ.endTime !== occ.startTime ? `${occ.startTime}–${occ.endTime}` : occ.startTime)
-    : ''
-
-  const nextTerm = nextTermInfo(event.event_dates)
-  const phone = safeTel(event.reservation_phone)
+    ? (occ.endTime && occ.endTime !== occ.startTime ? `${occ.startTime} - ${occ.endTime}` : occ.startTime)
+    : ""
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white pb-28">
+    <main style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"system-ui,sans-serif"}}>
+      <style>{`
+        .tab-btn { background:none; border:none; cursor:pointer; padding:14px 0; font-size:14px; font-weight:500; color:#9ca3af; border-bottom:2px solid transparent; transition:all 0.2s; white-space:nowrap; flex:1; text-align:center; }
+        .tab-btn.active { color:#16a34a; border-bottom-color:#16a34a; font-weight:700; }
+        .tab-btn:hover:not(.active) { color:#374151; }
+        .detail-item { display:flex; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid #f3f4f6; }
+        .detail-item:last-child { border-bottom:none; padding-bottom:0; }
+        .detail-icon-wrap { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:17px; }
+        .info-bar { display:flex; align-items:center; gap:0; background:white; border-bottom:1px solid #e5e7eb; overflow-x:auto; }
+        .info-bar-item { display:flex; align-items:center; gap:8px; padding:10px 20px; border-right:1px solid #f3f4f6; flex-shrink:0; }
+        .info-bar-item:last-child { border-right:none; margin-left:auto; }
+        .event-layout { display:grid; grid-template-columns:1fr 360px; gap:28px; align-items:start; }
+        .event-sidebar { position:sticky; top:84px; }
+        .similar-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+        @media (max-width: 900px) {
+          .event-layout { grid-template-columns:1fr; }
+          .event-sidebar { position:static; }
+          .info-bar-item { padding:12px 16px; }
+          .similar-grid { grid-template-columns:repeat(2,1fr); }
+        }
+        @media (max-width: 600px) {
+          .similar-grid { grid-template-columns:1fr 1fr; }
+          .info-bar { flex-wrap:wrap; }
+          .info-bar-item { border-right:none; border-bottom:1px solid #f3f4f6; width:50%; }
+        }
+      `}</style>
 
       {isPreview && event.status !== 'published' && (
-        <div className="bg-amber-500 text-black text-[11px] font-bold text-center py-1.5">
+        <div style={{background:"#f59e0b",color:"#111827",fontSize:12,fontWeight:700,textAlign:"center",padding:"7px 0"}}>
           🔍 Podgląd administratora — status: {event.status}, jeszcze niepubliczne
         </div>
       )}
 
-      {/* ── HERO ── */}
-      <div className={`relative h-52 overflow-hidden bg-gradient-to-br ${gradient}`}>
-      <EventHero src={event.cover_image_url || event.image_url} alt={event.title} />
-        {/* Top bar */}
-        <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
-        <Link
-            href="/"
-            className="h-8 pl-1.5 pr-3 rounded-full bg-black/55 border border-white/18 flex items-center gap-1.5 text-white text-xs font-bold"
-          >
-            <span className="w-5 h-5 rounded-md bg-green-600 flex items-center justify-center flex-shrink-0">
-              <MapPin size={11} color="white" />
+      <div style={{position:"relative", height:"min(500px, 45vw)", minHeight:300, overflow:"hidden"}}>
+      <EventHero src={event.cover_image_url || "/images/event-concert.jpg"} alt={event.title} />
+
+        <div style={{position:"absolute",top:0,left:0,right:0,padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <Link href="/" style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",padding:"7px 16px 7px 10px",borderRadius:24,fontSize:14,fontWeight:700,textDecoration:"none",border:"1px solid rgba(255,255,255,0.15)"}}>
+            <span style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,borderRadius:7,background:"#16a34a",flexShrink:0}}>
+              <MapPin size={13} color="white" />
             </span>
             evently
           </Link>
-          <div className="flex gap-2">
-            <button
-              onClick={() => toggleFavorite(event.id)}
-              aria-label={isFavorite(event.id) ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
-              className={`w-8 h-8 rounded-full border flex items-center justify-center text-base transition-colors ${
-                isFavorite(event.id)
-                  ? 'bg-red-500 border-red-500 text-white'
-                  : 'bg-black/55 border-white/18 text-white'
-              }`}
-            >
-              {isFavorite(event.id) ? '♥' : '♡'}
-            </button>
-            <button
-              onClick={handleShare}
-              className="w-8 h-8 rounded-full bg-black/55 border border-white/18 flex items-center justify-center text-sm text-white"
-            >
-              ↗
-            </button>
-            <PosterButton src={event.image_url || event.cover_image_url} />
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            {dateBadge && <span style={{background:"#16a34a",color:"white",fontSize:12,fontWeight:700,padding:"5px 14px",borderRadius:20,letterSpacing:0.3}}>{dateBadge}</span>}
+            {/* 2026-10-08: pigułka z godziną usunięta — ta sama godzina jest w pasku informacji pod zdjęciem. */}
           </div>
         </div>
 
-        {/* Bottom content */}
-        <div className="absolute bottom-0 left-0 right-0 p-3.5 z-10">
-          <span className={`text-[8px] font-black px-2.5 py-1 rounded-lg mb-2 inline-block ${tagColor}`}>
-            {tagLabel}
-          </span>
-          <h1 className="text-[22px] font-black leading-tight tracking-tight mb-1.5">
+        <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"24px"}}>
+          {event.category && (
+            <div style={{marginBottom:10}}>
+              <span style={{background:"#16a34a",color:"white",fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:20,letterSpacing:0.5}}>
+                {CATEGORY_LABELS[normalizeCategory(event.category)]}
+              </span>
+            </div>
+          )}
+           <h1 style={{color:"white",fontSize:"clamp(22px,4vw,36px)",fontWeight:800,margin:"0 0 14px",lineHeight:1.15,textShadow:"0 1px 8px rgba(0,0,0,0.4)"}}>
             {event.title}
           </h1>
-
-          {/* RSVP („Idę" + licznik + awatary) UKRYTE — wymaga kont/logowania (tier D). */}
-        </div>
-      </div>
-
-      {/* ── INFO BAR ── */}
-      <div className="flex bg-zinc-950 border-b border-zinc-800 overflow-x-auto scrollbar-hide">
-        {[
-          {
-            icon: '📅',
-            value: nextTerm ? nextTerm.label : (dateRange(event.start_date, event.end_date) || '—'),
-            subtext: nextTerm
-              ? (nextTerm.remaining > 0 ? `+ ${nextTerm.remaining} ${nextTerm.remaining === 1 ? 'kolejny termin' : 'kolejne terminy'}` : '')
-              : (!isMultiDay(event.start_date, event.end_date) ? weekdayName(event.start_date) : ''),
-          },
-          {
-            icon: '⏰',
-            value: timeLabel || '—',
-            // Dla wydarzeń z event_dates (cykliczne) czas trwania liczymy
-            // zawsze z konkretnego terminu (occ) — każdy wiersz w event_dates
-            // to jeden dzień, więc "wielodniowość" CAŁEJ serii (pierwszy
-            // termin vs ostatni, różne daty) nie ma tu znaczenia. isMultiDay
-            // na surowych start_date/end_date zostaje tylko dla wydarzeń BEZ
-            // event_dates, gdzie start_date/end_date faktycznie mogą
-            // opisywać jedno, naprawdę wielodniowe wydarzenie.
-            subtext: ((event.event_dates && event.event_dates.length > 0) || !isMultiDay(event.start_date, event.end_date))
-              ? durationBetween(occ.startTime, occ.endTime)
-              : '',
-          },
-          { icon: '📍', value: event.city || event.address || '—' },
-          { icon: '🎟️', value: event.is_free ? 'Wolny' : event.price_from ? `Od ${event.price_from} PLN` : 'Płatne', green: event.is_free },
-        ].map((item, i) => (
-          <div key={i} className="flex items-center gap-1.5 px-2 py-1.5 border-r border-zinc-800 flex-shrink-0 last:border-r-0">
-            <div className="w-6 h-6 rounded-lg bg-zinc-800 flex items-center justify-center text-[10px] flex-shrink-0">
-              {item.icon}
-            </div>
-            <div>
-              <div className={`text-[11px] font-bold ${item.green ? 'text-green-400' : 'text-white'}`}>
-                {item.value}
-              </div>
-              {item.subtext && (
-                <div className="text-[9px] text-zinc-500 mt-0.5">{item.subtext}</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",flexWrap:"wrap",gap:12}}>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <button onClick={handleShare} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"11px 18px",background:"transparent",backdropFilter:"blur(12px)",color:"white",border:"2px solid rgba(255,255,255,0.45)",borderRadius:26,fontSize:15,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
+                Udostępnij
+              </button>
+              {(event.image_url || event.cover_image_url) && (
+                <button onClick={() => setShowPoster(true)} style={{background:"rgba(0,0,0,0.45)",backdropFilter:"blur(12px)",color:"white",padding:"11px 16px",borderRadius:26,fontSize:14,fontWeight:600,border:"1px solid rgba(255,255,255,0.15)",cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6}}>
+                  Plakat
+                </button>
               )}
             </div>
           </div>
-        ))}
+        </div>
       </div>
 
-      {/* ── TABS ── */}
-      <div className="flex bg-[#111] border-b border-zinc-800">
-        {tabs.map((tab, i) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(i)}
-            className={`flex-1 py-2.5 text-[10px] font-semibold border-b-2 transition-colors ${
-              activeTab === i
-                ? 'text-green-400 border-green-500'
-                : 'text-zinc-500 border-transparent'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      {/* ── CONTENT ── */}
-      <div className="px-4 py-4">
-
-        {/* Tab 0: O wydarzeniu */}
-        {activeTab === 0 && (
+      <div className="info-bar">
+      <div className="info-bar-item">
+          <div style={{width:36,height:36,borderRadius:10,background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <Calendar size={16} color="#3b82f6" />
+          </div>
           <div>
-<p className="text-[13.5px] text-zinc-200 leading-relaxed mb-4 whitespace-pre-line">
-              {event.description || event.short_description
-                ? linkify(event.description || event.short_description, 'dark')
-                : 'Brak opisu.'}
-            </p>
-            <EventDatesList dates={event.event_dates} variant="dark" />
+            <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>
+              {nextTerm ? nextTerm.label : dateRange(event.start_date, event.end_date)}
+            </div>
+            {nextTerm ? (
+              nextTerm.remaining > 0 && (
+                <div style={{fontSize:11,color:"#16a34a",fontWeight:600,marginTop:1}}>
+                  + {nextTerm.remaining} {nextTerm.remaining === 1 ? "kolejny termin" : "kolejne terminy"}
+                </div>
+              )
+            ) : (
+              !isMultiDay(event.start_date, event.end_date) && (
+                <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>{weekdayName(event.start_date)}</div>
+              )
+            )}
+          </div>
+        </div>
+        <div className="info-bar-item">
+          <div style={{width:30,height:30,borderRadius:10,background:"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <Clock size={14} color="#16a34a" />
+          </div>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{timeLabel || "—"}</div>
+            {durationBetween(occ.startTime, occ.endTime) && (
+              <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>{durationBetween(occ.startTime, occ.endTime)}</div>
+            )}
+          </div>
+        </div>
+        <div className="info-bar-item">
+          <div style={{width:30,height:30,borderRadius:10,background:"#fff7ed",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <MapPin size={14} color="#f97316" />
+          </div>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:"#111827"}}>{event.venue_name||event.address||event.city}</div>
+            {event.city && event.address && <div style={{fontSize:12,color:"#6b7280"}}>{event.city}</div>}
+          </div>
+        </div>
+        <div className="info-bar-item">
+          <div style={{width:30,height:30,borderRadius:10,background:"#fef9f0",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <Ticket size={14} color="#f59e0b" />
+          </div>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:event.is_free?"#16a34a":"#111827"}}>
+              {event.is_free ? "Wolny" : (formatPrice(event.price_from) ?? "Płatne")}
+            </div>
+          </div>
+        </div>
+        <div className="info-bar-item" style={{marginLeft:"auto"}}>
+          <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 20px",background:"#16a34a",color:"white",borderRadius:12,fontSize:13,fontWeight:700,textDecoration:"none"}}>
+            <Navigation size={14} /> Nawiguj
+          </a>
+        </div>
+      </div>
 
-            {/* Schedule preview */}
-            {scheduleItemsFlat.slice(0, 4).map((item: any, i: number) => (
-              <div key={i} className="flex items-center gap-3 mb-3">
-                <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                <span className="text-[11px] font-bold text-green-400 min-w-[38px]">
-                  {item.time}
-                </span>
-                <span className="text-[11px] text-zinc-300">{item.title || item.name}</span>
+      <div style={{maxWidth:1200,margin:"0 auto",padding:"28px 20px 64px"}}>
+        <div className="event-layout">
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            <div style={{background:"white",borderRadius:18,boxShadow:"0 2px 12px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+              {hasTabs && (
+                <div style={{display:"flex",borderBottom:"1px solid #f3f4f6"}}>
+                  {[
+                    {id:"details",label:"Opis wydarzenia"},
+                    {id:"schedule",label:"Program"}
+                  ].map(tab => (
+                    <button key={tab.id} className={`tab-btn ${activeTab===tab.id?"active":""}`} onClick={()=>setActiveTab(tab.id)}>
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div style={{padding:"28px"}}>
+                {(activeTab==="details" || !hasTabs) && (
+                  <div>
+<p style={{fontSize:15,color:"#1f2937",lineHeight:1.85,margin:0,whiteSpace:"pre-line"}}>
+                      {(event.description||event.short_description)
+                        ? linkify(event.description||event.short_description)
+                        : <span style={{color:"#9ca3af"}}>Brak opisu.</span>}
+                    </p>
+                    <EventDatesList dates={event.event_dates} variant="light" />
+                    {(event.is_free || event.venue_name) && (
+                      <div style={{marginTop:24}}>
+                        <div style={{fontSize:13,fontWeight:700,color:"#16a34a",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+                          Przydatne informacje
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                          {/* 2026-10-06: "Wstęp wolny" tylko gdy wydarzenie faktycznie jest bezpłatne.
+                              Wcześniej warunek (is_free || !price_from) pokazywał to też przy płatnych
+                              wydarzeniach bez podanej ceny. */}
+                          {event.is_free && (
+                            <div style={{display:"flex",alignItems:"center",gap:8,fontSize:14,color:"#374151"}}>
+                              <span style={{color:"#16a34a"}}>✓</span> Wstęp wolny
+                            </div>
+                          )}
+                          {event.venue_name && (
+                            <div style={{display:"flex",alignItems:"center",gap:8,fontSize:14,color:"#374151"}}>
+                              <span style={{color:"#16a34a"}}>✓</span> {event.venue_name}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {activeTab==="schedule" && hasTabs && (
+                  <EventSchedule schedule={event.schedule} eventDate={event.start_date} />
+                )}
               </div>
-            ))}
-            {scheduleItemsFlat.length > 4 && (
-              <button
-                onClick={() => setActiveTab(1)}
-                className="text-[11px] text-green-400 font-semibold mt-1"
-              >
-                Zobacz cały program ›
-              </button>
+            </div>
+
+            <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+              {/* 2026-10-07: link z pola "Link do biletów" pokazuje się też przy wydarzeniach bezpłatnych jako
+                  "Rejestracja" (dotąd był wtedy w ogóle niewidoczny). Przy płatnych dalej "Kup bilety". */}
+              {event.ticket_url && (
+                <a href={event.ticket_url} target="_blank" rel="noopener noreferrer" style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px 16px",background:"#16a34a",borderRadius:14,fontSize:14,color:"white",fontWeight:700,textDecoration:"none",boxShadow:"0 4px 14px rgba(22,163,74,0.35)",minWidth:160}}>
+                  {event.is_free ? "Rejestracja" : "Kup bilety"}
+                </a>
+              )}
+              <AddToCalendarButton event={event} variant="light" />
+            </div>
+          </div>
+
+          <div className="event-sidebar" style={{display:"flex",flexDirection:"column",gap:16}}>
+            <div style={{background:"white",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
+              <div style={{height:220,overflow:"hidden"}}>
+                <EventMap city={event.city} location={event.address} latitude={event.latitude} longitude={event.longitude} />
+              </div>
+              <div style={{padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:600,color:"#111827"}}>{event.venue_name||event.address||event.city}</div>
+                  {event.city && event.address && <div style={{fontSize:13,color:"#6b7280",marginTop:2}}>{event.city}</div>}
+                </div>
+                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:13,color:"#16a34a",fontWeight:700,textDecoration:"none",display:"flex",alignItems:"center",gap:5}}>
+                  <Navigation size={13} /> Jak dojechać
+                </a>
+              </div>
+              {event.location_notes && (
+                <div style={{padding:"14px 20px",borderTop:"1px solid #f3f4f6",display:"flex",gap:10}}>
+                  <span style={{fontSize:14,flexShrink:0}}>ℹ️</span>
+                  <p style={{fontSize:13,color:"#4b5563",lineHeight:1.6,margin:0,whiteSpace:"pre-line"}}>
+                    {event.location_notes}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {phone && (
+              <div style={{background:"white",borderRadius:18,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:0.5,marginBottom:12}}>Rezerwacje</div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+                  <a href={telHref(phone) || undefined} style={{fontSize:18,fontWeight:800,color:"#111827",textDecoration:"none"}}>📞 {phone}</a>
+                  <button type="button" onClick={copyPhone} style={{padding:"8px 14px",border:"1px solid #e5e7eb",borderRadius:10,background:"white",fontSize:13,fontWeight:600,color:"#16a34a",cursor:"pointer"}}>
+                    {phoneCopied ? "Skopiowano ✓" : "Skopiuj numer"}
+                  </button>
+                </div>
+              </div>
             )}
 
-            {/* Organizer — 2026-09-23: cała karta jest teraz klikalna (nie
-                tylko wąski napis z domeną), żeby trafienie palcem nie
-                zależało od tego, jak krótka/długa jest wyświetlana
-                etykieta. Gdy nie ma website_url, karta zostaje zwykłym,
-                nieklikalnym <div> — nie ma dokąd prowadzić. */}
             {(event.organizer_name || event.website_url || event.organizer_profile) && (() => {
-              const { href, label } = event.website_url ? cleanUrlForDisplay(event.website_url) : { href: "", label: "" }
+              const href = event.website_url ? cleanUrlForDisplay(event.website_url).href : ""
               // 2026-10-02: do etykiety linku tylko domena (bez ścieżki) — pełna
               // ścieżka (np. soksuwalki.eu/class/pchli-targ-202695/) to szum.
               const host = (() => {
-                try { return new URL(href).hostname.replace(/^www\./, "") } catch { return label }
+                try { return new URL(href).hostname.replace(/^www\./, "") } catch { return href }
               })()
-              // 2026-09-30: dwa OSOBNE cele — cała karta prowadzi do
-              // publicznego profilu organizatora w Evently (wszystkie jego
-              // wydarzenia), tylko gdy powiązane z prawdziwym kontem
-              // (created_by); strona zewnętrzna to osobny, mały link pod
-              // spodem, nie wewnątrz tej samej karty (dwa zagnieżdżone
-              // linki są nieprawidłowe w HTML).
-              // 2026-10-06: etykieta "profil organizatora" tylko gdy karta faktycznie jest linkiem.
-              // Bez nazwy i bez profilu nie pokazujemy karty organizatora wcale (zostaje sam link zewnętrzny).
+              // 2026-09-30: dwa OSOBNE cele kliknięcia w tej karcie, nie
+              // jeden — awatar+nazwa prowadzą do publicznego profilu
+              // organizatora w Evently (wszystkie jego wydarzenia), TYLKO
+              // gdy wydarzenie jest powiązane z prawdziwym kontem
+              // (created_by); "Strona organizatora" to osobny, mały link
+              // do ich WŁASNEJ zewnętrznej strony, niezależnie od tego.
+              // 2026-10-06: etykieta "profil organizatora" tylko gdy wiersz faktycznie jest linkiem.
+              // Bez nazwy i bez profilu nie pokazujemy wiersza wcale (zostaje sam link zewnętrzny).
               // 2026-10-08: logo i nazwa w karcie ZAWSZE z profilu konta (spójnie ze sobą),
               // gdy wydarzenie ma konto z profilem. Pole "Organizator" przy wydarzeniu
               // (organizer_name) jest wtedy tylko dopiskiem "Organizator wydarzenia: …",
@@ -293,135 +421,97 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                 hasProfileLink && eventOrgName && orgLabel && eventOrgName.toLowerCase() !== orgLabel.toLowerCase()
                   ? eventOrgName
                   : null
-              const inner = (
-                <>
-         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 overflow-hidden ${
-  event.organizer_profile?.avatar_url ? "bg-white p-1" : "bg-green-500/10"
-}`}>
+              const orgRow = (
+                <div style={{display:"flex",alignItems:"center",gap:14}}>
+              <div style={{width:48,height:48,boxSizing:"border-box",borderRadius:12,background:event.organizer_profile?.avatar_url ? "#ffffff" : "#f0fdf4",border:event.organizer_profile?.avatar_url ? "1px solid #e5e7eb" : "none",padding:event.organizer_profile?.avatar_url ? 4 : 0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden"}}>
   {event.organizer_profile?.avatar_url ? (
-    <img src={event.organizer_profile.avatar_url} alt="" className="block w-full h-full object-contain" />
+    <img src={event.organizer_profile.avatar_url} alt="" style={{display:"block",width:"100%",height:"100%",objectFit:"contain"}} />
   ) : (
-    "🏛️"
+    <Building2 size={22} color="#16a34a" />
   )}
 </div>
-                  <div className="flex-1">
-                    <div className="text-[12px] font-bold text-white">
-                      {orgLabel || "Profil organizatora"}
-                    </div>
+                  <div style={{fontSize:15,fontWeight:700,color:"#111827"}}>
+                    {orgLabel || "Profil organizatora"}
                   </div>
-                </>
+                </div>
               )
-              const cardClass = "mt-5 flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl p-3"
               return (
-                <>
+                <div style={{background:"white",borderRadius:18,padding:"20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
+                  {(orgLabel || hasProfileLink) && (
+                    <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:0.5,marginBottom:14}}>Organizator</div>
+                  )}
                   {hasProfileLink ? (
-                    <Link href={`/organizator/${event.created_by}`} className={cardClass + " active:bg-zinc-800 transition-colors"}>
-                      {inner}
+                    <Link href={`/organizator/${event.created_by}`} style={{textDecoration:"none", display:"block"}}>
+                      {orgRow}
                     </Link>
-                  ) : orgLabel ? (
-                    <div className={cardClass}>{inner}</div>
-                  ) : null}
+                  ) : orgLabel ? orgRow : null}
                   {extraOrg && (
-                    <div className="mt-2 px-1 text-[12px] text-zinc-400">
-                      Organizator wydarzenia: <span className="font-bold text-zinc-200">{extraOrg}</span>
+                    <div style={{marginTop:10,fontSize:13,color:"#6b7280"}}>
+                      Organizator wydarzenia: <strong style={{color:"#111827",fontWeight:700}}>{extraOrg}</strong>
                     </div>
                   )}
                   {event.website_url && (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`${orgLabel || hasProfileLink ? "mt-2" : "mt-5"} flex min-h-11 items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-3 text-[13px] text-green-400 transition-colors active:bg-zinc-800`}
-                    >
-                      <span className="min-w-0 truncate">Więcej informacji · {host}</span>
+                    <a href={href} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginTop:(orgLabel || hasProfileLink) ? 12 : 0,padding:"10px 14px",border:"1px solid #e5e7eb",borderRadius:12,fontSize:13,fontWeight:600,color:"#16a34a",textDecoration:"none"}}>
+                      <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Więcej informacji · {host}</span>
                       <span aria-hidden="true">↗</span>
                     </a>
                   )}
-                </>
+                </div>
               )
             })()}
 
-            {/* Telefon do rezerwacji: cała karta jest przyciskiem tel: (duży cel dla kciuka). */}
-            {phone && (
-              <a
-                href={telHref(phone) || undefined}
-                className="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 active:bg-zinc-800"
-              >
-                <span className="min-w-0">
-                  <span className="block text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Rezerwacje</span>
-                  <span className="block text-[15px] font-black text-white">{phone}</span>
-                </span>
-                <span className="flex-shrink-0 rounded-xl bg-green-500 px-4 py-2 text-[13px] font-black text-black">📞 Zadzwoń</span>
-              </a>
-            )}
-
-            {/* Kup bilety + Dodaj do kalendarza obok siebie w jednym wierszu
-                (jak na desktopie) — wcześniej każdy był osobnym, pełnoszerokim
-                przyciskiem pod spodem. */}
-            <div className="mt-5 flex gap-2">
-              {/* 2026-10-07: jak na desktopie: przy wydarzeniach bezpłatnych ten sam link to "Rejestracja". */}
-              {event.ticket_url && (
-                <a
-                  href={event.ticket_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 py-3.5 rounded-2xl text-[14px] font-black flex items-center justify-center gap-2 bg-green-500 text-black"
-                >
-                  {event.is_free ? "📝 Rejestracja" : "🎟️ Kup bilety"}
-                </a>
-              )}
-              <AddToCalendarButton event={event} variant="dark" />
+            <div style={{background:"white",borderRadius:18,padding:"20px 24px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:0.5,marginBottom:14}}>Szczegoly</div>
+              <div className="detail-item">
+                <div className="detail-icon-wrap" style={{background:"#eff6ff"}}><Calendar size={16} color="#3b82f6" /></div>
+                <div>
+                  <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,marginBottom:2,textTransform:"uppercase",letterSpacing:0.5}}>Data</div>
+                  <div style={{fontSize:14,fontWeight:600,color:"#111827"}}>{fmt(event.start_date)}</div>
+                  {isMultiDay(event.start_date, event.end_date) && <div style={{fontSize:13,color:"#6b7280",marginTop:1}}>do {fmt(event.end_date)}</div>}
+                </div>
+              </div>
+              <div className="detail-item">
+                <div className="detail-icon-wrap" style={{background:"#f0fdf4"}}><Tag size={16} color="#16a34a" /></div>
+                <div>
+                  <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,marginBottom:6,textTransform:"uppercase",letterSpacing:0.5}}>Kategoria</div>
+                  <span style={{background:"#f0fdf4",color:"#16a34a",fontSize:12,fontWeight:700,padding:"4px 12px",borderRadius:20,border:"1px solid #bbf7d0"}}>
+                    {CATEGORY_LABELS[normalizeCategory(event.category)]}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Tab 1: Program (jeśli jest) */}
-        {activeTab === 1 && hasTabs && (
-          <EventSchedule schedule={event.schedule} eventDate={event.start_date} variant="dark" />
-        )}
-
-        {/* Tab: Lokalizacja */}
-        {((activeTab === 1 && !hasTabs) || (activeTab === 2 && hasTabs)) && (
-          <div>
-            <div className="rounded-xl overflow-hidden border border-zinc-800 h-48 mb-3">
-              <EventMap
-                city={event.city}
-                location={event.address}
-                latitude={event.latitude}
-                longitude={event.longitude}
-              />
+        {similarEvents.length > 0 && (
+          <div style={{marginTop:52}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <h2 style={{fontSize:20,fontWeight:800,color:"#111827",margin:0}}>Podobne wydarzenia</h2>
+              <Link href="/" style={{fontSize:14,color:"#16a34a",fontWeight:700,textDecoration:"none"}}>Zobacz wszystkie</Link>
             </div>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex items-center justify-between">
-              <div>
-                <div className="text-[13px] font-bold text-white">
-                  {event.venue_name || event.address || event.city}
-                </div>
-                {event.city && event.address && (
-                  <div className="text-[11px] text-zinc-500 mt-0.5">{event.city}</div>
-                )}
-              </div>
-              
-              <a  href={mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] font-bold text-black bg-green-500 px-3 py-2 rounded-lg flex items-center gap-1.5"
-              >
-                Nawiguj
-              </a>
+            <div className="similar-grid">
+              {similarEvents.map(ev => (
+                <EventCard key={ev.id} event={ev} theme="light" />
+              ))}
             </div>
-
-            {event.location_notes && (
-              <div className="mt-3 bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex gap-2.5">
-                <span className="text-[13px] flex-shrink-0">ℹ️</span>
-                <p className="text-[12px] text-zinc-300 leading-relaxed whitespace-pre-line">
-                  {event.location_notes}
-                </p>
-              </div>
-            )}
           </div>
         )}
       </div>
 
-    </div>
+      {showPoster && (event.image_url || event.cover_image_url) && (
+        <div onClick={() => setShowPoster(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,cursor:"pointer"}}>
+          <div style={{position:"relative", width:"90vw", height:"90vh"}} onClick={e => e.stopPropagation()}>
+            <Image
+              src={event.image_url || event.cover_image_url}
+              alt="Plakat"
+              fill
+              sizes="90vw"
+              style={{objectFit:"contain", borderRadius:12}}
+            />
+          </div>
+          <button onClick={() => setShowPoster(false)} style={{position:"absolute",top:20,right:20,background:"#333",border:"none",color:"white",width:40,height:40,borderRadius:"50%",fontSize:20,cursor:"pointer"}}>x</button>
+        </div>
+      )}
+    </main>
   )
 }

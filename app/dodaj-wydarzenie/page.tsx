@@ -1013,7 +1013,7 @@ try {
                 </label>
                 {!form.is_free && (
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <label style={{...lbl,margin:0}} htmlFor="price_from">Cena od (PLN)</label>
+                    <label style={{...lbl,margin:0}} htmlFor="price_from">Cena biletu (zł)</label>
                     <input id="price_from" name="price_from" type="number" min="0" step="0.01"
                       value={form.price_from} onChange={handleChange} style={{...inp,width:100}} />
                   </div>

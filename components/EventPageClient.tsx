@@ -18,6 +18,7 @@ import { publishedFilter } from "@/lib/publishedFilter"
 import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
 import { isRedundantSchedule } from "@/lib/scheduleRedundancy"
 import { safeTel, telHref } from "@/lib/safeTel"
+import { formatPrice } from "@/lib/formatPrice"
 
 const EventMap = dynamic(() => import("@/components/event-map").then(m => m.EventMap), { ssr: false })
 
@@ -277,7 +278,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </div>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:event.is_free?"#16a34a":"#111827"}}>
-              {event.is_free ? "Wolny" : (event.price_from ? `Od ${event.price_from} PLN` : "Płatne")}
+              {event.is_free ? "Wolny" : (formatPrice(event.price_from) ?? "Płatne")}
             </div>
           </div>
         </div>

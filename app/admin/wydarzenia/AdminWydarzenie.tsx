@@ -913,9 +913,9 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                 </label>
                 {!form.is_free && (
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    <span style={{ fontSize:13, color:"#6b7280" }}>Cena od:</span>
-                    <input name="price_from" aria-label="Cena od (PLN)" type="number" min="0" step="0.01" value={form.price_from} onChange={handleChange} style={{ ...inp, width:100 }} />
-                    <span style={{ fontSize:13, color:"#6b7280" }}>PLN</span>
+                    <span style={{ fontSize:13, color:"#6b7280" }}>Cena biletu:</span>
+                    <input name="price_from" aria-label="Cena biletu (zł)" type="number" min="0" step="0.01" value={form.price_from} onChange={handleChange} style={{ ...inp, width:100 }} />
+                    <span style={{ fontSize:13, color:"#6b7280" }}>zł</span>
                   </div>
                 )}
               </div>
