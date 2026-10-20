@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAllowedOrigin } from '@/lib/verifyOrigin'
 import { aiRateLimit, getClientIp } from '@/lib/rateLimit'
+import { safeTel } from '@/lib/safeTel'
 
 // ── Walidacja daty po skanie (pas bezpieczeństwa) ──────────────────────────
 // Nawet z datą w promcie AI potrafi zwrócić rok z przeszłości, gdy plakat nie
@@ -137,6 +138,7 @@ Przeanalizuj ten plakat wydarzenia i wyciągnij informacje. Odpowiedz TYLKO w fo
   ],
   "description": "opis wydarzenia",
   "organizer_name": "organizator lub null",
+  "reservation_phone": "numer telefonu do rezerwacji lub null",
   "category": "jedna z: festyny, kultura, muzyka, sport",
   "is_free": true lub false,
   "price_from": liczba lub null,
@@ -160,6 +162,13 @@ Organizator prawie nigdy nie jest napisany na środku plakatu. Jest NA DOLE, cz�
 Przeczytaj DOKŁADNIE dolną część plakatu, także drobny druk.
 Wpisz nazwę głównego organizatora, np. "Gmina Radziłów", "Suwalski Ośrodek Kultury".
 Jeśli w stopce jest kilka podmiotów, wybierz ten najbardziej wyeksponowany (największy herb/logo).
+
+═══ TELEFON DO REZERWACJI ═══
+- Szukaj numeru telefonu przy słowach: "rezerwacje", "rezerwacja", "zapisy", "bilety", "kontakt", "tel.", "informacje i zapisy". Sprawdź też stopkę i drobny druk.
+- Wpisz TYLKO numer podany na plakacie jako kontakt do rezerwacji, zapisów lub informacji o wydarzeniu, w zapisie z plakatu (cyfry, spacje, myślniki, ewentualnie z prefiksem +48).
+- Jeśli jest kilka numerów, wybierz ten opisany jako rezerwacje lub zapisy. Jeśli żaden nie jest opisany, wybierz pierwszy numer telefonu widoczny na plakacie.
+- NIE bierz: NIP, KRS, numeru konta, godzin, dat, cen, kodów pocztowych, numerów domów ani numerów porządkowych.
+- Jeśli numeru nie ma albo nie jesteś pewien cyfr, zwróć null. Nigdy nie zgaduj ani nie dopisuj cyfr.
 
 ═══ PROGRAM — wypełnij CAŁY, punkty BEZ godzin też ═══
 - Przepisz WSZYSTKIE punkty programu z plakatu, od pierwszego do ostatniego. Nie zatrzymuj się po kilku.
@@ -232,6 +241,10 @@ Jeśli na plakacie nie ma żadnego programu ani listy atrakcji, zwróć "schedul
     // Wyliczamy start_date/end_date dla wstecznej zgodności — reszta
     // formularza (podgląd, itd.) może jeszcze na nie liczyć, dopóki
     // wszystkie miejsca nie przejdą w pełni na tablicę dates.
+    // Numer telefonu: ta sama reguła formatu co w bazie (lib/safeTel.ts). Zły albo pusty -> null,
+    // żeby formularz nigdy nie dostał śmieci z błędnego odczytu.
+    parsed.reservation_phone = safeTel(typeof parsed.reservation_phone === 'string' ? parsed.reservation_phone : null)
+
     const derived = deriveStartEnd(parsed.dates)
     parsed.start_date = derived.start_date
     parsed.start_time = derived.start_time

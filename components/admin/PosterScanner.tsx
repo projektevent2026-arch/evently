@@ -15,6 +15,7 @@ interface ScanResult {
   schedule?: { day?: number; time: string; title: string; description?: string }[]
   description?: string
   organizer_name?: string
+  reservation_phone?: string | null
   category?: string
   is_free?: boolean
   price_from?: number | null

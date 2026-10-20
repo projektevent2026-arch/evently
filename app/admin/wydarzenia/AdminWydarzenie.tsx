@@ -454,6 +454,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
           category: data.category ? normalizeCategory(data.category) : prev.category,
           is_free: data.is_free ?? prev.is_free,
           price_from: data.price_from?.toString() || prev.price_from,
+          reservation_phone: data.reservation_phone || prev.reservation_phone,
           image_url: uploadedUrl || prev.image_url,
           cover_image_url: prev.cover_image_url || uploadedUrl || prev.cover_image_url,
           schedule: data.schedule?.length

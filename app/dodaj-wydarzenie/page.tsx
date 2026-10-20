@@ -803,6 +803,9 @@ try {
                         category: data.category || prev.category,
                         is_free: data.is_free ?? prev.is_free,
                         price_from: data.price_from?.toString() || prev.price_from,
+                        // Numer z plakatu tylko podpowiadamy. Oświadczenie "mam prawo podać ten numer"
+                        // (phone_declared) zostaje niezaznaczone — organizator musi zaznaczyć je sam.
+                        reservation_phone: data.reservation_phone || prev.reservation_phone,
                         // Brakowało tego mapowania — AI poprawnie wykrywało godziny
                         // programu (np. harmonogram zajęć), ale formularz publiczny
                         // nigdy ich nie przepisywał do form.schedule, w przeciwieństwie
