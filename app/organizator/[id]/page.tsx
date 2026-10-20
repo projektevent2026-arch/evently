@@ -22,6 +22,14 @@ import { ArrowLeft, Building2, Globe, MapPin } from "lucide-react"
 // cokolwiek (opis, www, Facebook albo Instagram) — pusta zakładka na starcie
 // wyglądałaby gorzej niż jej brak. Linki są ponownie walidowane przy
 // wyświetlaniu (safeProfileUrl), niezależnie od ograniczeń w bazie.
+//
+// 2026-10-20: zakładka "Archiwum" — wydarzenia tego organizatora, które już się
+// odbyły (status=archived, ustawiany przez cron archive_past_events()). Zakładka
+// pojawia się TYLKO gdy jest co pokazać. Źródło: public_events, bo
+// published_events_with_next_date z założenia zwraca wyłącznie przyszłe terminy.
+// UWAGA: polityka RLS na events to SELECT true, więc filtr status=archived i
+// deleted_at IS NULL MUSI być w tym zapytaniu — nie robi go za nas baza.
+// Pokazujemy 20 najnowszych (po ostatnim terminie), bez albumu i zdjęć.
 type OrganizerProfile = {
   organization_name: string | null
   avatar_url: string | null
@@ -61,11 +69,13 @@ export default function OrganizatorPage() {
   const [events, setEvents] = useState<EventData[]>([])
   // Surowe wiersze dla kompaktowego widoku na telefon (ten sam układ co lista na stronie głównej).
   const [eventRows, setEventRows] = useState<MobileEventRowData[]>([])
-  const [tab, setTab] = useState<"events" | "about">("events")
+  const [archiveEvents, setArchiveEvents] = useState<EventData[]>([])
+  const [archiveRows, setArchiveRows] = useState<MobileEventRowData[]>([])
+  const [tab, setTab] = useState<"events" | "about" | "archive">("events")
 
   useEffect(() => {
     async function load() {
-      const [{ data: profileData }, { data: rawEvents }] = await Promise.all([
+      const [{ data: profileData }, { data: rawEvents }, { data: rawArchive }] = await Promise.all([
         supabase
           .from("public_organizer_profiles")
           .select("organization_name, avatar_url, bio, city, website_url, facebook_url, instagram_url, cover_url")
@@ -76,13 +86,20 @@ export default function OrganizatorPage() {
           .select("id, slug, title, next_date, next_start_time, next_end_time, schedule_type, venue_name, address, city, cover_image_url, image_url, category, is_free, created_by")
           .eq("created_by", id)
           .order("next_date", { ascending: true }),
+        supabase
+          .from("public_events")
+          .select("id, slug, title, start_date, end_date, schedule_type, venue_name, address, city, cover_image_url, image_url, category, is_free, created_by, event_dates(date)")
+          .eq("created_by", id)
+          .eq("status", "archived")
+          .is("deleted_at", null)
+          .limit(100),
       ])
 
       // Brak profilu NIE oznacza braku wydarzeń — organizator mógł nigdy
       // nie ustawić nazwy/zdjęcia, a i tak realnie mieć opublikowane
       // wydarzenia. "Nie znaleziono" pokazujemy tylko gdy nie ma ANI
       // profilu, ANI żadnego wydarzenia dla tego id.
-      if (!profileData && (!rawEvents || rawEvents.length === 0)) {
+      if (!profileData && (!rawEvents || rawEvents.length === 0) && (!rawArchive || rawArchive.length === 0)) {
         setNotFound(true)
         setLoading(false)
         return
@@ -108,6 +125,53 @@ export default function OrganizatorPage() {
           is_free: e.is_free,
         }))
       )
+      // Archiwum: ostatni termin każdego wydarzenia, najnowsze pierwsze, max 20.
+      const archived = ((rawArchive || []) as any[])
+        .map((e) => {
+          const dates: string[] = (e.event_dates || []).map((d: any) => d.date).filter(Boolean).sort()
+          const last = dates.length > 0 ? dates[dates.length - 1] : String(e.end_date || e.start_date || "").slice(0, 10)
+          return { e, last }
+        })
+        .sort((a, b) => (a.last < b.last ? 1 : a.last > b.last ? -1 : 0))
+        .slice(0, 20)
+
+      setArchiveRows(
+        archived.map(({ e, last }) => ({
+          id: e.id,
+          slug: e.slug,
+          title: e.title,
+          next_date: last || null,
+          next_start_time: null,
+          next_end_time: null,
+          schedule_type: e.schedule_type,
+          venue_name: e.venue_name,
+          address: e.address,
+          city: e.city,
+          cover_image_url: e.cover_image_url,
+          image_url: e.image_url,
+          category: e.category,
+          is_free: e.is_free,
+          created_by: e.created_by,
+        })) as MobileEventRowData[]
+      )
+      setArchiveEvents(
+        archived.map(({ e, last }) => ({
+          id: e.id,
+          slug: e.slug,
+          title: e.title,
+          date: last ? new Date(last).toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" }) : "",
+          start_date: last || null,
+          start_time: null,
+          schedule_type: e.schedule_type,
+          city: e.city,
+          image: e.cover_image_url || "/images/event-concert.jpg",
+          image_url: e.image_url || null,
+          interested: 0,
+          category: e.category || "Inne",
+          price: e.is_free ? "Wstęp wolny" : "Wstęp płatny",
+          is_free: e.is_free,
+        })) as EventData[]
+      )
       setLoading(false)
     }
     if (id) load()
@@ -123,7 +187,10 @@ export default function OrganizatorPage() {
   const facebookUrl = safeProfileUrl(profile?.facebook_url, "facebook")
   const instagramUrl = safeProfileUrl(profile?.instagram_url, "instagram")
   const hasAbout = !!(bio || websiteUrl || facebookUrl || instagramUrl)
-  const activeTab = hasAbout ? tab : "events"
+  const hasArchive = archiveEvents.length > 0
+  const showTabs = hasAbout || hasArchive
+  const activeTab: "events" | "about" | "archive" =
+    tab === "about" && hasAbout ? "about" : tab === "archive" && hasArchive ? "archive" : "events"
 
   const tabClass = (active: boolean) =>
     `-mb-px h-12 border-b-2 px-4 text-sm font-semibold transition-colors ${
@@ -187,7 +254,7 @@ export default function OrganizatorPage() {
               </div>
             </div>
 
-            {hasAbout && (
+            {showTabs && (
               <div role="tablist" className="mb-6 flex gap-2 border-b border-border">
                 <button
                   type="button"
@@ -198,15 +265,28 @@ export default function OrganizatorPage() {
                 >
                   Wydarzenia
                 </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === "about"}
-                  onClick={() => setTab("about")}
-                  className={tabClass(activeTab === "about")}
-                >
-                  O organizatorze
-                </button>
+                {hasArchive && (
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === "archive"}
+                    onClick={() => setTab("archive")}
+                    className={tabClass(activeTab === "archive")}
+                  >
+                    Archiwum
+                  </button>
+                )}
+                {hasAbout && (
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === "about"}
+                    onClick={() => setTab("about")}
+                    className={tabClass(activeTab === "about")}
+                  >
+                    O organizatorze
+                  </button>
+                )}
               </div>
             )}
 
@@ -261,8 +341,26 @@ export default function OrganizatorPage() {
                   </div>
                 )}
               </div>
+            ) : activeTab === "archive" ? (
+              <>
+                <p className="mb-4 text-sm text-muted-foreground">Wydarzenia, które już się odbyły.</p>
+                <div className="md:hidden">
+                  {archiveRows.map((row) => (
+                    <MobileEventRow key={row.id} event={row} />
+                  ))}
+                </div>
+                <div className="hidden gap-5 md:grid md:grid-cols-2 lg:grid-cols-3">
+                  {archiveEvents.map((event) => (
+                    <EventCard key={event.id} event={event} initialGoing={false} />
+                  ))}
+                </div>
+              </>
             ) : events.length === 0 ? (
-              <p className="text-muted-foreground">Ten organizator nie ma jeszcze opublikowanych wydarzeń.</p>
+              <p className="text-muted-foreground">
+                {hasArchive
+                  ? "Ten organizator nie ma teraz nadchodzących wydarzeń. Zobacz zakładkę Archiwum."
+                  : "Ten organizator nie ma jeszcze opublikowanych wydarzeń."}
+              </p>
             ) : (
               <>
                 {/* Telefon: kompaktowe wiersze jak na stronie głównej. Komputer i tablet: siatka dużych kart. */}
