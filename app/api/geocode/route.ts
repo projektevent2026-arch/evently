@@ -38,26 +38,39 @@ function parseCoords(input: string): { lat: number; lon: number } | null {
   const lon = parseFloat(m[2])
   if (Number.isNaN(lat) || Number.isNaN(lon)) return null
 
-  // Walidacja: Polska mniej więcej lat 49-55, lon 14-24.
-  if (lat < 49 || lat > 55 || lon < 14 || lon > 24) return null
+  // Walidacja: tylko poprawny zakres geograficzny. Wcześniej było tu "Polska
+  // mniej więcej lat 49-55, lon 14-24", przez co współrzędne wydarzenia za
+  // granicą (np. Antwerpia 51.2, 4.4) były odrzucane i lądowały w Nominatimie
+  // jako zwykły tekst.
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null
 
   return { lat, lon }
 }
 
-async function askNominatim(query: string) {
+// Trzy zakresy wyszukiwania, od najbardziej lokalnego:
+//  - region: twardo ograniczone do okolic Suwałk (jak dotąd),
+//  - poland: cała Polska, bez ograniczenia do regionu,
+//  - world:  cały świat (wydarzenia za granicą, np. Antwerpia).
+// Polska ZAWSZE ma pierwszeństwo: świat jest pytany dopiero, gdy region i Polska
+// nic nie dały. Dzięki temu literówka w polskiej wsi nie wyląduje w innym kraju.
+type Scope = 'region' | 'poland' | 'world'
+
+async function askNominatim(query: string, scope: Scope) {
   // viewbox + bounded=1 = TWARDE ograniczenie do regionu Suwałk (2026-09-23:
   // zmienione z miękkiego nachylenia na twardy filtr — na rekomendację z
-  // sesji debugowania Tauroszyszki/Puńsk). Świadomie regionalne, nie
-  // ogólnopolskie: przy skalowaniu na cały kraj trzeba wrócić do
-  // dwuetapowego zapytania (najpierw miasto bez region-bias, potem ciasne
-  // pudełko wokół TEGO miasta) — już zapisane w backlogu projektu.
-  // Pudełko z zapasem ~80km od Suwałk (54.1113, 22.9302) w każdą stronę,
-  // żeby objąć sąsiednie powiaty (Sejny, Augustów, Ełk) — nie tylko samo
-  // miasto. Format: lewo,góra,prawo,dół (lon_min,lat_max,lon_max,lat_min).
+  // sesji debugowania Tauroszyszki/Pułsk). Pudełko z zapasem ~80km od Suwałk
+  // (54.1113, 22.9302) w każdą stronę, żeby objąć sąsiednie powiaty (Sejny,
+  // Augustów, Ełk). Format: lewo,góra,prawo,dół (lon_min,lat_max,lon_max,lat_min).
   const SUWALKI_VIEWBOX = "21.70,54.83,24.16,53.39"
+  const scopeParams =
+    scope === 'region'
+      ? `&countrycodes=pl&viewbox=${SUWALKI_VIEWBOX}&bounded=1`
+      : scope === 'poland'
+        ? '&countrycodes=pl'
+        : ''
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
     query
-  )}&limit=5&countrycodes=pl&addressdetails=1&viewbox=${SUWALKI_VIEWBOX}&bounded=1`
+  )}&limit=5&addressdetails=1${scopeParams}`
 
   const res = await fetch(url, {
     headers: NOMINATIM_HEADERS,
@@ -66,13 +79,15 @@ async function askNominatim(query: string) {
 
   if (!res.ok) {
     const body = await res.text()
-    console.error(`[geocode] Nominatim ${res.status}:`, body)
+    console.error(`[geocode] Nominatim ${res.status} (${scope}):`, body)
     return { ok: false as const, status: res.status }
   }
 
   const data = await res.json()
   return { ok: true as const, data }
 }
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 export async function GET(req: NextRequest) {
   if (!isAllowedOrigin(req)) {
@@ -106,21 +121,30 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 2. Próba z oryginalnym zapytaniem.
-    const first = await askNominatim(raw)
-    if (!first.ok) {
-      return NextResponse.json({ error: `Nominatim: ${first.status}` }, { status: 502 })
-    }
-    if (Array.isArray(first.data) && first.data.length > 0) {
-      return NextResponse.json(first.data)
-    }
-
-    // 3. Pusto — próba z adresem bez przedrostka ("ul. Chłodna 2" -> "Chłodna 2").
     const cleaned = stripPrefixes(raw)
-    if (cleaned && cleaned.toLowerCase() !== raw.toLowerCase() && cleaned.length >= 2) {
-      const second = await askNominatim(cleaned)
-      if (second.ok && Array.isArray(second.data) && second.data.length > 0) {
-        return NextResponse.json(second.data)
+    const cleanedDiffers = !!cleaned && cleaned.toLowerCase() !== raw.toLowerCase() && cleaned.length >= 2
+
+    // 2. Od najbardziej lokalnego zakresu do najszerszego. W każdym zakresie
+    // najpierw oryginalne zapytanie, potem (jeśli się różni) bez przedrostka
+    // ("ul. Chłodna 2" -> "Chłodna 2"). Przedrostki są polskie, więc dla
+    // zakresu "world" już ich nie obcinamy.
+    // Między kolejnymi pytaniami przerwa ~1 s (limit Nominatim: 1 zapytanie/s).
+    // Gdy pierwsze zapytanie trafi, odpowiedź wraca od razu, bez czekania.
+    const scopes: Scope[] = ['region', 'poland', 'world']
+    let firstCall = true
+    for (const scope of scopes) {
+      const queries = scope !== 'world' && cleanedDiffers ? [raw, cleaned] : [raw]
+      for (const q of queries) {
+        if (!firstCall) await sleep(1000)
+        firstCall = false
+        const result = await askNominatim(q, scope)
+        if (!result.ok) {
+          // Pierwsza odpowiedź z błędem = problem po stronie Nominatima, nie "brak wyników".
+          return NextResponse.json({ error: `Nominatim: ${result.status}` }, { status: 502 })
+        }
+        if (Array.isArray(result.data) && result.data.length > 0) {
+          return NextResponse.json(result.data)
+        }
       }
     }
 
