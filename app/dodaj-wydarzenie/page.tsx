@@ -7,6 +7,7 @@ import dynamic from "next/dynamic"
 import { useState, useRef, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { safeUrl } from "@/lib/safeUrl"
+import { safeTel } from "@/lib/safeTel"
 import { MapPin, ChevronRight, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/scheduleType"
@@ -49,6 +50,7 @@ const emptyForm = {
   city: "", address: "", venue_name: "",
   category: "", cover_image_url: "", image_url: "",
   ticket_url: "", website_url: "",
+  reservation_phone: "", phone_declared: false,
   organizer_name: "", organizer_email: "",
   price_from: "0", is_free: true,
   latitude: "", longitude: "",
@@ -235,6 +237,8 @@ export default function DodajWydarzenie() {
             image_url: existing.image_url || "",
             ticket_url: existing.ticket_url || "",
             website_url: existing.website_url || "",
+            reservation_phone: existing.reservation_phone || "",
+            phone_declared: !!existing.reservation_phone,
             organizer_name: existing.organizer_name || "",
             organizer_email: contact?.email || "",
             price_from: existing.price_from != null ? String(existing.price_from) : "0",
@@ -470,6 +474,21 @@ if (validDates.some(d => !d.from)) {
   return
 }
 
+// Walidacja: telefon do rezerwacji (opcjonalny). Jeśli podany, musi mieć poprawny format
+// i zaznaczone oświadczenie, że organizator ma prawo go publicznie podać.
+if (form.reservation_phone.trim()) {
+  if (!safeTel(form.reservation_phone)) {
+    setError("Numer telefonu wygląda nieprawidłowo. Użyj cyfr, np. 600 123 456 albo +48 600 123 456.")
+    setActiveTab("media")
+    return
+  }
+  if (!form.phone_declared) {
+    setError("Zaznacz oświadczenie, że masz prawo podać ten numer telefonu.")
+    setActiveTab("media")
+    return
+  }
+}
+
 // Ostrzeżenie o duplikacie: tylko przy nowym wydarzeniu, nie przy edycji.
 if (!editId && !skipDup) {
   setSubmitting(true)
@@ -526,6 +545,7 @@ try {
       image_url: form.image_url || null,
       ticket_url: safeUrl(form.ticket_url),
       website_url: safeUrl(form.website_url),
+      reservation_phone: safeTel(form.reservation_phone),
       organizer_name: form.organizer_name || null,
       is_free: form.is_free,
       price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
@@ -593,6 +613,7 @@ try {
     image_url: form.image_url || null,
     ticket_url: safeUrl(form.ticket_url),
     website_url: safeUrl(form.website_url),
+    reservation_phone: safeTel(form.reservation_phone),
     organizer_name: form.organizer_name || null,
     is_free: form.is_free,
     price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
@@ -1133,6 +1154,22 @@ try {
                   <input id="website_url" name="website_url" value={form.website_url} onChange={handleChange}
                     placeholder="https://..." style={inp} />
                 </div>
+              </div>
+
+              <div>
+                <label style={lbl} htmlFor="reservation_phone">Telefon do rezerwacji <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie)</span></label>
+                <input id="reservation_phone" name="reservation_phone" type="tel" inputMode="tel" autoComplete="off"
+                  value={form.reservation_phone} onChange={handleChange}
+                  placeholder="np. 600 123 456 albo +48 600 123 456" style={inp} />
+                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>
+                  Numer będzie widoczny publicznie na stronie wydarzenia, z przyciskiem „Zadzwoń" na telefonie.
+                </div>
+                {form.reservation_phone.trim() && (
+                  <label style={{display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer",fontSize:"0.8rem",color:"#374151",marginTop:8,lineHeight:1.4}}>
+                    <input name="phone_declared" type="checkbox" checked={form.phone_declared} onChange={handleChange} style={{width:16,height:16,marginTop:1,flexShrink:0}} />
+                    <span>Oświadczam, że mam prawo podać ten numer telefonu i zgadzam się na jego publiczne wyświetlanie przy wydarzeniu.</span>
+                  </label>
+                )}
               </div>
 
               {error && <p style={{color:"#ef4444",fontSize:"0.875rem",margin:0}}>{error}</p>}

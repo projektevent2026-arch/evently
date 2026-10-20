@@ -17,6 +17,7 @@ import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, durationBe
 import { publishedFilter } from "@/lib/publishedFilter"
 import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
 import { isRedundantSchedule } from "@/lib/scheduleRedundancy"
+import { safeTel, telHref } from "@/lib/safeTel"
 
 const EventMap = dynamic(() => import("@/components/event-map").then(m => m.EventMap), { ssr: false })
 
@@ -28,6 +29,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
   const [activeTab, setActiveTab] = useState("details")
   const [similarEvents, setSimilarEvents] = useState<EventData[]>([])
   const [showPoster, setShowPoster] = useState(false)
+  const [phoneCopied, setPhoneCopied] = useState(false)
 
   useEffect(() => {
     async function fetchEvent() {
@@ -99,6 +101,18 @@ export default function EventPageClient({ slug }: { slug: string }) {
     else navigator.clipboard.writeText(window.location.href)
   }
 
+  // Desktop: numer telefonu kopiujemy do schowka (tel: na komputerze zwykle nic nie robi albo
+  // otwiera obcą aplikację). Na telefonie jest osobny komponent (MobileEventDetail) z przyciskiem „Zadzwoń".
+  const copyPhone = async () => {
+    const p = safeTel(event?.reservation_phone)
+    if (!p) return
+    try {
+      await navigator.clipboard.writeText(p)
+      setPhoneCopied(true)
+      setTimeout(() => setPhoneCopied(false), 2000)
+    } catch {}
+  }
+
   // Wersja pełna (dzień tygodnia + data) — używana tylko tutaj (panel
   // "Szczegóły"), nie duplikowana w MobileEventDetail, więc zostaje lokalna.
   const fmt = (d:string) => d ? new Date(d).toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long",year:"numeric"}) : ""
@@ -126,6 +140,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
   // effectiveStartDate() w lib/eventFormat.tsx).
   const badgeDate = effectiveStartDate(event.event_dates, event.start_date)
   const dateBadge = isToday(badgeDate) ? "DZIS" : isTomorrow(badgeDate) ? "JUTRO" : null
+  const phone = safeTel(event.reservation_phone)
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.address,event.city].filter(Boolean).join(", "))}`
   // 2026-10-08: program z jednym punktem powtarzającym tytuł wydarzenia nie jest pokazywany (zakładka ani podgląd).
   const hasTabs = event.schedule && event.schedule.length > 0 && !isRedundantSchedule(event.schedule, event.title)
@@ -363,6 +378,18 @@ export default function EventPageClient({ slug }: { slug: string }) {
                 </div>
               )}
             </div>
+
+            {phone && (
+              <div style={{background:"white",borderRadius:18,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:0.5,marginBottom:12}}>Rezerwacje</div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+                  <a href={telHref(phone) || undefined} style={{fontSize:18,fontWeight:800,color:"#111827",textDecoration:"none"}}>📞 {phone}</a>
+                  <button type="button" onClick={copyPhone} style={{padding:"8px 14px",border:"1px solid #e5e7eb",borderRadius:10,background:"white",fontSize:13,fontWeight:600,color:"#16a34a",cursor:"pointer"}}>
+                    {phoneCopied ? "Skopiowano ✓" : "Skopiuj numer"}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {(event.organizer_name || event.website_url || event.organizer_profile) && (() => {
               const href = event.website_url ? cleanUrlForDisplay(event.website_url).href : ""

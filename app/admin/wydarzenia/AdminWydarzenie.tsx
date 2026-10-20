@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { safeUrl } from "@/lib/safeUrl"
+import { safeTel } from "@/lib/safeTel"
 import dynamic from "next/dynamic"
 const LocationPicker = dynamic(() => import("@/components/admin/LocationPicker"), { ssr: false })
 import ImageUpload from "@/components/admin/ImageUpload"
@@ -94,7 +95,7 @@ const emptyForm = {
   title:"", slug:"", description:"", short_description:"",
   start_date:"", start_time:"", end_date:"", end_time:"",
   city:"Suwałki", address:"", venue_name:"", location_notes:"",
-  category:"", cover_image_url:"", ticket_url:"", website_url:"",
+  category:"", cover_image_url:"", ticket_url:"", website_url:"", reservation_phone:"",
   image_url:"",
   organizer_name:"", price_from:"0", is_free:true,
   latitude:"", longitude:"", status:"published",
@@ -206,6 +207,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       cover_image_url: data.cover_image_url || "",
       ticket_url: data.ticket_url || "",
       website_url: data.website_url || "",
+      reservation_phone: data.reservation_phone || "",
       image_url: data.image_url || "",
       organizer_name: data.organizer_name || "",
       price_from: data.price_from?.toString() || "0",
@@ -527,6 +529,11 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
         return
       }
     }
+    if (form.reservation_phone.trim() && !safeTel(form.reservation_phone)) {
+      setMsg("Błąd: Numer telefonu wygląda nieprawidłowo (cyfry, np. 600 123 456 albo +48 600 123 456)")
+      setSection("basic")
+      return
+    }
     setSaving(true)
     setMsg("Zapisywanie...")
     const start = form.start_date && form.start_time ? form.start_date + "T" + form.start_time : form.start_date
@@ -545,6 +552,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       image_url: form.image_url || null,
       ticket_url: safeUrl(form.ticket_url),
       website_url: safeUrl(form.website_url),
+      reservation_phone: safeTel(form.reservation_phone),
       organizer_name: form.organizer_name || null,
       is_free: form.is_free,
       price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
@@ -919,6 +927,10 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                   <input id="website_url" name="website_url" value={form.website_url} onChange={handleChange} placeholder="https://..." style={inp} />
                 </Field>
               </div>
+
+              <Field label="Telefon do rezerwacji" htmlFor="reservation_phone">
+                <input id="reservation_phone" name="reservation_phone" type="tel" inputMode="tel" autoComplete="off" value={form.reservation_phone} onChange={handleChange} placeholder="np. 600 123 456 albo +48 600 123 456" style={inp} />
+              </Field>
 
               <div style={navRow}>
                 <button type="button" onClick={() => setSection("schedule")} style={navNext}>Dalej: Program →</button>

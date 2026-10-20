@@ -16,6 +16,7 @@ import EventDatesList from '@/components/EventDatesList'
 import AddToCalendarButton from '@/components/AddToCalendarButton'
 import { dateRange, isMultiDay, weekdayName, fmtClock, durationBetween, nextTermInfo, nextOccurrence, linkify, cleanUrlForDisplay } from '@/lib/eventFormat'
 import { normalizeCategory, CATEGORY_LABELS, CATEGORY_BADGE_CLASSES, type CategoryKey } from '@/lib/eventCategory'
+import { safeTel, telHref } from '@/lib/safeTel'
 
 const EventMap = dynamic(() => import('@/components/event-map').then(m => m.EventMap), { ssr: false })
 
@@ -106,6 +107,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
     : ''
 
   const nextTerm = nextTermInfo(event.event_dates)
+  const phone = safeTel(event.reservation_phone)
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pb-28">
@@ -338,6 +340,20 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                 </>
               )
             })()}
+
+            {/* Telefon do rezerwacji: cała karta jest przyciskiem tel: (duży cel dla kciuka). */}
+            {phone && (
+              <a
+                href={telHref(phone) || undefined}
+                className="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 active:bg-zinc-800"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Rezerwacje</span>
+                  <span className="block text-[15px] font-black text-white">{phone}</span>
+                </span>
+                <span className="flex-shrink-0 rounded-xl bg-green-500 px-4 py-2 text-[13px] font-black text-black">📞 Zadzwoń</span>
+              </a>
+            )}
 
             {/* Kup bilety + Dodaj do kalendarza obok siebie w jednym wierszu
                 (jak na desktopie) — wcześniej każdy był osobnym, pełnoszerokim
