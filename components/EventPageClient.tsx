@@ -18,7 +18,7 @@ import { publishedFilter } from "@/lib/publishedFilter"
 import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
 import { isRedundantSchedule } from "@/lib/scheduleRedundancy"
 import { safeTel, telHref } from "@/lib/safeTel"
-import { formatPrice } from "@/lib/formatPrice"
+import { formatPrice, cleanPriceNote } from "@/lib/formatPrice"
 
 const EventMap = dynamic(() => import("@/components/event-map").then(m => m.EventMap), { ssr: false })
 
@@ -278,8 +278,11 @@ export default function EventPageClient({ slug }: { slug: string }) {
           </div>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:event.is_free?"#16a34a":"#111827"}}>
-              {event.is_free ? "Wolny" : (formatPrice(event.price_from) ?? "Płatne")}
+              {event.is_free ? "Wolny" : (formatPrice(event.price_from, event.price_currency) ?? "Płatne")}
             </div>
+            {!event.is_free && cleanPriceNote(event.price_note) && (
+              <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>{cleanPriceNote(event.price_note)}</div>
+            )}
           </div>
         </div>
         <div className="info-bar-item" style={{marginLeft:"auto"}}>

@@ -13,6 +13,7 @@ import Link from "next/link"
 import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/scheduleType"
 import { toggleBoldSelection } from "@/lib/eventFormat"
 import { geocodeAddress } from "@/lib/geocodeAddress"
+import { cleanPriceNote } from "@/lib/formatPrice"
 import { revalidateHome } from "@/lib/revalidateHome"
 import { publishedFilter } from "@/lib/publishedFilter"
 
@@ -52,7 +53,7 @@ const emptyForm = {
   ticket_url: "", website_url: "",
   reservation_phone: "", phone_declared: false,
   organizer_name: "", organizer_email: "",
-  price_from: "0", is_free: true,
+  price_from: "0", price_currency: "PLN", price_note: "", is_free: true,
   latitude: "", longitude: "",
   location_notes: "",
   schedule: [] as any[],
@@ -242,6 +243,8 @@ export default function DodajWydarzenie() {
             organizer_name: existing.organizer_name || "",
             organizer_email: contact?.email || "",
             price_from: existing.price_from != null ? String(existing.price_from) : "0",
+            price_currency: existing.price_currency === "EUR" ? "EUR" : "PLN",
+            price_note: existing.price_note || "",
             is_free: existing.is_free,
             latitude: existing.latitude != null ? String(existing.latitude) : "",
             longitude: existing.longitude != null ? String(existing.longitude) : "",
@@ -289,7 +292,7 @@ export default function DodajWydarzenie() {
     setForm(prev => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
-      ...(name === "is_free" && checked ? { price_from: "0" } : {}),
+      ...(name === "is_free" && checked ? { price_from: "0", price_currency: "PLN", price_note: "" } : {}),
     }))
   }
 
@@ -549,6 +552,8 @@ try {
       organizer_name: form.organizer_name || null,
       is_free: form.is_free,
       price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
+      price_currency: form.is_free ? "PLN" : (form.price_currency === "EUR" ? "EUR" : "PLN"),
+      price_note: form.is_free ? null : cleanPriceNote(form.price_note),
       latitude: form.latitude ? parseFloat(form.latitude) : null,
       longitude: form.longitude ? parseFloat(form.longitude) : null,
       location_notes: form.location_notes.trim() || null,
@@ -617,6 +622,8 @@ try {
     organizer_name: form.organizer_name || null,
     is_free: form.is_free,
     price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
+    price_currency: form.is_free ? "PLN" : (form.price_currency === "EUR" ? "EUR" : "PLN"),
+    price_note: form.is_free ? null : cleanPriceNote(form.price_note),
     latitude: form.latitude ? parseFloat(form.latitude) : null,
     longitude: form.longitude ? parseFloat(form.longitude) : null,
     location_notes: form.location_notes.trim() || null,
@@ -1013,12 +1020,26 @@ try {
                 </label>
                 {!form.is_free && (
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <label style={{...lbl,margin:0}} htmlFor="price_from">Cena biletu (zł)</label>
+                    <label style={{...lbl,margin:0}} htmlFor="price_from">Cena biletu</label>
                     <input id="price_from" name="price_from" type="number" min="0" step="0.01"
                       value={form.price_from} onChange={handleChange} style={{...inp,width:100}} />
+                    <select name="price_currency" aria-label="Waluta" value={form.price_currency} onChange={handleChange}
+                      style={{...inp,width:"auto"}}>
+                      <option value="PLN">zł</option>
+                      <option value="EUR">€</option>
+                    </select>
                   </div>
                 )}
               </div>
+
+              {!form.is_free && (
+                <div>
+                  <label style={lbl} htmlFor="price_note">Opis ceny <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie)</span></label>
+                  <input id="price_note" name="price_note" value={form.price_note} onChange={handleChange}
+                    placeholder="np. dzieci do lat 12 wstęp wolny" maxLength={80} style={inp} />
+                  <div style={counter}>{form.price_note.length}/80</div>
+                </div>
+              )}
 
               <div style={{display:"flex",justifyContent:"flex-end"}}>
                 <button type="button" onClick={() => setActiveTab("schedule")} style={nextBtn}>

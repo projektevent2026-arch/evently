@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { safeUrl } from "@/lib/safeUrl"
 import { safeTel } from "@/lib/safeTel"
+import { cleanPriceNote } from "@/lib/formatPrice"
 import dynamic from "next/dynamic"
 const LocationPicker = dynamic(() => import("@/components/admin/LocationPicker"), { ssr: false })
 import ImageUpload from "@/components/admin/ImageUpload"
@@ -97,7 +98,7 @@ const emptyForm = {
   city:"Suwałki", address:"", venue_name:"", location_notes:"",
   category:"", cover_image_url:"", ticket_url:"", website_url:"", reservation_phone:"",
   image_url:"",
-  organizer_name:"", price_from:"0", is_free:true,
+  organizer_name:"", price_from:"0", price_currency:"PLN", price_note:"", is_free:true,
   latitude:"", longitude:"", status:"published",
   schedule:[] as {day:number;label:string;items:{time:string;title:string;description?:string}[]}[],
 }
@@ -211,6 +212,8 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       image_url: data.image_url || "",
       organizer_name: data.organizer_name || "",
       price_from: data.price_from?.toString() || "0",
+      price_currency: data.price_currency === "EUR" ? "EUR" : "PLN",
+      price_note: data.price_note || "",
       is_free: data.is_free ?? true,
       latitude: data.latitude?.toString() || "",
       longitude: data.longitude?.toString() || "",
@@ -557,6 +560,8 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       organizer_name: form.organizer_name || null,
       is_free: form.is_free,
       price_from: form.is_free ? null : (parseFloat(form.price_from) || null),
+      price_currency: form.is_free ? "PLN" : (form.price_currency === "EUR" ? "EUR" : "PLN"),
+      price_note: form.is_free ? null : cleanPriceNote(form.price_note),
       latitude: form.latitude ? parseFloat(form.latitude) : null,
       longitude: form.longitude ? parseFloat(form.longitude) : null,
       status: statusOverride || form.status,
@@ -914,11 +919,20 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                 {!form.is_free && (
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                     <span style={{ fontSize:13, color:"#6b7280" }}>Cena biletu:</span>
-                    <input name="price_from" aria-label="Cena biletu (zł)" type="number" min="0" step="0.01" value={form.price_from} onChange={handleChange} style={{ ...inp, width:100 }} />
-                    <span style={{ fontSize:13, color:"#6b7280" }}>zł</span>
+                    <input name="price_from" aria-label="Cena biletu" type="number" min="0" step="0.01" value={form.price_from} onChange={handleChange} style={{ ...inp, width:100 }} />
+                    <select name="price_currency" aria-label="Waluta" value={form.price_currency} onChange={handleChange} style={{ ...inp, width:"auto" }}>
+                      <option value="PLN">zł</option>
+                      <option value="EUR">€</option>
+                    </select>
                   </div>
                 )}
               </div>
+
+              {!form.is_free && (
+                <Field label="Opis ceny (opcjonalnie)" htmlFor="price_note">
+                  <input id="price_note" name="price_note" value={form.price_note} onChange={handleChange} placeholder="np. dzieci do lat 12 wstęp wolny" maxLength={80} style={inp} />
+                </Field>
+              )}
 
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
                 <Field label={form.is_free ? "Link do rejestracji" : "Link do biletów"} htmlFor="ticket_url">
