@@ -4,10 +4,10 @@ import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
-import { safeProfileUrl, displayUrl } from "@/lib/safeUrl"
+import { safeProfileUrl, displayUrl, safeUrl } from "@/lib/safeUrl"
 import { EventCard, type EventData } from "@/components/event-card"
 import { MobileEventRow, type MobileEventRowData } from "@/components/MobileEventRow"
-import { ArrowLeft, Building2, Globe, MapPin } from "lucide-react"
+import { ArrowLeft, Building2, Camera, Globe, MapPin } from "lucide-react"
 
 // 2026-09-30: publiczna strona organizatora — "zobacz wszystkie jego
 // ogłoszenia" z karty Organizator na stronie wydarzenia. Dane profilu z
@@ -71,6 +71,8 @@ export default function OrganizatorPage() {
   const [eventRows, setEventRows] = useState<MobileEventRowData[]>([])
   const [archiveEvents, setArchiveEvents] = useState<EventData[]>([])
   const [archiveRows, setArchiveRows] = useState<MobileEventRowData[]>([])
+  // Linki do zdjęć z zakończonych wydarzeń (events.photos_url), po id wydarzenia. Tylko poprawne linki.
+  const [archivePhotos, setArchivePhotos] = useState<Record<string, string>>({})
   const [tab, setTab] = useState<"events" | "about" | "archive">("events")
 
   useEffect(() => {
@@ -88,7 +90,7 @@ export default function OrganizatorPage() {
           .order("next_date", { ascending: true }),
         supabase
           .from("public_events")
-          .select("id, slug, title, start_date, end_date, schedule_type, venue_name, address, city, cover_image_url, image_url, category, is_free, created_by, event_dates(date)")
+          .select("id, slug, title, start_date, end_date, schedule_type, venue_name, address, city, cover_image_url, image_url, category, is_free, created_by, photos_url, event_dates(date)")
           .eq("created_by", id)
           .eq("status", "archived")
           .is("deleted_at", null)
@@ -134,6 +136,13 @@ export default function OrganizatorPage() {
         })
         .sort((a, b) => (a.last < b.last ? 1 : a.last > b.last ? -1 : 0))
         .slice(0, 20)
+
+      const photosById: Record<string, string> = {}
+      for (const { e } of archived) {
+        const href = safeUrl(e.photos_url)
+        if (href) photosById[e.id] = href
+      }
+      setArchivePhotos(photosById)
 
       setArchiveRows(
         archived.map(({ e, last }) => ({
@@ -224,7 +233,7 @@ export default function OrganizatorPage() {
             )}
             <div className={coverUrl ? "mb-6 px-2 sm:px-4" : "mb-6 flex items-center gap-4"}>
             <div
-  className={`flex shrink-0 items-center justify-center overflow-hidden ${
+  className={`relative z-10 flex shrink-0 items-center justify-center overflow-hidden ${
     avatarUrl ? (coverUrl ? "bg-white p-3" : "bg-white p-2.5") : "bg-[#f0fdf4]"
   } ${
     coverUrl ? "-mt-10 mb-3 size-20 rounded-full border-4 border-background sm:-mt-12 sm:size-24" : "size-16 rounded-full"
@@ -346,12 +355,36 @@ export default function OrganizatorPage() {
                 <p className="mb-4 text-sm text-muted-foreground">Wydarzenia, które już się odbyły.</p>
                 <div className="md:hidden">
                   {archiveRows.map((row) => (
-                    <MobileEventRow key={row.id} event={row} />
+                    <div key={row.id}>
+                      <MobileEventRow event={row} />
+                      {archivePhotos[row.id] && (
+                        <a
+                          href={archivePhotos[row.id]}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow"
+                          className="mb-3 -mt-1 inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold text-primary transition-colors hover:bg-muted"
+                        >
+                          <Camera size={16} aria-hidden="true" /> Zdjęcia z wydarzenia
+                        </a>
+                      )}
+                    </div>
                   ))}
                 </div>
                 <div className="hidden gap-5 md:grid md:grid-cols-2 lg:grid-cols-3">
                   {archiveEvents.map((event) => (
-                    <EventCard key={event.id} event={event} initialGoing={false} />
+                    <div key={event.id} className="flex flex-col gap-2">
+                      <EventCard event={event} initialGoing={false} />
+                      {archivePhotos[event.id] && (
+                        <a
+                          href={archivePhotos[event.id]}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow"
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold text-primary transition-colors hover:bg-muted"
+                        >
+                          <Camera size={16} aria-hidden="true" /> Zdjęcia z wydarzenia
+                        </a>
+                      )}
+                    </div>
                   ))}
                 </div>
               </>
