@@ -96,7 +96,7 @@ const emptyForm = {
   title:"", slug:"", description:"", short_description:"",
   start_date:"", start_time:"", end_date:"", end_time:"",
   city:"Suwałki", address:"", venue_name:"", location_notes:"",
-  category:"", cover_image_url:"", ticket_url:"", website_url:"", reservation_phone:"",
+  category:"", cover_image_url:"", ticket_url:"", website_url:"", photos_url:"", reservation_phone:"",
   image_url:"",
   organizer_name:"", price_from:"0", price_currency:"PLN", price_note:"", is_free:true,
   latitude:"", longitude:"", status:"published",
@@ -208,6 +208,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       cover_image_url: data.cover_image_url || "",
       ticket_url: data.ticket_url || "",
       website_url: data.website_url || "",
+      photos_url: data.photos_url || "",
       reservation_phone: data.reservation_phone || "",
       image_url: data.image_url || "",
       organizer_name: data.organizer_name || "",
@@ -556,6 +557,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       image_url: form.image_url || null,
       ticket_url: safeUrl(form.ticket_url),
       website_url: safeUrl(form.website_url),
+      photos_url: safeUrl(form.photos_url),
       reservation_phone: safeTel(form.reservation_phone),
       organizer_name: form.organizer_name || null,
       is_free: form.is_free,
@@ -942,6 +944,10 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                   <input id="website_url" name="website_url" value={form.website_url} onChange={handleChange} placeholder="https://..." style={inp} />
                 </Field>
               </div>
+
+              <Field label="Link do zdjęć z wydarzenia (opcjonalnie)" htmlFor="photos_url">
+                <input id="photos_url" name="photos_url" value={form.photos_url} onChange={handleChange} placeholder="https://... (album na Facebooku, Google Photos itp.)" style={inp} />
+              </Field>
 
               <Field label="Telefon do rezerwacji" htmlFor="reservation_phone">
                 <input id="reservation_phone" name="reservation_phone" type="tel" inputMode="tel" autoComplete="off" value={form.reservation_phone} onChange={handleChange} placeholder="np. 600 123 456 albo +48 600 123 456" style={inp} />

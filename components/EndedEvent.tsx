@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { ArrowLeft, MapPin } from "lucide-react"
+import { safeUrl } from "@/lib/safeUrl"
+import { ArrowLeft, Camera, MapPin } from "lucide-react"
 
 // 2026-10-07: strona pokazywana pod linkiem do wydarzenia, które już się odbyło i zostało
 // zarchiwizowane (patrz lib/eventState.ts). Zamiast błędu "nie znaleziono" odwiedzający widzi, że
@@ -22,15 +23,22 @@ function formatWhen(date: string | null, time: string | null): string {
   return time ? `${day}, ${time.slice(0, 5)}` : day
 }
 
+// 2026-10-20: opcjonalny link do zdjęć z wydarzenia (events.photos_url) — album na Facebooku, Google
+// Photos itp. Wpisuje go organizator. To zwykły przycisk, który otwiera link w nowej karcie, a nie
+// przekierowanie: odwiedzający zostaje na stronie. Link jest sprawdzany przy zapisie i jeszcze raz
+// tu, przy wyświetlaniu (safeUrl), bo kolumnę można zapisać też z pominięciem formularza.
 export default function EndedEvent({
   title,
   city,
   upcoming,
+  photosUrl,
 }: {
   title: string
   city: string | null
   upcoming: UpcomingEvent[]
+  photosUrl?: string | null
 }) {
+  const photosHref = safeUrl(photosUrl)
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-3xl px-4 py-10">
@@ -54,6 +62,16 @@ export default function EndedEvent({
               ? "Poniżej znajdziesz to, co dzieje się w najbliższym czasie."
               : "Zajrzyj na stronę główną, żeby zobaczyć, co dzieje się w pobliżu."}
           </p>
+          {photosHref && (
+            <a
+              href={photosHref}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <Camera size={16} aria-hidden="true" /> Zobacz zdjęcia z wydarzenia
+            </a>
+          )}
         </div>
 
         {upcoming.length > 0 && (

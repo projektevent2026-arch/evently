@@ -4,6 +4,7 @@ import type { Metadata } from "next"
 import EventDetailWrapper from "@/components/EventDetailWrapper"
 import EndedEvent from "@/components/EndedEvent"
 import { eventState } from "@/lib/eventState"
+import { safeUrl } from "@/lib/safeUrl"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,7 +19,7 @@ const supabase = createClient(
 const getEvent = cache(async (slug: string) => {
   const { data } = await supabase
     .from("public_events")
-    .select("title, short_description, cover_image_url, city, start_date, status, deleted_at")
+    .select("title, short_description, cover_image_url, city, start_date, status, deleted_at, photos_url")
     .eq(/^[0-9a-f-]{36}$/i.test(slug) ? "id" : "slug", slug)
     .maybeSingle()
   return data
@@ -88,7 +89,7 @@ export default async function EventPage(
       .order("next_date", { ascending: true })
       .limit(4)
 
-    return <EndedEvent title={event.title} city={event.city} upcoming={upcoming ?? []} />
+    return <EndedEvent title={event.title} city={event.city} upcoming={upcoming ?? []} photosUrl={safeUrl(event.photos_url)} />
   }
 
   return <EventDetailWrapper slug={slug} />

@@ -50,7 +50,7 @@ const emptyForm = {
   title: "", description: "",
   city: "", address: "", venue_name: "",
   category: "", cover_image_url: "", image_url: "",
-  ticket_url: "", website_url: "",
+  ticket_url: "", website_url: "", photos_url: "",
   reservation_phone: "", phone_declared: false,
   organizer_name: "", organizer_email: "",
   price_from: "0", price_currency: "PLN", price_note: "", is_free: true,
@@ -238,6 +238,7 @@ export default function DodajWydarzenie() {
             image_url: existing.image_url || "",
             ticket_url: existing.ticket_url || "",
             website_url: existing.website_url || "",
+            photos_url: existing.photos_url || "",
             reservation_phone: existing.reservation_phone || "",
             phone_declared: !!existing.reservation_phone,
             organizer_name: existing.organizer_name || "",
@@ -548,6 +549,7 @@ try {
       image_url: form.image_url || null,
       ticket_url: safeUrl(form.ticket_url),
       website_url: safeUrl(form.website_url),
+      photos_url: safeUrl(form.photos_url),
       reservation_phone: safeTel(form.reservation_phone),
       organizer_name: form.organizer_name || null,
       is_free: form.is_free,
@@ -618,6 +620,7 @@ try {
     image_url: form.image_url || null,
     ticket_url: safeUrl(form.ticket_url),
     website_url: safeUrl(form.website_url),
+    photos_url: safeUrl(form.photos_url),
     reservation_phone: safeTel(form.reservation_phone),
     organizer_name: form.organizer_name || null,
     is_free: form.is_free,
@@ -1178,6 +1181,13 @@ try {
                   <input id="website_url" name="website_url" value={form.website_url} onChange={handleChange}
                     placeholder="https://..." style={inp} />
                 </div>
+              </div>
+
+              <div>
+                <label style={lbl} htmlFor="photos_url">Link do zdjęć z wydarzenia <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie, po wydarzeniu)</span></label>
+                <input id="photos_url" name="photos_url" value={form.photos_url} onChange={handleChange}
+                  placeholder="https://... (album na Facebooku, Google Photos itp.)" style={inp} />
+                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Pokaże się jako przycisk „Zobacz zdjęcia z wydarzenia” na stronie wydarzenia, gdy już się odbędzie.</div>
               </div>
 
               <div>
