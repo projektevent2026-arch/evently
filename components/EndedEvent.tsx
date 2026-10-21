@@ -41,7 +41,7 @@ export default function EndedEvent({
   const photosHref = safeUrl(photosUrl)
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-3xl px-4 py-10">
+      <div className="mx-auto max-w-3xl px-4 pb-28 pt-10 md:pb-10">
         <Link href="/" className="mb-8 inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:underline">
           <ArrowLeft size={16} aria-hidden="true" /> Wróć do wydarzeń
         </Link>

@@ -204,7 +204,7 @@ export default function OrganizatorPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto max-w-5xl px-4 pb-28 pt-8 md:pb-8">
         <Link href="/" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:underline">
           <ArrowLeft size={16} /> Wróć do wydarzeń
         </Link>
@@ -225,7 +225,7 @@ export default function OrganizatorPage() {
             <div className={coverUrl ? "mb-6 px-2 sm:px-4" : "mb-6 flex items-center gap-4"}>
             <div
   className={`flex shrink-0 items-center justify-center overflow-hidden ${
-    avatarUrl ? "bg-white p-2" : "bg-[#f0fdf4]"
+    avatarUrl ? (coverUrl ? "bg-white p-3" : "bg-white p-2.5") : "bg-[#f0fdf4]"
   } ${
     coverUrl ? "-mt-10 mb-3 size-20 rounded-full border-4 border-background sm:-mt-12 sm:size-24" : "size-16 rounded-full"
   }`}
