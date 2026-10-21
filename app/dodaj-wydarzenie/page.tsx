@@ -1184,13 +1184,6 @@ try {
               </div>
 
               <div>
-                <label style={lbl} htmlFor="photos_url">Link do zdjęć z wydarzenia <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie, po wydarzeniu)</span></label>
-                <input id="photos_url" name="photos_url" value={form.photos_url} onChange={handleChange}
-                  placeholder="https://... (album na Facebooku, Google Photos itp.)" style={inp} />
-                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Pokaże się jako przycisk „Zobacz zdjęcia z wydarzenia” na stronie wydarzenia, gdy już się odbędzie.</div>
-              </div>
-
-              <div>
                 <label style={lbl} htmlFor="reservation_phone">Telefon do rezerwacji <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie)</span></label>
                 <input id="reservation_phone" name="reservation_phone" type="tel" inputMode="tel" autoComplete="off"
                   value={form.reservation_phone} onChange={handleChange}
