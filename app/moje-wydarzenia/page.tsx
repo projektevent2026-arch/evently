@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { revalidateHome } from "@/lib/revalidateHome"
+import { safeUrl } from "@/lib/safeUrl"
 import { normalizeCategory, CATEGORY_LABELS, type CategoryKey } from "@/lib/eventCategory"
-import { MapPin, Pencil, Plus, Trash2, User, Search, Eye, RotateCcw } from "lucide-react"
+import { MapPin, Pencil, Plus, Trash2, User, Search, Eye, RotateCcw, Camera } from "lucide-react"
 
 // 2026-09-29: dociągnięte do poziomu panelu admina (szukaj/filtry/
 // sortowanie/podgląd), na wyraźną prośbę — wcześniej to była gołą listą
@@ -20,6 +21,10 @@ import { MapPin, Pencil, Plus, Trash2, User, Search, Eye, RotateCcw } from "luci
 // wypadek). Middleware już wymaga zalogowania przed wejściem tutaj — filtr
 // po created_by (i RLS po stronie bazy) pilnuje, że każdy widzi i edytuje
 // wyłącznie swoje.
+//
+// 2026-10-21: przy zakończonym (zarchiwizowanym) wydarzeniu jest przycisk "Dodaj zdjęcia" —
+// organizator wkleja tu link do albumu (events.photos_url) bez wchodzenia w pełną edycję.
+// Link pokazuje się jako przycisk na stronie zakończonego wydarzenia.
 const STATUS_TABS = [
   { id: "all", label: "Wszystkie" },
   { id: "published", label: "Opublikowane" },
@@ -51,6 +56,12 @@ export default function MojeWydarzenia() {
   // w nagłówku — zamiast samego przycisku tekstowego "Mój profil".
   const [avatarUrl, setAvatarUrl] = useState("")
 
+  // Edycja linku do zdjęć: id wydarzenia, które ma otwarte pole, wpisana wartość, stan zapisu.
+  const [photosEditId, setPhotosEditId] = useState<string | null>(null)
+  const [photosValue, setPhotosValue] = useState("")
+  const [photosSaving, setPhotosSaving] = useState(false)
+  const [photosError, setPhotosError] = useState<string | null>(null)
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -61,7 +72,7 @@ export default function MojeWydarzenia() {
       const [{ data }, { data: profile }] = await Promise.all([
         supabase
           .from("events")
-          .select("id, slug, title, start_date, status, deleted_at, cover_image_url, image_url, category, city, venue_name")
+          .select("id, slug, title, start_date, status, deleted_at, cover_image_url, image_url, category, city, venue_name, photos_url")
           .eq("created_by", user.id)
           .order("start_date", { ascending: false }),
         supabase.from("profiles").select("avatar_url").eq("id", user.id).single(),
@@ -126,6 +137,46 @@ export default function MojeWydarzenia() {
 
     setEvents(prev => prev.map(e => (e.id === id ? { ...e, deleted_at: deletedAt } : e)))
     revalidateHome()
+  }
+
+  function openPhotos(id: string, current: string | null) {
+    setPhotosError(null)
+    setPhotosValue(current || "")
+    setPhotosEditId(id)
+  }
+
+  // Zapis linku do zdjęć. Pusty link = usunięcie. Zły link (np. javascript:...) odrzucamy z komunikatem,
+  // zamiast po cichu zapisać puste pole. Po update sprawdzamy, że wiersz faktycznie się zmienił
+  // (RLS potrafi zablokować zapis bez błędu, tak samo jak przy przenoszeniu do kosza wyżej).
+  async function savePhotos(id: string) {
+    setPhotosError(null)
+    const raw = photosValue.trim()
+    const cleaned = raw ? safeUrl(raw) : null
+    if (raw && !cleaned) {
+      setPhotosError("Link musi zaczynać się od http:// albo https://")
+      return
+    }
+    if (cleaned && cleaned.length > 500) {
+      setPhotosError("Link jest za długi (maksymalnie 500 znaków).")
+      return
+    }
+
+    setPhotosSaving(true)
+    const { data, error } = await supabase
+      .from("events")
+      .update({ photos_url: cleaned })
+      .eq("id", id)
+      .select("id")
+    setPhotosSaving(false)
+
+    if (error || !data || data.length === 0) {
+      setPhotosError("Nie udało się zapisać linku" + (error ? ": " + error.message : " — brak uprawnień do tego wydarzenia."))
+      return
+    }
+
+    setEvents(prev => prev.map(e => (e.id === id ? { ...e, photos_url: cleaned } : e)))
+    setPhotosEditId(null)
+    setPhotosValue("")
   }
 
   function handleDelete(id: string, title: string) {
@@ -279,6 +330,15 @@ export default function MojeWydarzenia() {
                       </button>
                     ) : (
                       <>
+                        {event.status === "archived" && (
+                          <button
+                            type="button"
+                            onClick={() => (photosEditId === event.id ? setPhotosEditId(null) : openPhotos(event.id, event.photos_url))}
+                            style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f1f1f", border: "1px solid #14532d", color: "#22c55e", borderRadius: 8, padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}
+                          >
+                            <Camera size={14} /> {event.photos_url ? "Zmień zdjęcia" : "Dodaj zdjęcia"}
+                          </button>
+                        )}
                         <Link
                           href={`/dodaj-wydarzenie?edit=${event.id}`}
                           style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f1f1f", border: "1px solid #333", color: "white", borderRadius: 8, padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, textDecoration: "none" }}
@@ -296,6 +356,38 @@ export default function MojeWydarzenia() {
                       </>
                     )}
                   </div>
+                  {photosEditId === event.id && !event.deleted_at && (
+                    <div style={{ width: "100%", borderTop: "1px solid #262626", paddingTop: 12 }}>
+                      <label htmlFor={`photos-${event.id}`} style={{ display: "block", fontSize: "0.8rem", color: "#9ca3af", marginBottom: 6 }}>
+                        Link do zdjęć z wydarzenia (album na Facebooku, Google Photos itp.). Pusty zapis usuwa link.
+                      </label>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <input
+                          id={`photos-${event.id}`}
+                          value={photosValue}
+                          onChange={e => setPhotosValue(e.target.value)}
+                          placeholder="https://..."
+                          style={{ flex: 1, minWidth: 200, padding: "9px 12px", background: "#0f0f0f", border: "1px solid #333", borderRadius: 8, color: "white", fontSize: "0.88rem", boxSizing: "border-box" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => savePhotos(event.id)}
+                          disabled={photosSaving}
+                          style={{ background: "#16a34a", border: "none", color: "white", borderRadius: 8, padding: "0.5rem 1rem", fontSize: "0.8rem", fontWeight: 600, cursor: photosSaving ? "not-allowed" : "pointer", opacity: photosSaving ? 0.6 : 1 }}
+                        >
+                          {photosSaving ? "Zapisywanie..." : "Zapisz"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPhotosEditId(null)}
+                          style={{ background: "#1f1f1f", border: "1px solid #333", color: "white", borderRadius: 8, padding: "0.5rem 1rem", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}
+                        >
+                          Anuluj
+                        </button>
+                      </div>
+                      {photosError && <p style={{ color: "#ef4444", fontSize: "0.8rem", margin: "8px 0 0" }}>{photosError}</p>}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
