@@ -190,6 +190,15 @@ export default function DodajWydarzenie() {
   // Domyślnie true — baner "sprawdź dane" pokazuje się tylko PO skanie
   // plakatu, nigdy przy zwykłym, ręcznym wypełnianiu formularza.
   const [scanReviewed, setScanReviewed] = useState(true)
+  // Baner "sprawdź dane z plakatu" jest na pierwszej zakładce, a przycisk wysyłania
+  // na ostatniej. Zamiast martwego, wyszarzonego przycisku: przenosimy użytkownika
+  // do banera, tam potwierdza "OK, sprawdziłem".
+  const goToScanReview = () => {
+    setActiveTab("basic")
+    setTimeout(() => {
+      document.getElementById("scan-review-banner")?.scrollIntoView({ behavior: "smooth", block: "center" })
+    }, 50)
+  }
 
   useEffect(() => {
     async function init() {
@@ -893,7 +902,7 @@ try {
                     Wgraj zdjęcie plakatu — AI automatycznie wypełni formularz.
                   </p>
                   {!scanReviewed && (
-                    <div style={{display:"flex",gap:12,alignItems:"flex-start",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:"12px 14px",marginTop:10}}>
+                    <div id="scan-review-banner" style={{display:"flex",gap:12,alignItems:"flex-start",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:"12px 14px",marginTop:10}}>
                       <span style={{fontSize:18,lineHeight:1}}>🔍</span>
                       <div style={{flex:1}}>
                         <div style={{fontSize:13,fontWeight:600,color:"#b45309",marginBottom:2}}>AI wypełniło formularz — sprawdź i popraw</div>
@@ -1246,16 +1255,20 @@ try {
 
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:"0.5rem",borderTop:"1px solid #f3f4f6"}}>
                 <button type="button" onClick={() => setActiveTab("location")} style={backBtn}>← Wstecz</button>
-                <button type="submit" disabled={submitting || !roleChecked || !scanReviewed} style={{
+                <button
+                  type={roleChecked && !scanReviewed ? "button" : "submit"}
+                  disabled={submitting || !roleChecked}
+                  onClick={roleChecked && !scanReviewed ? goToScanReview : undefined}
+                  style={{
                   display:"flex",alignItems:"center",gap:8,
-                  padding:"0.8rem 2rem",background:"#16a34a",color:"white",
+                  padding:"0.8rem 2rem",background: roleChecked && !scanReviewed ? "#d97706" : "#16a34a",color:"white",
                   border:"none",borderRadius:10,cursor:"pointer",
-                  fontWeight:700,fontSize:"1rem",opacity:(submitting || !scanReviewed) ? 0.7 : 1,
+                  fontWeight:700,fontSize:"1rem",opacity: submitting ? 0.7 : 1,
                 }}>
                   {!roleChecked
                     ? "Sprawdzanie..."
                     : !scanReviewed
-                      ? "Najpierw sprawdź dane z plakatu ↑"
+                      ? "Sprawdź dane z plakatu ↑"
                       : submitting
                         ? "Wysyłanie..."
                         : userRole === "organizer"
