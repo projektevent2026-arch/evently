@@ -4,12 +4,13 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Users, Heart, Eye, Calendar, RotateCw } from "lucide-react"
+import { MapPin, Users, Heart, Eye, Camera, Calendar, RotateCw } from "lucide-react"
 import EventImage from "@/components/EventImage"
 import PosterModal from "@/components/PosterModal"
 import { useFavorites } from "@/hooks/useFavorites"
 import { normalizeCategory, CATEGORY_LABELS, CATEGORY_BADGE_CLASSES as CATEGORY_STYLES } from "@/lib/eventCategory"
 import { dateBadgeParts } from "@/lib/eventFormat"
+import { safeUrl } from "@/lib/safeUrl"
 
 function capitalizeCity(city: string): string {
   if (!city) return ""
@@ -88,7 +89,8 @@ const THEME = {
   },
 } as const
 
-export function EventCard({ event, initialGoing = false, theme = "dark" }: { event: EventData; initialGoing?: boolean; theme?: "dark" | "light" }) {
+// photosUrl (opcjonalny): link do zdjęć po wydarzeniu. Gdy podany, w stopce karty pojawia się przycisk "Zdjęcia".
+export function EventCard({ event, initialGoing = false, theme = "dark", photosUrl }: { event: EventData; initialGoing?: boolean; theme?: "dark" | "light"; photosUrl?: string | null }) {
   const [posterSrc, setPosterSrc] = useState<string | null>(null)
   // Ulubione na localStorage — bez kont. Serce jest zsynchronizowane z detalem i stroną /ulubione.
   const { isFavorite, toggleFavorite } = useFavorites()
@@ -101,11 +103,19 @@ export function EventCard({ event, initialGoing = false, theme = "dark" }: { eve
   const t = THEME[theme]
   // Plakat ma odwrotny priorytet niż zdjęcie na karcie — najpierw właściwy plakat, potem zdjęcie jako fallback
   const posterImg = event.image_url || event.image
+  const photosHref = safeUrl(photosUrl)
 
   const openPoster = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setPosterSrc(posterImg!)
+  }
+
+  // <button>, nie <a>: cała karta jest już linkiem, a zagnieżdżony <a> w <a> to błędny HTML.
+  const openPhotos = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (photosHref) window.open(photosHref, "_blank", "noopener,noreferrer")
   }
 
   return (
@@ -183,8 +193,21 @@ export function EventCard({ event, initialGoing = false, theme = "dark" }: { eve
             </div>
           )}
 
-<div className={`mt-0.5 flex items-center justify-end border-t pt-1 ${t.footerBorder}`}>
+<div className={`mt-0.5 flex items-center justify-end gap-1.5 border-t pt-1 ${t.footerBorder}`}>
             {/* Licznik „zainteresowanych" (RSVP) UKRYTY — wymaga kont (tier D). */}
+            {photosHref && (
+              <button
+                onClick={openPhotos}
+                className={`h-6 inline-flex items-center gap-1 rounded-lg border px-2.5 text-[11px] font-semibold transition-colors ${
+                  theme === "light"
+                    ? "border-sky-200 bg-white text-sky-700 hover:bg-sky-50"
+                    : "border-sky-500/30 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20"
+                }`}
+              >
+                <Camera className="size-3" />
+                Zdjęcia
+              </button>
+            )}
             {posterImg && (
               theme === "light" ? (
                 // Zwykły <button> zamiast współdzielonego <Button variant="outline">

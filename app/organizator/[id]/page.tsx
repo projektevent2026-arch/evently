@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase"
 import { safeProfileUrl, displayUrl, safeUrl } from "@/lib/safeUrl"
 import { EventCard, type EventData } from "@/components/event-card"
 import { MobileEventRow, type MobileEventRowData } from "@/components/MobileEventRow"
-import { ArrowLeft, Building2, Camera, Globe, MapPin } from "lucide-react"
+import { ArrowLeft, Building2, Globe, MapPin } from "lucide-react"
 
 // 2026-09-30: publiczna strona organizatora — "zobacz wszystkie jego
 // ogłoszenia" z karty Organizator na stronie wydarzenia. Dane profilu z
@@ -355,36 +355,12 @@ export default function OrganizatorPage() {
                 <p className="mb-4 text-sm text-muted-foreground">Wydarzenia, które już się odbyły.</p>
                 <div className="md:hidden">
                   {archiveRows.map((row) => (
-                    <div key={row.id}>
-                      <MobileEventRow event={row} />
-                      {archivePhotos[row.id] && (
-                        <a
-                          href={archivePhotos[row.id]}
-                          target="_blank"
-                          rel="noopener noreferrer nofollow"
-                          className="mb-3 -mt-1 inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold text-primary transition-colors hover:bg-muted"
-                        >
-                          <Camera size={16} aria-hidden="true" /> Zdjęcia z wydarzenia
-                        </a>
-                      )}
-                    </div>
+                    <MobileEventRow key={row.id} event={row} photosUrl={archivePhotos[row.id]} />
                   ))}
                 </div>
                 <div className="hidden gap-5 md:grid md:grid-cols-2 lg:grid-cols-3">
                   {archiveEvents.map((event) => (
-                    <div key={event.id} className="flex flex-col gap-2">
-                      <EventCard event={event} initialGoing={false} />
-                      {archivePhotos[event.id] && (
-                        <a
-                          href={archivePhotos[event.id]}
-                          target="_blank"
-                          rel="noopener noreferrer nofollow"
-                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold text-primary transition-colors hover:bg-muted"
-                        >
-                          <Camera size={16} aria-hidden="true" /> Zdjęcia z wydarzenia
-                        </a>
-                      )}
-                    </div>
+                    <EventCard key={event.id} event={event} initialGoing={false} photosUrl={archivePhotos[event.id]} />
                   ))}
                 </div>
               </>

@@ -5,6 +5,7 @@ import Link from "next/link"
 import PosterModal from "@/components/PosterModal"
 import { useFavorites } from "@/hooks/useFavorites"
 import { dateBadgeParts } from "@/lib/eventFormat"
+import { safeUrl } from "@/lib/safeUrl"
 import { normalizeCategory, CATEGORY_LABELS, CATEGORY_BADGE_CLASSES } from "@/lib/eventCategory"
 
 // 2026-10-07: kompaktowy wiersz wydarzenia na telefon, taki sam jak karta na liście głównej
@@ -27,7 +28,9 @@ export type MobileEventRowData = {
   image_url: string | null
 }
 
-export function MobileEventRow({ event }: { event: MobileEventRowData }) {
+// photosUrl (opcjonalny): link do zdjęć po wydarzeniu. Gdy podany, na karcie pojawia się przycisk "Zdjęcia".
+// Bez tego propa karta wygląda i działa jak dotąd (strona główna, ulubione, lista organizatora).
+export function MobileEventRow({ event, photosUrl }: { event: MobileEventRowData; photosUrl?: string | null }) {
   const [posterSrc, setPosterSrc] = useState<string | null>(null)
   const { isFavorite, toggleFavorite } = useFavorites()
   const liked = isFavorite(event.id)
@@ -40,6 +43,7 @@ export function MobileEventRow({ event }: { event: MobileEventRowData }) {
   const endTime = event.next_end_time?.slice(0, 5)
   const img = event.cover_image_url || event.image_url
   const posterImg = event.image_url || event.cover_image_url
+  const photosHref = safeUrl(photosUrl)
 
   return (
     <>
@@ -109,18 +113,34 @@ export function MobileEventRow({ event }: { event: MobileEventRowData }) {
                 </span>
               </div>
 
-              {img && (
+              {(img || photosHref) && (
                 <div className="flex w-20 shrink-0 flex-col gap-1.5">
-                  <div className="relative size-20 overflow-hidden rounded-xl border border-zinc-700">
-                    <img src={img} alt={event.title} loading="lazy" className="size-full object-cover" />
-                  </div>
-                  {posterImg && (
+                  {img && (
+                    <div className="relative size-20 overflow-hidden rounded-xl border border-zinc-700">
+                      <img src={img} alt={event.title} loading="lazy" className="size-full object-cover" />
+                    </div>
+                  )}
+                  {img && posterImg && (
                     <button
                       type="button"
                       onClick={(e) => { e.preventDefault(); setPosterSrc(posterImg) }}
                       className="flex w-full items-center justify-center gap-1 rounded-lg border border-green-500/30 bg-green-500/10 px-1 py-1.5 text-[9px] font-bold text-green-400"
                     >
                       👁 Plakat
+                    </button>
+                  )}
+                  {photosHref && (
+                    // <button>, nie <a>: cała karta jest już linkiem, a zagnieżdżony <a> w <a> to błędny HTML.
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        window.open(photosHref, "_blank", "noopener,noreferrer")
+                      }}
+                      className="flex w-full items-center justify-center gap-1 rounded-lg border border-sky-500/30 bg-sky-500/10 px-1 py-1.5 text-[9px] font-bold text-sky-400"
+                    >
+                      📷 Zdjęcia
                     </button>
                   )}
                 </div>
