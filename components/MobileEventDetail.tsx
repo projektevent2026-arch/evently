@@ -98,6 +98,12 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
   const scheduleItemsFlat: any[] = hasTabs
     ? event.schedule.flatMap((d: any) => d.items || [])
     : []
+  // 2026-10-23: kolumna godziny w zajawce programu tylko gdy choć jeden z
+  // pokazywanych punktów ma godzinę. Program z samą listą atrakcji (typowy
+  // festyn) nie ma godzin, a stała kolumna zostawiała dziurę między kropką
+  // a tekstem. Gdy część punktów ma godziny, a część nie, kolumna zostaje
+  // wszędzie, żeby tytuły były równo pod sobą.
+  const schedulePreviewHasTime = scheduleItemsFlat.slice(0, 4).some((item: any) => !!item?.time)
 
   // Godzina w pasku info: z NAJBLIŻSZEGO terminu (nextOccurrence), nie z
   // surowych start_date/end_date — patrz komentarz w EventPageClient.tsx
@@ -245,9 +251,11 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
             {scheduleItemsFlat.slice(0, 4).map((item: any, i: number) => (
               <div key={i} className="flex items-center gap-3 mb-3">
                 <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                <span className="text-[11px] font-bold text-green-400 min-w-[38px]">
-                  {item.time}
-                </span>
+                {schedulePreviewHasTime && (
+                  <span className="text-[11px] font-bold text-green-400 min-w-[38px]">
+                    {item.time}
+                  </span>
+                )}
                 <span className="text-[11px] text-zinc-300">{item.title || item.name}</span>
               </div>
             ))}
