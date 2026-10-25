@@ -1109,6 +1109,23 @@ try {
                 onChange={(lat, lng) => setForm(prev => ({...prev, latitude: lat, longitude: lng}))}
               />
 
+              {(() => {
+                const hasPin = !!form.latitude && !!form.longitude
+                const needsCheck = !scanReviewed
+                return (
+                  <div style={{
+                    fontSize:"0.8rem", lineHeight:1.5, borderRadius:10, padding:"8px 12px",
+                    background: !hasPin || needsCheck ? "#fffbeb" : "#f9fafb",
+                    border: `1px solid ${!hasPin || needsCheck ? "#fde68a" : "#e5e7eb"}`,
+                    color: !hasPin || needsCheck ? "#92400e" : "#6b7280",
+                  }}>
+                    {hasPin
+                      ? "Sprawdź, czy pinezka stoi tam, dokąd ma prowadzić nawigacja (wejście, parking, wjazd na teren). Dotknij mapy, żeby ją przesunąć."
+                      : "Brak pinezki. Wpisz adres i kliknij „Znajdź” albo dotknij mapy. Bez tego nawigacja użyje samego adresu, a przy wydarzeniu w terenie może wskazać złe miejsce."}
+                  </div>
+                )
+              })()}
+
               <div>
                 <label style={lbl} htmlFor="location_notes">Ważne informacje o dojeździe <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie)</span></label>
                 <textarea id="location_notes" name="location_notes" value={form.location_notes} onChange={handleChange}

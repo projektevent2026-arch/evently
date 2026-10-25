@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 import EventSchedule from '@/components/EventSchedule'
 import { isRedundantSchedule } from '@/lib/scheduleRedundancy'
+import { navigationUrl } from '@/lib/navUrl'
 import { useFavorites } from '@/hooks/useFavorites'
 import { getEventWithDates } from '@/lib/getEventWithDates'
 import EventDatesList from '@/components/EventDatesList'
@@ -85,7 +86,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
   const gradient = CAT_GRADIENT[cat]
   const tagColor = CATEGORY_BADGE_CLASSES[cat]
   const tagLabel = CATEGORY_LABELS[cat]
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.address, event.city].filter(Boolean).join(', '))}`
+  const mapsUrl = navigationUrl({ latitude: event.latitude, longitude: event.longitude, address: event.address, city: event.city })
   // 2026-10-08: program z jednym punktem powtarzającym tytuł wydarzenia nie jest pokazywany (zakładka ani podgląd).
   const hasTabs = event.schedule && event.schedule.length > 0 && !isRedundantSchedule(event.schedule, event.title)
   const tabs = hasTabs ? TABS : ['O wydarzeniu', 'Lokalizacja']

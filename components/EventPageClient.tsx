@@ -17,6 +17,7 @@ import { dateRange, isMultiDay, weekdayName, fmtClock, durationLabel, durationBe
 import { publishedFilter } from "@/lib/publishedFilter"
 import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
 import { isRedundantSchedule } from "@/lib/scheduleRedundancy"
+import { navigationUrl } from "@/lib/navUrl"
 import { safeTel, telHref } from "@/lib/safeTel"
 import { formatPrice, cleanPriceNote } from "@/lib/formatPrice"
 
@@ -142,7 +143,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
   const badgeDate = effectiveStartDate(event.event_dates, event.start_date)
   const dateBadge = isToday(badgeDate) ? "DZIS" : isTomorrow(badgeDate) ? "JUTRO" : null
   const phone = safeTel(event.reservation_phone)
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.address,event.city].filter(Boolean).join(", "))}`
+  const mapsUrl = navigationUrl({ latitude: event.latitude, longitude: event.longitude, address: event.address, city: event.city })
   // 2026-10-08: program z jednym punktem powtarzającym tytuł wydarzenia nie jest pokazywany (zakładka ani podgląd).
   const hasTabs = event.schedule && event.schedule.length > 0 && !isRedundantSchedule(event.schedule, event.title)
   // Godzina w pasku info: z NAJBLIŻSZEGO terminu (nextOccurrence), nie z

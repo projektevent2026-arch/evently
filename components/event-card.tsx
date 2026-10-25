@@ -193,7 +193,7 @@ export function EventCard({ event, initialGoing = false, theme = "dark", photosU
             </div>
           )}
 
-<div className={`mt-0.5 flex items-center justify-end gap-1.5 border-t pt-1 ${t.footerBorder}`}>
+<div className={`mt-0.5 flex items-center ${photosHref ? "justify-between" : "justify-end"} gap-1.5 border-t pt-1 ${t.footerBorder}`}>
             {/* Licznik „zainteresowanych" (RSVP) UKRYTY — wymaga kont (tier D). */}
             {photosHref && (
               <button
