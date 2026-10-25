@@ -104,6 +104,9 @@ export default function EventMap() {
 
   const [events,       setEvents]       = useState<Event[]>([])
   const [loading,      setLoading]      = useState(true)
+  // 2026-10-25: błąd pobrania wydarzeń był połykany (pusta mapa bez komunikatu). Teraz jest stan błędu i ponowienie.
+  const [loadError,    setLoadError]    = useState(false)
+  const [reloadKey,    setReloadKey]    = useState(0)
   const [locInput,     setLocInput]     = useState('')
   const [locResults,   setLocResults]   = useState<GeoResult[]>([])
   const [locLoading,   setLocLoading]   = useState(false)
@@ -147,9 +150,19 @@ export default function EventMap() {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/events')
-      .then(res => res.json())
+      .then(res => {
+        // Odpowiedź z błędem (429, 500) nie jest tablicą — wcześniej data.filter
+        // rzucał wyjątek, a .catch milcząco zostawiał pustą mapę.
+        if (!res.ok) throw new Error('HTTP ' + res.status)
+        return res.json()
+      })
       .then((data: Event[]) => {
+        if (cancelled) return
+        if (!Array.isArray(data)) throw new Error('bad payload')
         // Endpoint zwraca WSZYSTKIE opublikowane eventy (bez wymogu lat/lng) —
         // mapa potrzebuje tylko tych z lokalizacją, więc filtrujemy tu, tak jak
         // wcześniej robiło to zapytanie .not('latitude','is',null) w Supabase.
@@ -157,8 +170,13 @@ export default function EventMap() {
         setEvents(withLocation)
         setLoading(false)
       })
-      .catch(() => setLoading(false))
-  }, [])
+      .catch(() => {
+        if (cancelled) return
+        setLoadError(true)
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [reloadKey])
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
@@ -213,6 +231,7 @@ export default function EventMap() {
         mapInstanceRef.current = null
         markerGroupRef.current = null
       }
+      setMapReady(false)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -283,7 +302,10 @@ export default function EventMap() {
         mcg.addLayer(marker)
       })
     })
-  }, [filtered, urlCenter, userPosition, filtersOpen])
+    // 2026-10-25: mapReady w zależnościach. Gdy /api/events odpowiedziało PRZED końcem
+    // dynamicznego importu Leaflet, efekt widział markerGroupRef === null, wychodził i nie
+    // dostawał drugiej szansy (filtered już się nie zmieniało) — mapa bez pinów do odświeżenia.
+  }, [filtered, urlCenter, userPosition, filtersOpen, mapReady])
 
   useEffect(() => {
     const map = mapInstanceRef.current
@@ -614,6 +636,20 @@ export default function EventMap() {
       {loading && (
         <div className="absolute inset-0 z-[999] flex items-center justify-center bg-white">
           <div className="animate-spin w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full" />
+        </div>
+      )}
+
+      {loadError && !loading && (
+        <div className="absolute inset-0 z-[999] flex items-center justify-center bg-white/90 px-6">
+          <div className="text-center">
+            <p className="text-sm text-gray-700 mb-3">Nie udało się wczytać wydarzeń. Sprawdź połączenie i spróbuj ponownie.</p>
+            <button
+              onClick={() => setReloadKey(k => k + 1)}
+              className="px-4 py-2 rounded-full text-sm font-semibold bg-green-500 text-white hover:bg-green-600 transition-colors"
+            >
+              Spróbuj ponownie
+            </button>
+          </div>
         </div>
       )}
 
