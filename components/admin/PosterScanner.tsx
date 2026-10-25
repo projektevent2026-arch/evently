@@ -22,7 +22,8 @@ interface ScanResult {
 }
 
 interface PosterScannerProps {
-  onScanComplete: (data: ScanResult) => void
+  /** Drugi argument: podgląd plakatu (data URL) dokładnie w tej wersji, którą widziało AI. */
+  onScanComplete: (data: ScanResult, previewUrl?: string) => void
 }
 
 export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
@@ -31,13 +32,15 @@ export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
 
-  const compressImage = (file: File): Promise<{ base64: string; mediaType: string }> => {
+  const compressImage = (file: File): Promise<{ base64: string; mediaType: string; dataUrl: string }> => {
     return new Promise((resolve) => {
       const reader = new FileReader()
       reader.onload = (e) => {
         const img = new Image()
         img.onload = () => {
-          const MAX = 1200
+          // 1568 px to największy bok, który API przyjmuje bez własnego zmniejszania.
+          // Poprzednie 1200 rozmywało drobny druk na plakatach.
+          const MAX = 1568
           let { width, height } = img
           if (width > MAX || height > MAX) {
             if (width > height) { height = Math.round(height * MAX / width); width = MAX }
@@ -47,8 +50,8 @@ export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
           canvas.width = width
           canvas.height = height
           canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
-          const compressed = canvas.toDataURL('image/jpeg', 0.8)
-          resolve({ base64: compressed.split(',')[1], mediaType: 'image/jpeg' })
+          const compressed = canvas.toDataURL('image/jpeg', 0.9)
+          resolve({ base64: compressed.split(',')[1], mediaType: 'image/jpeg', dataUrl: compressed })
         }
         img.src = e.target!.result as string
       }
@@ -63,7 +66,7 @@ export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
     setScanning(true)
     setStatus('Kompresuję i analizuję...')
     try {
-      const { base64, mediaType } = await compressImage(file)
+      const { base64, mediaType, dataUrl } = await compressImage(file)
       const res = await fetch('/api/scan-poster', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -71,7 +74,7 @@ export default function PosterScanner({ onScanComplete }: PosterScannerProps) {
       })
       const data = await res.json()
       if (data.error) { setStatus('Błąd: ' + data.error) }
-      else { setStatus('✅ Formularz wypełniony automatycznie'); onScanComplete(data) }
+      else { setStatus('✅ Formularz wypełniony automatycznie'); onScanComplete(data, dataUrl) }
     } catch {
       setStatus('Błąd połączenia z AI')
     }

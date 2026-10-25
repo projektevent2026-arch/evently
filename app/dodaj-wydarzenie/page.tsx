@@ -1,6 +1,7 @@
 "use client"
 
 import PosterScanner from "@/components/admin/PosterScanner"
+import PosterModal from "@/components/PosterModal"
 import ImageUpload from "@/components/admin/ImageUpload"
 import ScheduleEditor from "@/components/admin/ScheduleEditor"
 import dynamic from "next/dynamic"
@@ -8,7 +9,7 @@ import { useState, useRef, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { safeUrl } from "@/lib/safeUrl"
 import { safeTel } from "@/lib/safeTel"
-import { MapPin, ChevronRight, CheckCircle } from "lucide-react"
+import { MapPin, ChevronRight, CheckCircle, ZoomIn } from "lucide-react"
 import Link from "next/link"
 import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/scheduleType"
 import { toggleBoldSelection } from "@/lib/eventFormat"
@@ -190,6 +191,9 @@ export default function DodajWydarzenie() {
   // Domyślnie true — baner "sprawdź dane" pokazuje się tylko PO skanie
   // plakatu, nigdy przy zwykłym, ręcznym wypełnianiu formularza.
   const [scanReviewed, setScanReviewed] = useState(true)
+  // Miniatura zeskanowanego plakatu w żółtym banerze (porównanie bez wracania do galerii).
+  const [scanPreview, setScanPreview] = useState<string | null>(null)
+  const [scanPosterOpen, setScanPosterOpen] = useState(false)
   // Baner "sprawdź dane z plakatu" jest na pierwszej zakładce, a przycisk wysyłania
   // na ostatniej. Zamiast martwego, wyszarzonego przycisku: przenosimy użytkownika
   // do banera, tam potwierdza "OK, sprawdziłem".
@@ -810,7 +814,8 @@ try {
               <div>
                 <div style={{marginBottom:8}}>
                   <PosterScanner
-                    onScanComplete={async (data) => {
+                    onScanComplete={async (data, previewUrl) => {
+                      setScanPreview(previewUrl ?? null)
                       setForm(prev => ({
                         ...prev,
                         title: data.title || prev.title,
@@ -903,13 +908,31 @@ try {
                   </p>
                   {!scanReviewed && (
                     <div id="scan-review-banner" style={{display:"flex",gap:12,alignItems:"flex-start",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:"12px 14px",marginTop:10}}>
-                      <span style={{fontSize:18,lineHeight:1}}>🔍</span>
-                      <div style={{flex:1}}>
+                      {scanPreview ? (
+                        <button type="button" onClick={() => setScanPosterOpen(true)} aria-label="Powiększ plakat"
+                          style={{position:"relative",flexShrink:0,width:76,height:95,padding:0,border:"1px solid #e5e7eb",borderRadius:8,overflow:"hidden",background:"white",cursor:"pointer"}}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={scanPreview} alt="Zeskanowany plakat" style={{width:76,height:95,objectFit:"cover",display:"block"}} />
+                          <span style={{position:"absolute",right:4,bottom:4,width:24,height:24,borderRadius:12,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",color:"white"}}>
+                            <ZoomIn size={14} />
+                          </span>
+                        </button>
+                      ) : (
+                        <span style={{fontSize:18,lineHeight:1}}>🔍</span>
+                      )}
+                      <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:13,fontWeight:600,color:"#b45309",marginBottom:2}}>AI wypełniło formularz — sprawdź i popraw</div>
-                        <div style={{fontSize:12,color:"#92400e",lineHeight:1.5}}>Przejrzyj wszystkie pola, zwłaszcza adres, daty i godziny — AI mogło coś przeczytać źle (np. pomylić podobnie wyglądające litery w ozdobnej czcionce).</div>
-                        <button type="button" onClick={() => setScanReviewed(true)} style={{marginTop:8,padding:"6px 12px",border:"1px solid #f59e0b",borderRadius:8,background:"white",color:"#b45309",fontSize:12,fontWeight:600,cursor:"pointer"}}>OK, sprawdziłem</button>
+                        <div style={{fontSize:12,color:"#92400e",lineHeight:1.5}}>
+                          {scanPreview
+                            ? "Porównaj z plakatem: adres, daty, godziny, cenę i opis. Dotknij plakatu, żeby go powiększyć."
+                            : "Przejrzyj wszystkie pola, zwłaszcza adres, daty i godziny — AI mogło coś przeczytać źle (np. pomylić podobnie wyglądające litery w ozdobnej czcionce)."}
+                        </div>
+                        <button type="button" onClick={() => setScanReviewed(true)} style={{marginTop:8,minHeight:44,padding:"0 16px",border:"1px solid #f59e0b",borderRadius:8,background:"white",color:"#b45309",fontSize:12,fontWeight:600,cursor:"pointer"}}>OK, sprawdziłem</button>
                       </div>
                     </div>
+                  )}
+                  {scanPosterOpen && scanPreview && (
+                    <PosterModal src={scanPreview} onClose={() => setScanPosterOpen(false)} />
                   )}
                 </div>
                 <label style={lbl} htmlFor="title">Nazwa wydarzenia *</label>
