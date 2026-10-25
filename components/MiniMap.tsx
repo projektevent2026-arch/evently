@@ -44,6 +44,7 @@ const DEFAULT_CENTER: [number, number] = [54.1116, 22.9302]
 export default function MiniMap({ center: externalCenter, onNavigate }: MiniMapProps) {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   const center = externalCenter ?? DEFAULT_CENTER
 
@@ -58,16 +59,21 @@ export default function MiniMap({ center: externalCenter, onNavigate }: MiniMapP
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       )
-      const { data } = await supabase
+      // 2026-10-25: bez .order() limit(20) zwracał dowolne 20 wydarzeń (kolejność
+      // nieokreślona), a licznik pod mapą mówił "20 wydarzeń na mapie" także wtedy,
+      // gdy w bazie jest ich więcej. Teraz najbliższe terminy najpierw, limit 50.
+      const { data, error } = await supabase
         .from("published_events_with_next_date")
         .select("id, slug, title, next_date, city, latitude, longitude")
         .not("latitude", "is", null)
         .not("longitude", "is", null)
-        .limit(20)
+        .order("next_date", { ascending: true })
+        .limit(50)
+      if (error) setLoadError(true)
       setEvents(data || [])
       setLoading(false)
     }
-    fetchEvents()
+    fetchEvents().catch(() => { setLoadError(true); setLoading(false) })
   }, [])
 
   const fmtDate = (d: string) =>
@@ -125,7 +131,7 @@ export default function MiniMap({ center: externalCenter, onNavigate }: MiniMapP
         </MapContainer>
       </a>
       <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 6, textAlign: "center" }}>
-        {events.length} wydarzeń na mapie ·{" "}
+        {loadError ? "Nie udało się wczytać pinezek" : `${events.length} wydarzeń na mapie`} ·{" "}
         <a href={mapaHref} onClick={onNavigate} style={{ color: "#16a34a", fontWeight: 600 }}>
           otwórz mapę
         </a>

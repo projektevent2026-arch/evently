@@ -87,7 +87,7 @@ export function MobileEventRow({ event, photosUrl }: { event: MobileEventRowData
             </div>
 
             <div className="flex gap-3">
-              <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-1 flex-col">
                 <p className="mb-1 line-clamp-2 break-words text-[15px] font-black leading-tight text-white [overflow-wrap:anywhere]">
                   {event.title}
                 </p>
@@ -103,7 +103,7 @@ export function MobileEventRow({ event, photosUrl }: { event: MobileEventRowData
                   </p>
                 )}
                 <span
-                  className={`mt-1 inline-block rounded-lg border px-2 py-0.5 text-[9px] font-bold ${
+                  className={`mt-1 inline-block self-start rounded-lg border px-2 py-0.5 text-[9px] font-bold ${
                     event.is_free
                       ? "border-green-500/20 bg-green-500/10 text-green-400"
                       : "border-red-500/20 bg-red-500/10 text-red-400"
@@ -111,26 +111,11 @@ export function MobileEventRow({ event, photosUrl }: { event: MobileEventRowData
                 >
                   {event.is_free ? "Wstęp wolny" : "Wstęp płatny"}
                 </span>
-              </div>
-
-              {(img || photosHref) && (
-                <div className="flex w-20 shrink-0 flex-col gap-1.5">
-                  {img && (
-                    <div className="relative size-20 overflow-hidden rounded-xl border border-zinc-700">
-                      <img src={img} alt={event.title} loading="lazy" className="size-full object-cover" />
-                    </div>
-                  )}
-                  {img && posterImg && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.preventDefault(); setPosterSrc(posterImg) }}
-                      className="flex w-full items-center justify-center gap-1 rounded-lg border border-green-500/30 bg-green-500/10 px-1 py-1.5 text-[9px] font-bold text-green-400"
-                    >
-                      👁 Plakat
-                    </button>
-                  )}
-                  {photosHref && (
-                    // <button>, nie <a>: cała karta jest już linkiem, a zagnieżdżony <a> w <a> to błędny HTML.
+                {photosHref && (
+                  // Lewy dolny róg, na wysokości przycisku "Plakat". mt-auto spycha go na dół kolumny,
+                  // pt-2 pilnuje odstępu, gdy lewa kolumna jest wyższa od prawej.
+                  // <button>, nie <a>: cała karta jest już linkiem, a zagnieżdżony <a> w <a> to błędny HTML.
+                  <div className="mt-auto pt-2">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -138,9 +123,26 @@ export function MobileEventRow({ event, photosUrl }: { event: MobileEventRowData
                         e.stopPropagation()
                         window.open(photosHref, "_blank", "noopener,noreferrer")
                       }}
-                      className="flex w-full items-center justify-center gap-1 rounded-lg border border-sky-500/30 bg-sky-500/10 px-1 py-1.5 text-[9px] font-bold text-sky-400"
+                      className="inline-flex items-center justify-center gap-1 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-[9px] font-bold text-sky-400"
                     >
                       📷 Zdjęcia
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {img && (
+                <div className="flex w-20 shrink-0 flex-col gap-1.5">
+                  <div className="relative size-20 overflow-hidden rounded-xl border border-zinc-700">
+                    <img src={img} alt={event.title} loading="lazy" className="size-full object-cover" />
+                  </div>
+                  {posterImg && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); setPosterSrc(posterImg) }}
+                      className="flex w-full items-center justify-center gap-1 rounded-lg border border-green-500/30 bg-green-500/10 px-1 py-1.5 text-[9px] font-bold text-green-400"
+                    >
+                      👁 Plakat
                     </button>
                   )}
                 </div>
