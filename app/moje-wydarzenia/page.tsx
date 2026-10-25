@@ -40,6 +40,7 @@ const CAT_PILLS: { id: "all" | CategoryKey; label: string }[] = [
   { id: "muzyka", label: CATEGORY_LABELS.muzyka },
   { id: "sport", label: CATEGORY_LABELS.sport },
   { id: "targi", label: CATEGORY_LABELS.targi },
+  { id: "jedzenie", label: CATEGORY_LABELS.jedzenie },
 ]
 
 export default function MojeWydarzenia() {

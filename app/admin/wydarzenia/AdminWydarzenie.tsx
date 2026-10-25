@@ -16,12 +16,12 @@ import { toggleBoldSelection } from "@/lib/eventFormat"
 import { geocodeAddress } from "@/lib/geocodeAddress"
 import { revalidateHome } from "@/lib/revalidateHome"
 
-const CATEGORIES = ["festyny","kultura","muzyka","sport","targi"]
+const CATEGORIES = ["festyny","kultura","muzyka","sport","targi","jedzenie"]
 const CATEGORY_LABELS: Record<string,string> = {
-  festyny:"🎪 Festyny", kultura:"🎭 Kultura", muzyka:"🎵 Muzyka", sport:"⚽ Sport", targi:"🏢 Targi/Biznes"
+  festyny:"🎪 Festyny", kultura:"🎭 Kultura", muzyka:"🎵 Muzyka", sport:"⚽ Sport", targi:"🏢 Targi/Biznes", jedzenie:"🍽️ Jedzenie"
 }
 const CATEGORY_COLORS: Record<string,string> = {
-  festyny:"#f59e0b", kultura:"#7c3aed", muzyka:"#16a34a", sport:"#2563eb", targi:"#64748b"
+  festyny:"#f59e0b", kultura:"#7c3aed", muzyka:"#16a34a", sport:"#2563eb", targi:"#64748b", jedzenie:"#ec4899"
 }
 
 // Mapuje stare/legacy wartości kategorii z bazy na 4 docelowe kategorie
@@ -32,8 +32,9 @@ function normalizeCategory(raw: string | null | undefined): string {
   if (c === "sport") return "sport"
   if (c === "festyny" || c === "festiwal") return "festyny"
   if (c === "targi" || c === "biznes" || c === "business" || c === "fair") return "targi"
+  if (c === "jedzenie" || c === "food" || c === "gastronomia" || c === "kulinaria" || c === "kulinarne") return "jedzenie"
   if (!c) return ""
-  // food, family, technology, inne → festyny (rdzeń kategorii Evently)
+  // family, technology, inne → festyny (rdzeń kategorii Evently)
   return "festyny"
 }
 

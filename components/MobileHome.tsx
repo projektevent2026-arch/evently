@@ -50,6 +50,7 @@ const CATEGORIES = [
   { id: 'muzyka',  label: 'Muzyka',    emoji: '🎵' },
   { id: 'sport',   label: 'Sport',     emoji: '⚽' },
   { id: 'targi',   label: 'Targi/Biznes', emoji: '🏢' },
+  { id: 'jedzenie', label: 'Jedzenie', emoji: '🍽️' },
 ]
 
 const RADII = [5, 10, 25, 50]

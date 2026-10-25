@@ -15,6 +15,8 @@ function normalizeCategory(raw: string | null | undefined): string {
   if (c === "muzyka" || c === "music") return "muzyka"
   if (c === "sport") return "sport"
   if (c === "festyny" || c === "festiwal") return "festyny"
+  if (c === "targi" || c === "biznes" || c === "business" || c === "fair") return "targi"
+  if (c === "jedzenie" || c === "food" || c === "gastronomia" || c === "kulinaria" || c === "kulinarne") return "jedzenie"
   if (!c) return ""
   return "festyny"
 }
@@ -26,12 +28,13 @@ const CAT_PILLS = [
   { id: "muzyka", label: "🎵 Muzyka" },
   { id: "sport", label: "⚽ Sport" },
   { id: "targi", label: "🏢 Targi/Biznes" },
+  { id: "jedzenie", label: "🍽️ Jedzenie" },
 ]
 const CAT_LABEL: Record<string, string> = {
-  festyny: "🎪 Festyny", kultura: "🎭 Kultura", muzyka: "🎵 Muzyka", sport: "⚽ Sport", targi: "🏢 Targi/Biznes",
+  festyny: "🎪 Festyny", kultura: "🎭 Kultura", muzyka: "🎵 Muzyka", sport: "⚽ Sport", targi: "🏢 Targi/Biznes", jedzenie: "🍽️ Jedzenie",
 }
 const CAT_COLOR: Record<string, string> = {
-  festyny: "#f59e0b", kultura: "#7c3aed", muzyka: "#16a34a", sport: "#2563eb", targi: "#64748b",
+  festyny: "#f59e0b", kultura: "#7c3aed", muzyka: "#16a34a", sport: "#2563eb", targi: "#64748b", jedzenie: "#ec4899",
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {

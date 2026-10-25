@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
 
   const { imageBase64, mediaType } = await req.json()
 
-  // Kompresja do 1200px w przeglądarce (compressImage()) to zabezpieczenie
+  // Kompresja do 1568px w przeglądarce (compressImage()) to zabezpieczenie
   // TYLKO dla kogoś, kto faktycznie korzysta z formularza — ktoś wołający
   // ten endpoint bezpośrednio mógł ją całkowicie ominąć i wysłać dowolnie
   // wielki base64. Rate limiter (15/h) chroni przed liczbą zapytań, nie
@@ -111,6 +111,10 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify({
       model: 'claude-haiku-4-5',
       max_tokens: 4096,
+      // 2026-10-24: bez temperature API używa domyślnego 1.0, czyli losowości, która
+      // przy przepisywaniu tekstu daje literówki ("Zabiercze", "krzesetkę"). Zero =
+      // najbardziej przewidywalny odczyt.
+      temperature: 0,
       messages: [
         {
           role: 'user',
@@ -139,7 +143,7 @@ Przeanalizuj ten plakat wydarzenia i wyciągnij informacje. Odpowiedz TYLKO w fo
   "description": "opis wydarzenia",
   "organizer_name": "organizator lub null",
   "reservation_phone": "numer telefonu do rezerwacji lub null",
-  "category": "jedna z: festyny, kultura, muzyka, sport",
+  "category": "jedna z: festyny, kultura, muzyka, sport, targi, jedzenie (jedzenie: kolacje degustacyjne, food trucki, festiwale kulinarne, targi żywności; targi: targi branżowe i biznesowe)",
   "is_free": true lub false,
   "price_from": liczba lub null,
   "schedule": [
@@ -194,6 +198,12 @@ Jeśli w stopce jest kilka podmiotów, wybierz ten najbardziej wyeksponowany (na
 - Jeśli jest gwiazda/główny wykonawca, wymień z nazwy — ludzie tego szukają.
 - Nie pisz "wydarzenie odbędzie się dnia..." — data i miejsce są w osobnych polach, nie powtarzaj ich.
 - Nie używaj marketingowego bełkotu ani wykrzykników.
+
+═══ DOSŁOWNOŚĆ — nie dopisuj, nie zgaduj ═══
+- Tytuł, punkty programu i opis opieraj WYŁĄCZNIE na tym, co jest napisane na plakacie. Przepisuj dosłownie, możesz tylko poprawić oczywiste literówki.
+- Każdy punkt programu musi mieć odpowiednik w tekście plakatu. Nie dodawaj punktów, których na plakacie nie ma. Nie dopisuj szczegółów ani opisów ("z udziałem…", "dla całej rodziny", "wspólna przejażdżka"), jeśli plakat tego nie mówi.
+- Nie łącz informacji z różnych części plakatu w jeden punkt. Nazwy firm i grup z logotypów (sponsorzy, zapraszający) nie są punktami programu.
+- Jeśli fragmentu nie możesz odczytać pewnie (drobny druk, ozdobna czcionka), pomiń go zamiast zgadywać.
 
 ═══ POLSKA ORTOGRAFIA — czytaj uważnie ═══
 Plakaty często mają ozdobne, stylizowane czcionki, w których łatwo pomylić litery. Zanim zwrócisz tekst, sprawdź, czy każde słowo jest poprawnym polskim wyrazem:

@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase"
 import { normalizeCategory, CATEGORY_LABELS } from "@/lib/eventCategory"
 import { isToday, isTomorrow, isThisWeekend, isSameLocalDate, haversineKm, pluralWydarzenia } from "@/lib/eventFormat"
 
-const CATEGORIES = ["kultura", "muzyka", "sport", "festyny", "targi"]
+const CATEGORIES = ["kultura", "muzyka", "sport", "festyny", "targi", "jedzenie"]
 
 const DATE_FILTERS = [
   { id: "all",      label: "Wszystkie" },

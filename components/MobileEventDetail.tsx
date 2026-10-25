@@ -34,6 +34,7 @@ const CAT_GRADIENT: Record<CategoryKey, string> = {
   kultura: 'from-[#120820] via-[#1e1040] to-[#3d1a6e]',
   festyny: 'from-[#1a0a00] via-[#2d1800] to-[#4a2800]',
   targi: 'from-[#0f1419] via-[#1f2937] to-[#3f4a5c]',
+  jedzenie: 'from-[#1a0010] via-[#2d0019] to-[#4a0028]',
 }
 
 export default function MobileEventDetail({ slug }: { slug: string }) {

@@ -24,7 +24,7 @@
 // bo tam trzeba odróżnić "nie wybrano" od "wybrano festyny". Mieszanie
 // tego z logiką wyświetlania złamałoby wymagane pole formularza.
 
-export type CategoryKey = "festyny" | "kultura" | "muzyka" | "sport" | "targi"
+export type CategoryKey = "festyny" | "kultura" | "muzyka" | "sport" | "targi" | "jedzenie"
 
 export function normalizeCategory(raw: string | null | undefined): CategoryKey {
   const c = (raw ?? "").toLowerCase().trim()
@@ -38,6 +38,8 @@ export function normalizeCategory(raw: string | null | undefined): CategoryKey {
   // różnicy (patrz notatka w pamięci projektu); rozdzielić dopiero, gdy
   // obu realnie przybędzie.
   if (c === "targi" || c === "biznes" || c === "business" || c === "fair") return "targi"
+  // 2026-10-25: "Jedzenie" (kolacje degustacyjne, food trucki, festiwale kulinarne).
+  if (c === "jedzenie" || c === "food" || c === "gastronomia" || c === "kulinaria" || c === "kulinarne") return "jedzenie"
   return "festyny"
 }
 
@@ -47,6 +49,7 @@ export const CATEGORY_LABELS: Record<CategoryKey, string> = {
   muzyka: "🎵 Muzyka",
   sport: "⚽ Sport",
   targi: "🏢 Targi/Biznes",
+  jedzenie: "🍽️ Jedzenie",
 }
 
 // Klasy Tailwind dla plakietek na kartach (MobileHome, /ulubione, event-card).
@@ -56,6 +59,7 @@ export const CATEGORY_BADGE_CLASSES: Record<CategoryKey, string> = {
   muzyka: "bg-green-500 text-black",
   sport: "bg-blue-500 text-white",
   targi: "bg-slate-500 text-white",
+  jedzenie: "bg-pink-500 text-white",
 }
 
 // Kolory HEX dla znaczników/popupów na mapie (EventMap.tsx) — Leaflet
@@ -67,4 +71,5 @@ export const CATEGORY_MAP_COLORS: Record<CategoryKey, string> = {
   sport: "#3B82F6",
   festyny: "#F59E0B",
   targi: "#64748B",
+  jedzenie: "#EC4899",
 }
