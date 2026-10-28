@@ -168,11 +168,11 @@ export default function EventPageClient({ slug }: { slug: string }) {
         .info-bar { display:flex; align-items:center; gap:0; background:white; border-bottom:1px solid #e5e7eb; overflow-x:auto; }
         .info-bar-item { display:flex; align-items:center; gap:8px; padding:10px 20px; border-right:1px solid #f3f4f6; flex-shrink:0; }
         .info-bar-item:last-child { border-right:none; margin-left:auto; }
-        .event-layout { display:grid; grid-template-columns:1fr 360px; gap:28px; align-items:start; }
+        .event-layout { display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:28px; align-items:start; }
         .event-sidebar { position:sticky; top:84px; }
         .similar-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
         @media (max-width: 900px) {
-          .event-layout { grid-template-columns:1fr; }
+          .event-layout { grid-template-columns:minmax(0,1fr); }
           .event-sidebar { position:static; }
           .info-bar-item { padding:12px 16px; }
           .similar-grid { grid-template-columns:repeat(2,1fr); }
@@ -296,7 +296,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
       <div style={{maxWidth:1200,margin:"0 auto",padding:"28px 20px 64px"}}>
         <div className="event-layout">
-          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          <div style={{display:"flex",flexDirection:"column",gap:16,minWidth:0}}>
             <div style={{background:"white",borderRadius:18,boxShadow:"0 2px 12px rgba(0,0,0,0.07)",overflow:"hidden"}}>
               {hasTabs && (
                 <div style={{display:"flex",borderBottom:"1px solid #f3f4f6"}}>
