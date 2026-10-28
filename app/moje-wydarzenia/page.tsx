@@ -333,7 +333,7 @@ export default function MojeWydarzenia() {
                       )}
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", maxWidth: "100%" }}>
                     {event.slug && !event.deleted_at && event.status === "published" && (
                       <a
                         href={`/events/${event.slug}`}
