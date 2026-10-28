@@ -1,7 +1,7 @@
 'use client'
 
 import { matchesQuery } from '@/lib/searchEvent'
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -54,6 +54,56 @@ const CATEGORIES = [
 ]
 
 const RADII = [5, 10, 25, 50]
+
+// 2026-10-28 (B24): filtry listy (kategoria, data, wyszukiwanie) i pozycja przewijania
+// przeżywają wejście w wydarzenie i cofnięcie. sessionStorage, nie localStorage:
+// nowa sesja (zamknięta aplikacja) zaczyna od "Wszystkie", a zapis starszy niż 30 minut
+// jest ignorowany, żeby "Dziś" nie zostało na jutro. Logo (goHome) czyści zapis.
+const FILTERS_KEY = 'evently_home_filters'
+const SCROLL_KEY = 'evently_home_scroll'
+const FILTERS_TTL_MS = 30 * 60 * 1000
+const VALID_DATES = ['all', 'today', 'tomorrow', 'weekend', 'custom']
+
+type SavedFilters = {
+  category: string
+  date: 'all' | 'today' | 'tomorrow' | 'weekend' | 'custom'
+  customDate: string
+  search: string
+}
+
+function readSavedFilters(): SavedFilters | null {
+  try {
+    const raw = sessionStorage.getItem(FILTERS_KEY)
+    if (!raw) return null
+    const o = JSON.parse(raw)
+    if (!o || typeof o.savedAt !== 'number' || Date.now() - o.savedAt > FILTERS_TTL_MS) return null
+    if (!CATEGORIES.some(c => c.id === o.category)) return null
+    if (!VALID_DATES.includes(o.date)) return null
+    return {
+      category: o.category,
+      date: o.date,
+      customDate: typeof o.customDate === 'string' ? o.customDate : '',
+      search: typeof o.search === 'string' ? o.search : '',
+    }
+  } catch {
+    return null
+  }
+}
+
+// Klik w kartę: zapamiętaj przewijanie i odśwież czas ważności filtrów. Klik w "Plakat"
+// (preventDefault) nie opuszcza listy, więc wtedy nic nie zapisujemy.
+function rememberHomeState(e: { defaultPrevented: boolean }) {
+  if (e.defaultPrevented) return
+  try {
+    sessionStorage.setItem(SCROLL_KEY, String(Math.round(window.scrollY)))
+    const raw = sessionStorage.getItem(FILTERS_KEY)
+    if (raw) {
+      const o = JSON.parse(raw)
+      o.savedAt = Date.now()
+      sessionStorage.setItem(FILTERS_KEY, JSON.stringify(o))
+    }
+  } catch {}
+}
 
 // ─────────────────────────────────────────────────────────────
 // FETCH z timeoutem + retry. To jest fix na P1 (nieskończone „Ładowanie").
@@ -216,7 +266,7 @@ function EventCard({ event, distance }: { event: Event; distance: number | null 
   return (
     <>
       {posterSrc && <PosterModal src={posterSrc} onClose={() => setPosterSrc(null)} />}
-      <Link href={`/events/${event.id}`} className="block mb-3">
+      <Link href={`/events/${event.id}`} onClick={rememberHomeState} className="block mb-3">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
           <div className="p-3">
             <div className="flex items-start justify-between mb-2">
@@ -358,6 +408,47 @@ export function MobileHome({ initialEvents }: { initialEvents?: Event[] }) {
   const [activeCategory, setActiveCategory] = useState('all')
   const [search, setSearch] = useState('')
 
+  // B24: odtworzenie filtrów po powrocie z wydarzenia. Layout effect działa przed
+  // pierwszym malowaniem, więc nie ma mignięcia listy "Wszystkie". Zapis (niżej) czeka na
+  // filtersLoaded, żeby domyślne wartości nie nadpisały zapisanych przed odczytem.
+  const [filtersLoaded, setFiltersLoaded] = useState(false)
+  useLayoutEffect(() => {
+    const saved = readSavedFilters()
+    if (saved) {
+      setActiveCategory(saved.category)
+      setActiveDate(saved.date)
+      setCustomDate(saved.customDate)
+      setSearch(saved.search)
+    }
+    setFiltersLoaded(true)
+  }, [])
+
+  useEffect(() => {
+    if (!filtersLoaded) return
+    try {
+      sessionStorage.setItem(FILTERS_KEY, JSON.stringify({
+        category: activeCategory, date: activeDate, customDate, search, savedAt: Date.now(),
+      }))
+    } catch {}
+  }, [filtersLoaded, activeCategory, activeDate, customDate, search])
+
+  // B24: przewinięcie do miejsca, z którego wyszliśmy w wydarzenie (jednorazowo, dopiero
+  // gdy lista jest już wyrenderowana z odtworzonymi filtrami).
+  const scrollRestored = useRef(false)
+  useEffect(() => {
+    if (!filtersLoaded || loading || scrollRestored.current) return
+    scrollRestored.current = true
+    try {
+      const raw = sessionStorage.getItem(SCROLL_KEY)
+      if (!raw) return
+      sessionStorage.removeItem(SCROLL_KEY)
+      const y = parseInt(raw, 10)
+      if (!isNaN(y) && y > 0 && readSavedFilters()) {
+        requestAnimationFrame(() => window.scrollTo(0, y))
+      }
+    } catch {}
+  }, [filtersLoaded, loading])
+
   useEffect(() => {
     localStorage.setItem('evently_radius', String(radius))
   }, [radius])
@@ -454,6 +545,7 @@ export function MobileHome({ initialEvents }: { initialEvents?: Event[] }) {
     setActiveCategory('all')
     setActiveDate('all')
     setCustomDate('')
+    try { sessionStorage.removeItem(SCROLL_KEY) } catch {}
     window.scrollTo({ top: 0, behavior: 'smooth' })
     router.refresh()
     loadEvents()
