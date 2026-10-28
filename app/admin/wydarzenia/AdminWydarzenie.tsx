@@ -10,6 +10,7 @@ import { cleanPriceNote } from "@/lib/formatPrice"
 import dynamic from "next/dynamic"
 const LocationPicker = dynamic(() => import("@/components/admin/LocationPicker"), { ssr: false })
 import ImageUpload from "@/components/admin/ImageUpload"
+import GalleryUpload, { GALLERY_MAX } from "@/components/admin/GalleryUpload"
 import ScheduleEditor from "@/components/admin/ScheduleEditor"
 import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/scheduleType"
 import { toggleBoldSelection } from "@/lib/eventFormat"
@@ -99,6 +100,7 @@ const emptyForm = {
   city:"Suwałki", address:"", venue_name:"", location_notes:"",
   category:"", cover_image_url:"", ticket_url:"", website_url:"", photos_url:"", reservation_phone:"",
   image_url:"",
+  gallery_urls:[] as string[],
   organizer_name:"", price_from:"0", price_currency:"PLN", price_note:"", is_free:true,
   latitude:"", longitude:"", status:"published",
   schedule:[] as {day:number;label:string;items:{time:string;title:string;description?:string}[]}[],
@@ -212,6 +214,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       photos_url: data.photos_url || "",
       reservation_phone: data.reservation_phone || "",
       image_url: data.image_url || "",
+      gallery_urls: Array.isArray(data.gallery_urls) ? data.gallery_urls : [],
       organizer_name: data.organizer_name || "",
       price_from: data.price_from?.toString() || "0",
       price_currency: data.price_currency === "EUR" ? "EUR" : "PLN",
@@ -556,6 +559,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       category: form.category,
       cover_image_url: form.cover_image_url || null,
       image_url: form.image_url || null,
+      gallery_urls: (form.gallery_urls || []).slice(0, GALLERY_MAX),
       ticket_url: safeUrl(form.ticket_url),
       website_url: safeUrl(form.website_url),
       photos_url: safeUrl(form.photos_url),
@@ -987,6 +991,10 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
                 {form.image_url && (
                   <img src={form.image_url} alt="podgląd plakatu" style={{ width:"100%", maxHeight:280, objectFit:"contain", borderRadius:10, marginTop:10, background:"#f3f4f6" }} />
                 )}
+              </Field>
+              <Field label={`Galeria zdjęć (do ${GALLERY_MAX})`} htmlFor="gallery_urls">
+                <GalleryUpload value={form.gallery_urls} onChange={(next) => setForm(prev => ({ ...prev, gallery_urls: next }))} />
+                <p style={{ fontSize:12, color:"#9ca3af", margin:"8px 0 0" }}>Zdjęcia zapisują się razem z wydarzeniem (przycisk Zapisz).</p>
               </Field>
 
               <div style={navRow}>

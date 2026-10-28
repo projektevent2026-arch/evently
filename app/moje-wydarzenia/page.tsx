@@ -6,7 +6,8 @@ import { supabase } from "@/lib/supabase"
 import { revalidateHome } from "@/lib/revalidateHome"
 import { safeUrl } from "@/lib/safeUrl"
 import { normalizeCategory, CATEGORY_LABELS, type CategoryKey } from "@/lib/eventCategory"
-import { MapPin, Pencil, Plus, Trash2, User, Search, Eye, RotateCcw, Camera } from "lucide-react"
+import { MapPin, Pencil, Plus, Trash2, User, Search, Eye, RotateCcw, Camera, Image as ImageIcon } from "lucide-react"
+import GalleryUpload, { GALLERY_MAX } from "@/components/admin/GalleryUpload"
 
 // 2026-09-29: dociągnięte do poziomu panelu admina (szukaj/filtry/
 // sortowanie/podgląd), na wyraźną prośbę — wcześniej to była gołą listą
@@ -63,6 +64,10 @@ export default function MojeWydarzenia() {
   const [photosSaving, setPhotosSaving] = useState(false)
   const [photosError, setPhotosError] = useState<string | null>(null)
 
+  // Galeria (do 6 zdjęć): id wydarzenia z otwartym panelem i komunikat błędu zapisu.
+  const [galleryEditId, setGalleryEditId] = useState<string | null>(null)
+  const [galleryError, setGalleryError] = useState<string | null>(null)
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -73,7 +78,7 @@ export default function MojeWydarzenia() {
       const [{ data }, { data: profile }] = await Promise.all([
         supabase
           .from("events")
-          .select("id, slug, title, start_date, status, deleted_at, cover_image_url, image_url, category, city, venue_name, photos_url")
+          .select("id, slug, title, start_date, status, deleted_at, cover_image_url, image_url, category, city, venue_name, photos_url, gallery_urls")
           .eq("created_by", user.id)
           .order("start_date", { ascending: false }),
         supabase.from("profiles").select("avatar_url").eq("id", user.id).single(),
@@ -178,6 +183,25 @@ export default function MojeWydarzenia() {
     setEvents(prev => prev.map(e => (e.id === id ? { ...e, photos_url: cleaned } : e)))
     setPhotosEditId(null)
     setPhotosValue("")
+  }
+
+  // Zapis galerii od razu po każdej zmianie (dodanie, usunięcie, kolejność). Zwraca false przy błędzie,
+  // wtedy GalleryUpload przerywa wysyłanie kolejnych zdjęć. Sprawdzamy, że wiersz faktycznie się zmienił
+  // (RLS potrafi zablokować zapis bez błędu).
+  async function saveGallery(id: string, next: string[]): Promise<boolean> {
+    setGalleryError(null)
+    const { data, error } = await supabase
+      .from("events")
+      .update({ gallery_urls: next.slice(0, GALLERY_MAX) })
+      .eq("id", id)
+      .select("id")
+
+    if (error || !data || data.length === 0) {
+      setGalleryError("Nie udało się zapisać galerii" + (error ? ": " + error.message : " — brak uprawnień do tego wydarzenia."))
+      return false
+    }
+    setEvents(prev => prev.map(e => (e.id === id ? { ...e, gallery_urls: next } : e)))
+    return true
   }
 
   function handleDelete(id: string, title: string) {
@@ -340,6 +364,13 @@ export default function MojeWydarzenia() {
                             <Camera size={14} /> {event.photos_url ? "Zmień zdjęcia" : "Dodaj zdjęcia"}
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => { setGalleryError(null); setGalleryEditId(galleryEditId === event.id ? null : event.id) }}
+                          style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f1f1f", border: "1px solid #333", color: "white", borderRadius: 8, padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}
+                        >
+                          <ImageIcon size={14} /> Galeria ({Array.isArray(event.gallery_urls) ? event.gallery_urls.length : 0}/{GALLERY_MAX})
+                        </button>
                         <Link
                           href={`/dodaj-wydarzenie?edit=${event.id}`}
                           style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f1f1f", border: "1px solid #333", color: "white", borderRadius: 8, padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, textDecoration: "none" }}
@@ -357,6 +388,19 @@ export default function MojeWydarzenia() {
                       </>
                     )}
                   </div>
+                  {galleryEditId === event.id && !event.deleted_at && (
+                    <div style={{ width: "100%", borderTop: "1px solid #262626", paddingTop: 12 }}>
+                      <p style={{ fontSize: "0.8rem", color: "#9ca3af", margin: "0 0 10px" }}>
+                        Zdjęcia z wydarzenia (do {GALLERY_MAX}). Zmiany zapisują się od razu. Wgrywaj tylko zdjęcia, do których masz prawa, i unikaj zdjęć z wyraźnie widocznymi twarzami osób prywatnych bez ich zgody.
+                      </p>
+                      <GalleryUpload
+                        dark
+                        value={Array.isArray(event.gallery_urls) ? event.gallery_urls : []}
+                        onChange={(next) => saveGallery(event.id, next)}
+                      />
+                      {galleryError && <p style={{ color: "#ef4444", fontSize: "0.8rem", margin: "8px 0 0" }}>{galleryError}</p>}
+                    </div>
+                  )}
                   {photosEditId === event.id && !event.deleted_at && (
                     <div style={{ width: "100%", borderTop: "1px solid #262626", paddingTop: 12 }}>
                       <label htmlFor={`photos-${event.id}`} style={{ display: "block", fontSize: "0.8rem", color: "#9ca3af", marginBottom: 6 }}>

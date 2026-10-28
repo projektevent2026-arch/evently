@@ -1,6 +1,7 @@
 "use client"
 
 import EventHero from '@/components/EventHero'
+import EventGallery from '@/components/EventGallery'
 import { Calendar, Clock, MapPin, Tag, Ticket, Building2, Navigation } from "lucide-react"
 import EventSchedule from '@/components/EventSchedule'
 import { useState, useEffect } from "react"
@@ -347,6 +348,10 @@ export default function EventPageClient({ slug }: { slug: string }) {
                 )}
               </div>
             </div>
+
+            {Array.isArray(event.gallery_urls) && event.gallery_urls.length > 0 && (
+              <EventGallery urls={event.gallery_urls} title={event.title} variant="light" />
+            )}
 
             <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
               {/* 2026-10-07: link z pola "Link do biletów" pokazuje się też przy wydarzeniach bezpłatnych jako

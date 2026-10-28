@@ -2,6 +2,7 @@
 
 import PosterButton from '@/components/PosterButton'
 import EventHero from '@/components/EventHero'
+import EventGallery from '@/components/EventGallery'
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -248,6 +249,10 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
                 : 'Brak opisu.'}
             </p>
             <EventDatesList dates={event.event_dates} variant="dark" />
+
+            {Array.isArray(event.gallery_urls) && event.gallery_urls.length > 0 && (
+              <EventGallery urls={event.gallery_urls} title={event.title} variant="dark" />
+            )}
 
             {/* Schedule preview */}
             {scheduleItemsFlat.slice(0, 4).map((item: any, i: number) => (
