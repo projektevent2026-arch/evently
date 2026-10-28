@@ -70,7 +70,17 @@ export default function MoreMenu() {
       <div className="mx-auto max-w-xl px-4 pt-6">
         <h1 className="text-2xl font-black tracking-tight">Więcej</h1>
 
-        {!loading && (
+        {/* 2026-10-28: sekcja "Konto" jest od razu na miejscu. Na czas sprawdzania logowania ma jeden
+            wiersz-zaślepkę (tyle zajmuje "Zaloguj się", czyli widok większości odwiedzających),
+            więc "Informacje" nie przeskakują w dół po załadowaniu. */}
+        {loading ? (
+          <Section title="Konto">
+            <li aria-hidden="true" className="flex min-h-14 items-center gap-3 px-4 py-3">
+              <span className="h-5 w-5 shrink-0 animate-pulse rounded bg-zinc-800" />
+              <span className="h-4 w-32 animate-pulse rounded bg-zinc-800" />
+            </li>
+          </Section>
+        ) : (
           <Section title="Konto">
             {!user && <LinkRow href="/login" icon={LogIn} label="Zaloguj się" hint="Konto organizatora" />}
             {user && role === "organizer" && (
