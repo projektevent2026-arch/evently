@@ -101,6 +101,13 @@ function todayISO(): string {
     .toString()
     .padStart(2, '0')}`
 }
+// Godziny 00:00–04:59 w programie wieczornej imprezy to „po północy": sortujemy je na końcu dnia.
+const AFTER_MIDNIGHT_UNTIL = 5
+function afterMidnightKey(t: string): string {
+  const h = parseInt(t.slice(0, 2), 10)
+  if (!isNaN(h) && h < AFTER_MIDNIGHT_UNTIL) return `${String(h + 24).padStart(2, '0')}${t.slice(2)}`
+  return t
+}
 
 export default function EventSchedule({ schedule, eventDate, variant = 'light' }: EventScheduleProps) {
   const [activeDay, setActiveDay] = useState(0)
@@ -143,7 +150,10 @@ export default function EventSchedule({ schedule, eventDate, variant = 'light' }
       untimed.push(item)
     }
   }
-  timed.sort((a, b) => a.time.localeCompare(b.time))
+  // Dzień z punktem wieczornym (od 18:00): godziny 00:00–04:59 liczą się jako „po północy".
+  const hasEvening = timed.some((g) => g.time >= '18:00')
+  const key = (t: string) => (hasEvening ? afterMidnightKey(t) : t)
+  timed.sort((a, b) => key(a.time).localeCompare(key(b.time)))
 
   // TERAZ tylko gdy dzisiaj = data tego dnia programu
   const thisDayISO = dayISO(eventDate, activeDay)
@@ -153,8 +163,10 @@ export default function EventSchedule({ schedule, eventDate, variant = 'light' }
     if (!isToday || !now) return 'upcoming'
     const cur = timed[index]
     const next = timed[index + 1]
-    if (now.time >= cur.time && (!next || now.time < next.time)) return 'active'
-    if (now.time > cur.time) return 'past'
+    const n = key(now.time)
+    const c = key(cur.time)
+    if (n >= c && (!next || n < key(next.time))) return 'active'
+    if (n > c) return 'past'
     return 'upcoming'
   }
 
