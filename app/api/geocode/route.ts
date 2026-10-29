@@ -53,9 +53,13 @@ function parseCoords(input: string): { lat: number; lon: number } | null {
 //  - world:  cały świat (wydarzenia za granicą, np. Antwerpia).
 // Polska ZAWSZE ma pierwszeństwo: świat jest pytany dopiero, gdy region i Polska
 // nic nie dały. Dzięki temu literówka w polskiej wsi nie wyląduje w innym kraju.
-type Scope = 'region' | 'poland' | 'world'
+//  - country: konkretny kraj wybrany przez użytkownika w formularzu (parametr
+//    ?country=DE). Wtedy szukamy WYŁĄCZNIE w tym kraju, bez cofania się na
+//    cały świat — inaczej "Dillingen" wpisane przy Niemczech mogło wylądować
+//    w złym kraju.
+type Scope = 'region' | 'poland' | 'world' | 'country'
 
-async function askNominatim(query: string, scope: Scope) {
+async function askNominatim(query: string, scope: Scope, countryCode?: string) {
   // viewbox + bounded=1 = TWARDE ograniczenie do regionu Suwałk (2026-09-23:
   // zmienione z miękkiego nachylenia na twardy filtr — na rekomendację z
   // sesji debugowania Tauroszyszki/Pułsk). Pudełko z zapasem ~80km od Suwałk
@@ -67,7 +71,9 @@ async function askNominatim(query: string, scope: Scope) {
       ? `&countrycodes=pl&viewbox=${SUWALKI_VIEWBOX}&bounded=1`
       : scope === 'poland'
         ? '&countrycodes=pl'
-        : ''
+        : scope === 'country' && countryCode
+          ? `&countrycodes=${countryCode}`
+          : ''
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
     query
   )}&limit=5&addressdetails=1${scopeParams}`
@@ -107,6 +113,12 @@ export async function GET(req: NextRequest) {
 
   const raw = query.trim()
 
+  // Opcjonalny kraj z formularza (kod ISO, np. DE). Nieprawidłowa wartość jest
+  // ignorowana (zachowanie jak dotąd: region -> Polska -> świat). Brak parametru
+  // = stare wywołania (skan plakatu itp.) działają bez zmian.
+  const countryRaw = (req.nextUrl.searchParams.get('country') || '').trim().toLowerCase()
+  const countryCode = /^[a-z]{2}$/.test(countryRaw) ? countryRaw : null
+
   // 1. Współrzędne wpisane wprost — nie pytamy Nominatima.
   const coords = parseCoords(raw)
   if (coords) {
@@ -130,14 +142,19 @@ export async function GET(req: NextRequest) {
     // zakresu "world" już ich nie obcinamy.
     // Między kolejnymi pytaniami przerwa ~1 s (limit Nominatim: 1 zapytanie/s).
     // Gdy pierwsze zapytanie trafi, odpowiedź wraca od razu, bez czekania.
-    const scopes: Scope[] = ['region', 'poland', 'world']
+    // Kraj wybrany wprost: Polska = region -> Polska (bez świata), inny kraj =
+    // tylko ten kraj. Bez wyboru: region -> Polska -> świat jak wcześniej.
+    const scopes: Scope[] =
+      countryCode === 'pl' ? ['region', 'poland']
+      : countryCode ? ['country']
+      : ['region', 'poland', 'world']
     let firstCall = true
     for (const scope of scopes) {
-      const queries = scope !== 'world' && cleanedDiffers ? [raw, cleaned] : [raw]
+      const queries = (scope === 'region' || scope === 'poland') && cleanedDiffers ? [raw, cleaned] : [raw]
       for (const q of queries) {
         if (!firstCall) await sleep(1000)
         firstCall = false
-        const result = await askNominatim(q, scope)
+        const result = await askNominatim(q, scope, countryCode ?? undefined)
         if (!result.ok) {
           // Pierwsza odpowiedź z błędem = problem po stronie Nominatima, nie "brak wyników".
           return NextResponse.json({ error: `Nominatim: ${result.status}` }, { status: 502 })

@@ -22,7 +22,15 @@ import { navigationUrl } from "@/lib/navUrl"
 import { safeTel, telHref } from "@/lib/safeTel"
 import { formatPrice, cleanPriceNote } from "@/lib/formatPrice"
 
-const EventMap = dynamic(() => import("@/components/event-map").then(m => m.EventMap), { ssr: false })
+// 2026-10-29: zaślepka na czas ładowania mapy (Leaflet ładuje się dopiero w przeglądarce), żeby nie było pustego bloku.
+const EventMap = dynamic(() => import("@/components/event-map").then(m => m.EventMap), {
+  ssr: false,
+  loading: () => (
+    <div style={{height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"#f3f4f6",color:"#9ca3af",fontSize:13}}>
+      Ładowanie mapy…
+    </div>
+  ),
+})
 
 export default function EventPageClient({ slug }: { slug: string }) {
   const searchParams = useSearchParams()
@@ -122,7 +130,49 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
   const nextTerm = nextTermInfo(event?.event_dates)
 
-  if (loading) return <div style={{display:"flex",minHeight:"100vh",alignItems:"center",justifyContent:"center"}}><p style={{color:"#6b7280",fontSize:14}}>Ladowanie...</p></div>
+  // 2026-10-29: szkielet zamiast samego napisu "Ladowanie...": hero, pasek informacji, karta z tekstem i kolumna boczna
+  // stoją od razu na miejscu (te same wymiary co prawdziwa strona), więc nic nie przeskakuje po załadowaniu danych.
+  if (loading) {
+    const bar = (w: string | number, h: number, extra: React.CSSProperties = {}): React.CSSProperties => ({
+      width: w, height: h, borderRadius: 8, background: "#e5e7eb", animation: "evSkel 1.4s ease-in-out infinite", ...extra,
+    })
+    return (
+      <main aria-busy="true" style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"system-ui,sans-serif"}}>
+        <style>{`
+          @keyframes evSkel { 0%,100% { opacity:1 } 50% { opacity:.55 } }
+          .sk-layout { display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:28px; align-items:start; }
+          @media (max-width: 900px) { .sk-layout { grid-template-columns:minmax(0,1fr); } }
+        `}</style>
+        <div style={{position:"relative",height:"min(500px, 45vw)",minHeight:300,background:"#1f2937"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,padding:"18px 24px"}}>
+            <Link href="/" style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(0,0,0,0.45)",color:"white",padding:"7px 16px 7px 10px",borderRadius:24,fontSize:14,fontWeight:700,textDecoration:"none",border:"1px solid rgba(255,255,255,0.15)"}}>
+              <span style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,borderRadius:7,background:"#16a34a",flexShrink:0}}>
+                <MapPin size={13} color="white" />
+              </span>
+              evently
+            </Link>
+          </div>
+          <div style={{position:"absolute",bottom:0,left:0,right:0,padding:24}}>
+            <div style={bar(84, 22, {background:"#374151",borderRadius:20,marginBottom:12})} />
+            <div style={bar("55%", 34, {background:"#374151"})} />
+          </div>
+        </div>
+        <div style={{height:57,background:"white",borderBottom:"1px solid #e5e7eb"}} />
+        <div style={{maxWidth:1200,margin:"0 auto",padding:"28px 20px 64px"}}>
+          <div className="sk-layout">
+            <div style={{background:"white",borderRadius:18,boxShadow:"0 2px 12px rgba(0,0,0,0.07)",padding:28,display:"flex",flexDirection:"column",gap:14,minWidth:0}}>
+              <div style={bar("100%", 14)} />
+              <div style={bar("100%", 14)} />
+              <div style={bar("92%", 14)} />
+              <div style={bar("100%", 14)} />
+              <div style={bar("64%", 14)} />
+            </div>
+            <div style={{background:"white",borderRadius:18,boxShadow:"0 2px 12px rgba(0,0,0,0.07)",height:300}} />
+          </div>
+        </div>
+      </main>
+    )
+  }
   if (!event) return (
     <div style={{display:"flex",flexDirection:"column",gap:20,minHeight:"100vh",alignItems:"center",justifyContent:"center",background:"#0a0a0a",padding:"0 20px",textAlign:"center"}}>
       <Link href="/" style={{display:"inline-flex",alignItems:"center",gap:8,textDecoration:"none",color:"white",fontSize:18,fontWeight:700}}>

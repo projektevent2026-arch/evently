@@ -55,8 +55,17 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
+// Ile wierszy ma sekcja "Konto" dla danego stanu konta (musi się zgadzać z renderowaniem niżej):
+// organizator = Mój profil + Moje wydarzenia + Wyloguj (3), admin/moderator = Panel admina + Wyloguj (2),
+// pozostali zalogowani = Wyloguj (1), niezalogowany = Zaloguj się (1).
+function expectedAccountRows(hint: string | null): number {
+  if (hint === "organizer") return 3
+  if (hint === "admin" || hint === "moderator") return 2
+  return 1
+}
+
 export default function MoreMenu() {
-  const { user, role, loading } = useAuth()
+  const { user, role, loading, hint } = useAuth()
 
   async function logout() {
     await supabase.auth.signOut()
@@ -70,15 +79,17 @@ export default function MoreMenu() {
       <div className="mx-auto max-w-xl px-4 pt-6">
         <h1 className="text-2xl font-black tracking-tight">Więcej</h1>
 
-        {/* 2026-10-28: sekcja "Konto" jest od razu na miejscu. Na czas sprawdzania logowania ma jeden
-            wiersz-zaślepkę (tyle zajmuje "Zaloguj się", czyli widok większości odwiedzających),
-            więc "Informacje" nie przeskakują w dół po załadowaniu. */}
+        {/* 2026-10-28: sekcja "Konto" jest od razu na miejscu. Na czas sprawdzania logowania ma
+            zaślepki. 2026-10-29: liczba zaślepek = liczba wierszy, które sekcja będzie miała
+            (z ostatnio znanego stanu konta), więc "Informacje" nie przeskakują po załadowaniu. */}
         {loading ? (
           <Section title="Konto">
-            <li aria-hidden="true" className="flex min-h-14 items-center gap-3 px-4 py-3">
-              <span className="h-5 w-5 shrink-0 animate-pulse rounded bg-zinc-800" />
-              <span className="h-4 w-32 animate-pulse rounded bg-zinc-800" />
-            </li>
+            {Array.from({ length: expectedAccountRows(hint) }).map((_, i) => (
+              <li key={i} aria-hidden="true" className="flex min-h-14 items-center gap-3 px-4 py-3">
+                <span className="h-5 w-5 shrink-0 animate-pulse rounded bg-zinc-800" />
+                <span className="h-4 w-32 animate-pulse rounded bg-zinc-800" />
+              </li>
+            ))}
           </Section>
         ) : (
           <Section title="Konto">

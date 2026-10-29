@@ -15,6 +15,7 @@ import ScheduleEditor from "@/components/admin/ScheduleEditor"
 import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/scheduleType"
 import { toggleBoldSelection } from "@/lib/eventFormat"
 import { geocodeAddress } from "@/lib/geocodeAddress"
+import { countryOptions, normalizeCountry, DEFAULT_COUNTRY } from "@/lib/countries"
 import { revalidateHome } from "@/lib/revalidateHome"
 
 const CATEGORIES = ["festyny","kultura","muzyka","sport","targi","jedzenie"]
@@ -98,6 +99,7 @@ const emptyForm = {
   title:"", slug:"", description:"", short_description:"",
   start_date:"", start_time:"", end_date:"", end_time:"",
   city:"Suwałki", address:"", venue_name:"", location_notes:"",
+  country_code:DEFAULT_COUNTRY, postal_code:"",
   category:"", cover_image_url:"", ticket_url:"", website_url:"", photos_url:"", reservation_phone:"",
   image_url:"",
   gallery_urls:[] as string[],
@@ -206,6 +208,8 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       city: data.city || "",
       address: data.address || "",
       venue_name: data.venue_name || "",
+      country_code: normalizeCountry(data.country_code),
+      postal_code: "",
       location_notes: data.location_notes || "",
       category: normalizeCategory(data.category),
       cover_image_url: data.cover_image_url || "",
@@ -273,7 +277,8 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     if (!form.address && !form.city) return
     setGeocoding(true)
     try {
-      const result = await geocodeAddress(form.address, form.city)
+      const result = await geocodeAddress(form.address, form.city, { countryCode: form.country_code, postalCode: form.postal_code })
+      if (!result) setMsg("Nie znaleziono tego adresu w wybranym kraju. Sprawdź kraj i pisownię, dodaj kod pocztowy albo wklej współrzędne.")
       if (result) {
         setForm(prev => {
           // Ten sam warunek co w formularzu publicznym: nadpisz Miasto
@@ -555,6 +560,7 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
       start_date: start, end_date: end,
       city: form.city, address: form.address || null,
       venue_name: form.venue_name || null,
+      country_code: form.country_code,
       location_notes: form.location_notes || null,
       category: form.category,
       cover_image_url: form.cover_image_url || null,
@@ -1008,6 +1014,16 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
           {section === "location" && (
             <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
               <SectionTitle>Lokalizacja</SectionTitle>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+                <Field label="Kraj *" htmlFor="admin-country">
+                  <select id="admin-country" name="country_code" value={form.country_code} onChange={handleChange} style={inp}>
+                    {countryOptions(form.country_code).map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                  </select>
+                </Field>
+                <Field label="Kod pocztowy (opcjonalnie, tylko do geokodera)" htmlFor="admin-postal">
+                  <input id="admin-postal" name="postal_code" value={form.postal_code} onChange={handleChange} placeholder="np. 16-400" maxLength={12} style={inp} />
+                </Field>
+              </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
                 <Field label="Miasto *" htmlFor="admin-city">
                   <input id="admin-city" name="city" value={form.city} onChange={handleChange} placeholder="np. Suwałki" style={inp} />

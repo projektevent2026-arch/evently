@@ -624,9 +624,18 @@ export function MobileHome({ initialEvents }: { initialEvents?: Event[] }) {
 
   const filtered = withDistance
     .filter(e => passesNonCategoryFilters(e) && (activeCategory === 'all' || normalizeCategory(e.category) === activeCategory))
+    // 2026-10-29 (B28): kolejność zależy od tego, czy wybrano datę.
+    //  - "Wszystkie" (bez wybranej daty): po NAJBLIŻSZYM TERMINIE, przy tym samym terminie po odległości.
+    //    Wcześniej lista była zawsze sortowana po odległości, więc wydarzenia z 31 grudnia stały nad tymi z tego tygodnia.
+    //  - Dziś / Jutro / Weekend / wybrany dzień: po ODLEGŁOŚCI (wszystkie wydarzenia są z tego samego dnia lub weekendu,
+    //    więc o kolejności decyduje to, co jest najbliżej), przy tej samej odległości po godzinie.
     .sort((a, b) => {
-      if (a.distance !== null && b.distance !== null) return a.distance - b.distance
-      return new Date(a.next_date).getTime() - new Date(b.next_date).getTime()
+      const ta = new Date(a.next_date).getTime()
+      const tb = new Date(b.next_date).getTime()
+      const byTime = !Number.isNaN(ta) && !Number.isNaN(tb) && ta !== tb ? ta - tb : 0
+      const byDistance = a.distance !== null && b.distance !== null && a.distance !== b.distance ? a.distance - b.distance : 0
+      const dateChosen = activeDate !== 'all' && !(activeDate === 'custom' && !customDate)
+      return dateChosen ? (byDistance || byTime) : (byTime || byDistance)
     })
 
   // 2026-09-27: kolejność pigułek kategorii odzwierciedla, ile wydarzeń jest

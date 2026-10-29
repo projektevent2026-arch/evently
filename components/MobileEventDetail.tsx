@@ -21,7 +21,16 @@ import { normalizeCategory, CATEGORY_LABELS, CATEGORY_BADGE_CLASSES, type Catego
 import { safeTel, telHref } from '@/lib/safeTel'
 import { formatPrice, cleanPriceNote } from '@/lib/formatPrice'
 
-const EventMap = dynamic(() => import('@/components/event-map').then(m => m.EventMap), { ssr: false })
+// 2026-10-29: zaślepka na czas ładowania mapy (Leaflet ładuje się dopiero w przeglądarce). Wcześniej w tym czasie
+// w zakładce "Lokalizacja" było widać pusty, ciemny prostokąt (ok. 0,5 s).
+const EventMap = dynamic(() => import('@/components/event-map').then(m => m.EventMap), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center bg-zinc-900 text-[11px] text-zinc-500">
+      Ładowanie mapy…
+    </div>
+  ),
+})
 
 const TABS = ['O wydarzeniu', 'Program', 'Lokalizacja']
 
@@ -65,9 +74,42 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
     else navigator.clipboard.writeText(window.location.href)
   }
 
+  // 2026-10-29: szkielet zamiast samego napisu "Ładowanie...". Układ (hero, pasek informacji, zakładki, tekst)
+  // stoi od razu na miejscu, więc przejście do prawdziwej treści jest płynne. Link "evently" działa już w trakcie ładowania.
   if (loading) return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-      <div className="text-green-500 text-sm animate-pulse">Ładowanie...</div>
+    <div className="min-h-screen bg-[#0a0a0a] text-white pb-28" aria-busy="true">
+      <div className="relative h-52 overflow-hidden bg-gradient-to-br from-zinc-900 to-zinc-800">
+        <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
+          <Link
+            href="/"
+            className="h-8 pl-1.5 pr-3 rounded-full bg-black/55 border border-white/18 flex items-center gap-1.5 text-white text-xs font-bold"
+          >
+            <span className="w-5 h-5 rounded-md bg-green-600 flex items-center justify-center flex-shrink-0">
+              <MapPin size={11} color="white" />
+            </span>
+            evently
+          </Link>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 p-3.5 z-10 animate-pulse">
+          <div className="mb-2 h-4 w-16 rounded-lg bg-zinc-700" />
+          <div className="mb-1.5 h-5 w-4/5 rounded bg-zinc-700" />
+          <div className="h-5 w-3/5 rounded bg-zinc-700" />
+        </div>
+      </div>
+      <div className="flex h-[38px] items-center gap-5 border-b border-zinc-800 bg-zinc-950 px-3 animate-pulse">
+        <div className="h-4 w-20 rounded bg-zinc-800" />
+        <div className="h-4 w-14 rounded bg-zinc-800" />
+        <div className="h-4 w-16 rounded bg-zinc-800" />
+        <div className="h-4 w-12 rounded bg-zinc-800" />
+      </div>
+      <div className="flex h-[37px] border-b border-zinc-800 bg-[#111]" />
+      <div className="space-y-3 px-4 py-4 animate-pulse">
+        <div className="h-3 w-full rounded bg-zinc-800" />
+        <div className="h-3 w-full rounded bg-zinc-800" />
+        <div className="h-3 w-11/12 rounded bg-zinc-800" />
+        <div className="h-3 w-full rounded bg-zinc-800" />
+        <div className="h-3 w-2/3 rounded bg-zinc-800" />
+      </div>
     </div>
   )
 

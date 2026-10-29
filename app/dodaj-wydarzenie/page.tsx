@@ -14,6 +14,7 @@ import Link from "next/link"
 import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/scheduleType"
 import { toggleBoldSelection } from "@/lib/eventFormat"
 import { geocodeAddress } from "@/lib/geocodeAddress"
+import { countryOptions, normalizeCountry, DEFAULT_COUNTRY } from "@/lib/countries"
 import { cleanPriceNote } from "@/lib/formatPrice"
 import { revalidateHome } from "@/lib/revalidateHome"
 import { publishedFilter } from "@/lib/publishedFilter"
@@ -50,6 +51,9 @@ function todayStr(): string {
 const emptyForm = {
   title: "", description: "",
   city: "", address: "", venue_name: "",
+  // Kraj zapisujemy w events.country_code. Kod pocztowy służy TYLKO do znalezienia
+  // pinezki (geokoder) i nie jest zapisywany — w bazie nie ma na niego kolumny.
+  country_code: DEFAULT_COUNTRY, postal_code: "",
   category: "", cover_image_url: "", image_url: "",
   ticket_url: "", website_url: "", photos_url: "",
   reservation_phone: "", phone_declared: false,
@@ -154,6 +158,9 @@ export default function DodajWydarzenie() {
   const [dates, setDates] = useState<DateEntry[]>([{ date: "", from: "", to: "" }])
   const [activeTab, setActiveTab] = useState("basic")
   const [geocoding, setGeocoding] = useState(false)
+  // Komunikat pod polem Adres (zakładka Lokalizacja). Wcześniej błędy geokodera szły do
+  // `error`, który widać tylko na ostatniej zakładce, a brak wyniku nie dawał żadnej informacji.
+  const [geoMsg, setGeoMsg] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [dupes, setDupes] = useState<DuplicateCandidate[] | null>(null)
@@ -246,6 +253,8 @@ export default function DodajWydarzenie() {
             city: existing.city || "",
             address: existing.address || "",
             venue_name: existing.venue_name || "",
+            country_code: normalizeCountry(existing.country_code),
+            postal_code: "",
             category: existing.category || "",
             cover_image_url: existing.cover_image_url || "",
             image_url: existing.image_url || "",
@@ -329,8 +338,16 @@ export default function DodajWydarzenie() {
   const handleGeocode = async () => {
     if (!form.address && !form.city) return
     setGeocoding(true)
+    setGeoMsg("")
     try {
-      const result = await geocodeAddress(form.address, form.city)
+      const result = await geocodeAddress(form.address, form.city, {
+        countryCode: form.country_code,
+        postalCode: form.postal_code,
+      })
+      if (!result) {
+        const countryName = countryOptions(form.country_code).find(c => c.code === form.country_code)?.name || form.country_code
+        setGeoMsg(`Nie znaleziono tego adresu (kraj: ${countryName}). Sprawdź kraj i pisownię, dodaj kod pocztowy albo wklej współrzędne lub zaznacz punkt na mapie.`)
+      }
       if (result) {
         setForm(prev => {
           // Nadpisz Miasto tylko gdy to, co tam jest, wygląda na
@@ -359,7 +376,7 @@ export default function DodajWydarzenie() {
         })
       }
     } catch (err: any) {
-      setError(err?.message || "Nie udało się wyszukać lokalizacji.")
+      setGeoMsg(err?.message || "Nie udało się wyszukać lokalizacji.")
     }
     setGeocoding(false)
   }
@@ -557,6 +574,7 @@ try {
       city: form.city,
       address: form.address || null,
       venue_name: form.venue_name || null,
+      country_code: form.country_code,
       category: form.category,
       cover_image_url: form.cover_image_url || null,
       image_url: form.image_url || null,
@@ -628,6 +646,7 @@ try {
     city: form.city,
     address: form.address || null,
     venue_name: form.venue_name || null,
+    country_code: form.country_code,
     category: form.category,
     cover_image_url: form.cover_image_url || null,
     image_url: form.image_url || null,
@@ -888,6 +907,10 @@ try {
                                 ...prev,
                                 latitude: parseFloat(result.lat).toFixed(6),
                                 longitude: parseFloat(result.lon).toFixed(6),
+                                // Plakat z wydarzeniem za granicą: kraj z wyniku geokodera, żeby
+                                // country_code nie zostało domyślnym PL. Widoczne i do poprawy
+                                // w zakładce Lokalizacja (baner "sprawdź dane" i tak je obejmuje).
+                                ...(result.countryCode ? { country_code: result.countryCode } : {}),
                                 ...(suggestedCity && suggestedCity !== prev.city && cityLooksUnconsidered
                                   ? { city: suggestedCity }
                                   : {}),
@@ -1103,6 +1126,20 @@ try {
             {activeTab === "location" && <>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
                 <div>
+                  <label style={lbl} htmlFor="country_code">Kraj *</label>
+                  <select id="country_code" name="country_code" value={form.country_code} onChange={handleChange} style={inp}>
+                    {countryOptions(form.country_code).map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl} htmlFor="postal_code">Kod pocztowy <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie)</span></label>
+                  <input id="postal_code" name="postal_code" value={form.postal_code} onChange={handleChange}
+                    placeholder={form.country_code === "PL" ? "np. 16-400" : "np. 66763"} maxLength={12} autoComplete="postal-code" style={inp} />
+                </div>
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
+                <div>
                   <label style={lbl} htmlFor="city">Miasto *</label>
                   <input id="city" name="city" value={form.city} onChange={handleChange} required
                     placeholder="np. Suwałki" style={inp} />
@@ -1123,7 +1160,8 @@ try {
                     {geocoding ? "..." : "📍 Znajdź"}
                   </button>
                 </div>
-                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Wpisz adres (np. ul. Kościuszki 1) lub wklej współrzędne (54.10, 22.93) i kliknij "Znajdź". Możesz też zaznaczyć punkt bezpośrednio na mapie.</div>
+                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Wpisz adres (np. ul. Kościuszki 1) lub wklej współrzędne (54.10, 22.93) i kliknij "Znajdź". Możesz też zaznaczyć punkt bezpośrednio na mapie. Kod pocztowy pomaga znaleźć właściwą miejscowość (nie jest zapisywany).</div>
+                {geoMsg && <div role="alert" style={{fontSize:"0.8rem",color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 10px",marginTop:8,lineHeight:1.5}}>{geoMsg}</div>}
               </div>
 
               <LocationPicker
@@ -1166,25 +1204,17 @@ try {
 
             {activeTab === "media" && <>
               <div>
-                <label style={lbl} htmlFor="cover_image_url">Zdjęcie</label>
+                <label style={lbl}>Zdjęcie</label>
                 <ImageUpload
                   currentUrl={form.cover_image_url}
                   onUploadComplete={(url) => setForm(prev => ({ ...prev, cover_image_url: url }))}
                 />
-                {userRole === "organizer" ? (
-                  <>
-                    <div style={{display:"flex",alignItems:"center",gap:8,margin:"10px 0"}}>
-                      <div style={{flex:1,height:1,background:"#e5e7eb"}} />
-                      <span style={{fontSize:"0.75rem",color:"#9ca3af"}}>albo</span>
-                      <div style={{flex:1,height:1,background:"#e5e7eb"}} />
-                    </div>
-                    <input id="cover_image_url" name="cover_image_url" value={form.cover_image_url} onChange={handleChange}
-                      placeholder="Wklej link https://..." style={inp} />
-                    <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Wgraj zdjęcie z dysku (max 5MB) lub wklej bezpośredni link.</div>
-                  </>
-                ) : (
-                  <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Wgraj zdjęcie z dysku (max 5MB).</div>
-                )}
+                {/* 2026-10-29 (B29): pole "Wklej link" usunięte z formularza organizatora — linki do cudzych
+                    serwerów wygasają (tokeny Facebooka), ujawniają IP odwiedzających i omijają kontrolę
+                    pliku. Zostaje wyłącznie wgrywanie (kompresja do WebP). Już zapisany link zostaje
+                    nietknięty przy edycji (form.cover_image_url dalej trafia do payloadu). Pole linku
+                    jest nadal w panelu admina. */}
+                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Wgraj zdjęcie z dysku (max 5MB).</div>
               </div>
 
               {form.cover_image_url && (
@@ -1193,25 +1223,12 @@ try {
               )}
 
               <div>
-                <label style={lbl} htmlFor="image_url">Plakat wydarzenia <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie, jeśli masz osobny od zdjęcia)</span></label>
+                <label style={lbl}>Plakat wydarzenia <span style={{fontWeight:400,color:"#9ca3af"}}>(opcjonalnie, jeśli masz osobny od zdjęcia)</span></label>
                 <ImageUpload
                   currentUrl={form.image_url}
                   onUploadComplete={(url) => setForm(prev => ({ ...prev, image_url: url }))}
                 />
-                {userRole === "organizer" ? (
-                  <>
-                    <div style={{display:"flex",alignItems:"center",gap:8,margin:"10px 0"}}>
-                      <div style={{flex:1,height:1,background:"#e5e7eb"}} />
-                      <span style={{fontSize:"0.75rem",color:"#9ca3af"}}>albo</span>
-                      <div style={{flex:1,height:1,background:"#e5e7eb"}} />
-                    </div>
-                    <input id="image_url" name="image_url" value={form.image_url} onChange={handleChange}
-                      placeholder="Wklej link https://..." style={inp} />
-                    <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Jeśli nie dodasz, w przycisku "Plakat" pokaże się zdjęcie powyżej.</div>
-                  </>
-                ) : (
-                  <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Jeśli nie dodasz, w przycisku "Plakat" pokaże się zdjęcie powyżej.</div>
-                )}
+                <div style={{fontSize:"0.75rem",color:"#9ca3af",marginTop:4}}>Jeśli nie dodasz, w przycisku "Plakat" pokaże się zdjęcie powyżej.</div>
               </div>
 
               {form.image_url && (

@@ -27,111 +27,142 @@
 // jeśli używasz suggestedCity gdzie indziej, nie zakładaj automatycznego
 // nadpisania bez sprawdzenia tamtego wywołania.
 function extractSuggestedCity(
-    address: Record<string, string> | undefined,
-    knownVillage: string
-  ): string | null {
-    if (!address) return null
-    const candidates = [
-      address.city,
-      address.town,
-      address.municipality?.replace(/^gmina\s+/i, "").trim(),
-    ].filter(Boolean) as string[]
-  
-    // Nominatim czasem duplikuje nazwę samej wsi na kilku poziomach naraz
-    // (np. address.city = "Tauroszyszki", to samo co address.village) —
-    // pomijamy takich kandydatów, żeby nie "sugerować" nazwy, którą i tak
-    // już mamy.
-    for (const c of candidates) {
-      if (c.toLowerCase() !== knownVillage.trim().toLowerCase()) return c
-    }
-    return null
+  address: Record<string, string> | undefined,
+  knownVillage: string
+): string | null {
+  if (!address) return null
+  const candidates = [
+    address.city,
+    address.town,
+    address.municipality?.replace(/^gmina\s+/i, "").trim(),
+  ].filter(Boolean) as string[]
+
+  // Nominatim czasem duplikuje nazwę samej wsi na kilku poziomach naraz
+  // (np. address.city = "Tauroszyszki", to samo co address.village) —
+  // pomijamy takich kandydatów, żeby nie "sugerować" nazwy, którą i tak
+  // już mamy.
+  for (const c of candidates) {
+    if (c.toLowerCase() !== knownVillage.trim().toLowerCase()) return c
   }
-  
-  export async function geocodeAddress(
-    address: string,
-    city: string
-  ): Promise<{ lat: string; lon: string; suggestedCity: string | null } | null> {
-    // 2026-09-23: gdy miasto jest już zawarte w adresie (np. Miasto
-    // "Tauroszyszki", Adres "Tauroszyszki 10" — częste dla małych wsi, gdzie
-    // nie ma osobnej ulicy), NIE doklejamy go po przecinku. Nominatim czyta
-    // przecinki w zapytaniu jako hierarchię "X wewnątrz obszaru Y" — więc
-    // "Tauroszyszki 10, Tauroszyszki" każe mu szukać Tauroszyszek wewnątrz
-    // Tauroszyszek, co zbija dopasowanie i dawało 0 wyników. Sam adres, bez
-    // powtórzenia, trafia od razu. Gdy miasto jest czymś INNYM niż to, co
-    // już jest w adresie (typowy przypadek: "ul. Kościuszki 5" + "Suwałki"),
-    // dalej je doklejamy — tam miasto faktycznie doprecyzowuje, nie duplikuje.
-    const cityIsRedundant = !!city.trim() && !!address.trim() && address.toLowerCase().includes(city.trim().toLowerCase())
-    const full = cityIsRedundant ? address : [address, city].filter(Boolean).join(", ")
-    if (!full) return null
-  
-    // Realna polityka Nominatim to max ~1 zapytanie/s. Gdy pierwsza próba
-    // (full) nie trafi i trzeba iść dalej w łańcuch fallbacków, kolejne
-    // zapytania potrzebują odstępu — bez niego czasem wracały puste, mimo
-    // że dane istniały, bo przyszły za szybko.
-    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-  
-    const tryQuery = async (q: string) => {
-      const res = await fetch("/api/geocode?q=" + encodeURIComponent(q))
-      // Brakowało sprawdzenia statusu — gdy serwer odrzucał zapytanie (limit
-      // 30/h, błąd Nominatim, cokolwiek), odpowiedź to {error: "..."}, nie
-      // tablica. Taki przypadek leci teraz jako wyjątek z czytelnym
-      // komunikatem, zamiast cichego "nic nie znaleziono".
-      if (res.status === 429) {
-        throw new Error("Zbyt wiele wyszukiwań lokalizacji w krótkim czasie — odczekaj kilka minut i spróbuj ponownie.")
-      }
-      if (!res.ok) {
-        throw new Error("Nie udało się połączyć z usługą wyszukiwania lokalizacji. Spróbuj ponownie za chwilę.")
-      }
-      const data = await res.json()
-      if (!Array.isArray(data)) {
-        // 200 OK, ale treść to np. {error:"..."} — backendowy problem, nie
-        // "brak wyników". Te dwie sytuacje są różne i nie powinny wyglądać
-        // tak samo dla użytkownika.
-        throw new Error("Usługa wyszukiwania lokalizacji zwróciła nieoczekiwaną odpowiedź.")
-      }
-      return data[0] ?? null
+  return null
+}
+
+// opts.countryCode: kod ISO wybrany w formularzu (np. "DE") — geokoder szuka
+// wtedy tylko w tym kraju. Brak = stare zachowanie (region -> Polska -> świat).
+// opts.postalCode: opcjonalny kod pocztowy, doklejany do zapytania przed
+// miastem ("Hauptstr. 5, 66763 Dillingen") — rozstrzyga miasta o tej samej
+// nazwie. Nie jest nigdzie zapisywany, służy tylko do znalezienia pinezki.
+// countryCode w wyniku: kraj faktycznie zwrócony przez Nominatim (do
+// uzupełnienia kraju po skanie plakatu, gdy użytkownik nie wybrał go sam).
+export async function geocodeAddress(
+  address: string,
+  city: string,
+  opts?: { countryCode?: string; postalCode?: string }
+): Promise<{ lat: string; lon: string; suggestedCity: string | null; countryCode: string | null } | null> {
+  const postal = (opts?.postalCode ?? "").trim()
+  const cc = /^[A-Za-z]{2}$/.test(opts?.countryCode ?? "") ? (opts!.countryCode as string).toLowerCase() : ""
+  const cityQuery = [postal, city.trim()].filter(Boolean).join(" ")
+  // 2026-09-23: gdy miasto jest już zawarte w adresie (np. Miasto
+  // "Tauroszyszki", Adres "Tauroszyszki 10" — częste dla małych wsi, gdzie
+  // nie ma osobnej ulicy), NIE doklejamy go po przecinku. Nominatim czyta
+  // przecinki w zapytaniu jako hierarchię "X wewnątrz obszaru Y" — więc
+  // "Tauroszyszki 10, Tauroszyszki" każe mu szukać Tauroszyszek wewnątrz
+  // Tauroszyszek, co zbija dopasowanie i dawało 0 wyników. Sam adres, bez
+  // powtórzenia, trafia od razu. Gdy miasto jest czymś INNYM niż to, co
+  // już jest w adresie (typowy przypadek: "ul. Kościuszki 5" + "Suwałki"),
+  // dalej je doklejamy — tam miasto faktycznie doprecyzowuje, nie duplikuje.
+  const cityIsRedundant = !!city.trim() && !!address.trim() && address.toLowerCase().includes(city.trim().toLowerCase())
+  // base = zapytanie bez kodu pocztowego (jak dotąd); full = z kodem, jeśli podany.
+  const base = cityIsRedundant ? address : [address, city].filter(Boolean).join(", ")
+  const full = !postal
+    ? base
+    : cityIsRedundant
+      ? `${address}, ${postal}`
+      : [address, cityQuery].filter(Boolean).join(", ")
+  if (!full) return null
+
+  // Realna polityka Nominatim to max ~1 zapytanie/s. Gdy pierwsza próba
+  // (full) nie trafi i trzeba iść dalej w łańcuch fallbacków, kolejne
+  // zapytania potrzebują odstępu — bez niego czasem wracały puste, mimo
+  // że dane istniały, bo przyszły za szybko.
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+  const tryQuery = async (q: string) => {
+    const res = await fetch("/api/geocode?q=" + encodeURIComponent(q) + (cc ? "&country=" + cc : ""))
+    // Brakowało sprawdzenia statusu — gdy serwer odrzucał zapytanie (limit
+    // 30/h, błąd Nominatim, cokolwiek), odpowiedź to {error: "..."}, nie
+    // tablica. Taki przypadek leci teraz jako wyjątek z czytelnym
+    // komunikatem, zamiast cichego "nic nie znaleziono".
+    if (res.status === 429) {
+      throw new Error("Zbyt wiele wyszukiwań lokalizacji w krótkim czasie — odczekaj kilka minut i spróbuj ponownie.")
     }
-  
-    const withSuggestion = (result: any) => ({
-      lat: result.lat,
-      lon: result.lon,
-      suggestedCity: extractSuggestedCity(result.address, city || address),
-    })
-  
-    const first = await tryQuery(full)
-    if (first) return withSuggestion(first)
-  
-    // Poniższy łańcuch to siatka bezpieczeństwa na wypadek, gdyby powyższe
-    // (deduplikowane) zapytanie i tak nic nie znalazło — rzadsze niż wcześniej,
-    // ale wciąż możliwe (np. Nominatim nie ma w ogóle tej miejscowości pod
-    // taką pisownią). Nieużywane, gdy first powyżej już trafił.
-    if (!cityIsRedundant && address && address !== full) {
-      await sleep(1100)
-      const direct = await tryQuery(address)
-      if (direct) return withSuggestion(direct)
+    if (!res.ok) {
+      throw new Error("Nie udało się połączyć z usługą wyszukiwania lokalizacji. Spróbuj ponownie za chwilę.")
     }
-  
-    if (city && city !== full) {
-      await sleep(1100)
-      const second = await tryQuery(city)
-      if (second) {
-        const suggestion = withSuggestion(second)
-        // Zapytanie samą wsią zwraca tylko środek CAŁEJ wsi (granica
-        // administracyjna), nie konkretny adres — mniej precyzyjne niż
-        // pełne zapytanie z numerem domu. Skoro już wiemy, jakie miasto
-        // Nominatim uznaje za właściwe (suggestedCity), spróbuj RAZ JESZCZE
-        // pełnym adresem, ale z tym miastem zamiast oryginalnego.
-        if (suggestion.suggestedCity && suggestion.suggestedCity !== city) {
-          await sleep(1100)
-          const betterFull = [address, suggestion.suggestedCity].filter(Boolean).join(", ")
-          const better = await tryQuery(betterFull)
-          if (better) {
-            return { lat: better.lat, lon: better.lon, suggestedCity: suggestion.suggestedCity }
-          }
+    const data = await res.json()
+    if (!Array.isArray(data)) {
+      // 200 OK, ale treść to np. {error:"..."} — backendowy problem, nie
+      // "brak wyników". Te dwie sytuacje są różne i nie powinny wyglądać
+      // tak samo dla użytkownika.
+      throw new Error("Usługa wyszukiwania lokalizacji zwróciła nieoczekiwaną odpowiedź.")
+    }
+    return data[0] ?? null
+  }
+
+  const countryOf = (result: any): string | null =>
+    typeof result?.address?.country_code === "string" && result.address.country_code.length === 2
+      ? result.address.country_code.toUpperCase()
+      : null
+
+  const withSuggestion = (result: any) => ({
+    lat: result.lat,
+    lon: result.lon,
+    suggestedCity: extractSuggestedCity(result.address, city || address),
+    countryCode: countryOf(result),
+  })
+
+  const first = await tryQuery(full)
+  if (first) return withSuggestion(first)
+
+  // Poniższy łańcuch to siatka bezpieczeństwa na wypadek, gdyby powyższe
+  // (deduplikowane) zapytanie i tak nic nie znalazło — rzadsze niż wcześniej,
+  // ale wciąż możliwe (np. Nominatim nie ma w ogóle tej miejscowości pod
+  // taką pisownią). Nieużywane, gdy first powyżej już trafił.
+  // Z kodem pocztowym pierwsze zapytanie jest bardziej szczegółowe — jeśli
+  // nic nie dało (np. literówka w kodzie), spróbuj jeszcze bez niego.
+  if (postal && base && base !== full) {
+    await sleep(1100)
+    const noPostal = await tryQuery(base)
+    if (noPostal) return withSuggestion(noPostal)
+  }
+
+  if (!cityIsRedundant && address && address !== base) {
+    await sleep(1100)
+    const direct = await tryQuery(address)
+    if (direct) return withSuggestion(direct)
+  }
+
+  if (city && cityQuery !== full && city !== base) {
+    await sleep(1100)
+    const second = await tryQuery(cityQuery)
+    if (second) {
+      const suggestion = withSuggestion(second)
+      // Zapytanie samą wsią zwraca tylko środek CAŁEJ wsi (granica
+      // administracyjna), nie konkretny adres — mniej precyzyjne niż
+      // pełne zapytanie z numerem domu. Skoro już wiemy, jakie miasto
+      // Nominatim uznaje za właściwe (suggestedCity), spróbuj RAZ JESZCZE
+      // pełnym adresem, ale z tym miastem zamiast oryginalnego.
+      if (suggestion.suggestedCity && suggestion.suggestedCity !== city) {
+        await sleep(1100)
+        const betterFull = [address, [postal, suggestion.suggestedCity].filter(Boolean).join(" ")].filter(Boolean).join(", ")
+        const better = await tryQuery(betterFull)
+        if (better) {
+          return { lat: better.lat, lon: better.lon, suggestedCity: suggestion.suggestedCity, countryCode: countryOf(better) ?? suggestion.countryCode }
         }
-        return suggestion
       }
+      return suggestion
     }
-  
-    return null
   }
+
+  return null
+}
