@@ -15,6 +15,7 @@ import { classifySchedule, describeSchedule, type DateEntry } from "@/lib/schedu
 import { toggleBoldSelection } from "@/lib/eventFormat"
 import { geocodeAddress } from "@/lib/geocodeAddress"
 import { countryOptions, normalizeCountry, DEFAULT_COUNTRY } from "@/lib/countries"
+import { splitPostalCode } from "@/lib/postalCode"
 import { cleanPriceNote } from "@/lib/formatPrice"
 import { revalidateHome } from "@/lib/revalidateHome"
 import { publishedFilter } from "@/lib/publishedFilter"
@@ -835,11 +836,15 @@ try {
                   <PosterScanner
                     onScanComplete={async (data, previewUrl) => {
                       setScanPreview(previewUrl ?? null)
+                      // AI wpisuje kod pocztowy do adresu ("Rebenstraße, 66129 Bübingen") —
+                      // wyciągamy go do osobnego pola (służy geokoderowi) i zdejmujemy z adresu.
+                      const scanned = splitPostalCode(data.address || "")
                       setForm(prev => ({
                         ...prev,
                         title: data.title || prev.title,
                         city: data.city || prev.city,
-                        address: data.address || prev.address,
+                        address: scanned.address || prev.address,
+                        postal_code: scanned.postal || prev.postal_code,
                         venue_name: data.venue_name || prev.venue_name,
                         description: data.description || prev.description,
                         organizer_name: data.organizer_name || prev.organizer_name,
@@ -884,7 +889,7 @@ try {
                       }
                       if (data.address || data.city) {
                         try {
-                          const result = await geocodeAddress(data.address || "", data.city || "")
+                          const result = await geocodeAddress(scanned.address, data.city || "", { postalCode: scanned.postal })
                           if (result) {
                             setForm(prev => {
                               // 2026-09-23: było "tylko gdy AI w ogóle nie
