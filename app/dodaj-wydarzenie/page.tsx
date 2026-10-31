@@ -839,12 +839,18 @@ try {
                       // AI wpisuje kod pocztowy do adresu ("Rebenstraße, 66129 Bübingen") —
                       // wyciągamy go do osobnego pola (służy geokoderowi) i zdejmujemy z adresu.
                       const scanned = splitPostalCode(data.address || "")
+                      // Kraj i kod pocztowy czytane przez AI wprost z plakatu (puste, gdy plakat ich nie podaje).
+                      const scanCountry = typeof data.country_code === "string" && /^[A-Za-z]{2}$/.test(data.country_code)
+                        ? data.country_code.toUpperCase() : ""
+                      const scanPostal = scanned.postal || (typeof data.postal_code === "string" ? data.postal_code.trim() : "")
                       setForm(prev => ({
                         ...prev,
                         title: data.title || prev.title,
                         city: data.city || prev.city,
                         address: scanned.address || prev.address,
-                        postal_code: scanned.postal || prev.postal_code,
+                        postal_code: scanPostal || prev.postal_code,
+                        country_code: scanCountry || prev.country_code,
+                        price_currency: data.price_currency === "EUR" ? "EUR" : prev.price_currency,
                         venue_name: data.venue_name || prev.venue_name,
                         description: data.description || prev.description,
                         organizer_name: data.organizer_name || prev.organizer_name,
@@ -889,7 +895,7 @@ try {
                       }
                       if (data.address || data.city) {
                         try {
-                          const result = await geocodeAddress(scanned.address, data.city || "", { postalCode: scanned.postal })
+                          const result = await geocodeAddress(scanned.address, data.city || "", { postalCode: scanPostal, countryCode: scanCountry || undefined })
                           if (result) {
                             setForm(prev => {
                               // 2026-09-23: było "tylko gdy AI w ogóle nie

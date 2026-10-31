@@ -6,6 +6,8 @@ interface ScanResult {
   title?: string
   city?: string
   address?: string
+  postal_code?: string | null
+  country_code?: string | null
   venue_name?: string
   start_date?: string
   start_time?: string
@@ -19,6 +21,7 @@ interface ScanResult {
   category?: string
   is_free?: boolean
   price_from?: number | null
+  price_currency?: string
 }
 
 interface PosterScannerProps {

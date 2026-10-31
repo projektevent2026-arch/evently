@@ -101,6 +101,11 @@ export async function POST(req: NextRequest) {
   const todayISO = today.toISOString().slice(0, 10) // YYYY-MM-DD
   const currentYear = today.getFullYear()
 
+  // Model z env (SCAN_MODEL w Vercelu) pozwala porównać modele bez zmiany kodu.
+  // Domyślnie nadal dzisiejszy Haiku 4.5 — nowszy model dopiero po teście na plakatach (B26).
+  const SCAN_MODEL = process.env.SCAN_MODEL || 'claude-haiku-4-5'
+  const isLegacyModel = SCAN_MODEL.startsWith('claude-haiku-4')
+
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -109,12 +114,15 @@ export async function POST(req: NextRequest) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5',
-      max_tokens: 4096,
-      // 2026-10-24: bez temperature API używa domyślnego 1.0, czyli losowości, która
+      model: SCAN_MODEL,
+      // 2026-10-27: modele 5.x mają adaptacyjne "myślenie", którego tokeny liczą się do
+      // max_tokens, więc zapas jest większy niż dla Haiku 4.5.
+      max_tokens: isLegacyModel ? 4096 : 8192,
+      // 2026-10-24: bez temperature Haiku 4.5 używa domyślnego 1.0, czyli losowości, która
       // przy przepisywaniu tekstu daje literówki ("Zabiercze", "krzesetkę"). Zero =
-      // najbardziej przewidywalny odczyt.
-      temperature: 0,
+      // najbardziej przewidywalny odczyt. Modele 5.x NIE przyjmują temperature/top_p/top_k
+      // (400), tam sterujemy przez output_config.effort.
+      ...(isLegacyModel ? { temperature: 0 } : { output_config: { effort: 'low' } }),
       messages: [
         {
           role: 'user',
@@ -136,7 +144,9 @@ Przeanalizuj ten plakat wydarzenia i wyciągnij informacje. Odpowiedz TYLKO w fo
   "title": "nazwa wydarzenia",
   "city": "miasto, wieś lub gmina",
   "venue_name": "nazwa konkretnego miejsca lub null",
-  "address": "ulica z numerem lub null",
+  "address": "ulica z numerem (BEZ kodu pocztowego i miasta) lub null",
+  "postal_code": "kod pocztowy z adresu na plakacie (np. 16-400 albo 66129) lub null",
+  "country_code": "dwuliterowy kod kraju (PL, DE, FR, LT...) TYLKO gdy kraj wynika z plakatu (nazwa kraju, kod pocztowy z prefiksem, niemiecki lub francuski adres), inaczej null",
   "dates": [
     { "date": "YYYY-MM-DD", "start_time": "HH:MM lub null", "end_time": "HH:MM lub null" }
   ],
@@ -146,6 +156,7 @@ Przeanalizuj ten plakat wydarzenia i wyciągnij informacje. Odpowiedz TYLKO w fo
   "category": "jedna z: festyny, kultura, muzyka, sport, targi, jedzenie (jedzenie: kolacje degustacyjne, food trucki, festiwale kulinarne, targi żywności; targi: targi branżowe i biznesowe)",
   "is_free": true lub false,
   "price_from": liczba lub null,
+  "price_currency": "EUR gdy cena jest podana w € / euro / EUR, w każdym innym przypadku PLN",
   "schedule": [
     { "time": "HH:MM lub null", "title": "nazwa punktu programu", "description": "opcjonalny opis", "day": 1 }
   ]
@@ -153,11 +164,16 @@ Przeanalizuj ten plakat wydarzenia i wyciągnij informacje. Odpowiedz TYLKO w fo
 
 ═══ MIASTO vs NAZWA MIEJSCA — częsty błąd ═══
 To są DWA RÓŻNE pola, nie wpisuj tego samego w oba:
-- "city" = miejscowość na mapie Polski: Suwałki, Radziłów, Filipów, Przerośl.
+- "city" = nazwa miejscowości tak, jak jest na plakacie (w Polsce albo za granicą): Suwałki, Radziłów, Przerośl, Bübingen. Same nazwy miejscowości, bez kodu pocztowego i bez nazwy kraju.
 - "venue_name" = nazwa konkretnego obiektu: "Zalew Arkadia", "Targowisko Wiejskie", "Park Konstytucji 3 Maja", "Dom Kultury", "Amfiteatr".
-- "address" = TYLKO ulica z numerem, np. "Chłodna 2". Jeśli plakat nie podaje ulicy, wpisz null — NIE powtarzaj tam nazwy miejsca.
+- "address" = TYLKO ulica z numerem, np. "Chłodna 2" albo "Rebenstraße". Bez kodu pocztowego i bez miasta (kod idzie do "postal_code"). Jeśli plakat nie podaje ulicy, wpisz null — NIE powtarzaj tam nazwy miejsca.
 Przykład: plakat "Zalew Arkadia, Suwałki" -> city: "Suwałki", venue_name: "Zalew Arkadia", address: null.
 Jeśli plakat podaje tylko nazwę obiektu bez miejscowości, ustal miejscowość z kontekstu (np. z logotypu gminy w stopce).
+
+═══ KRAJ, KOD POCZTOWY, WALUTA ═══
+- "postal_code": przepisz kod pocztowy z adresu na plakacie dokładnie (polski ma myślnik: 16-400; niemiecki i francuski to 5 cyfr). Jeśli go nie ma, null. Nigdy nie zgaduj cyfr.
+- "country_code": ustaw TYLKO wtedy, gdy kraj wynika z samego plakatu: napisana nazwa kraju, adres w innym języku niż polski (np. "Rebenstraße", "rue"), kod pocztowy z prefiksem kraju. Sam polski język plakatu NIE oznacza, że wydarzenie jest w Polsce (polskie wydarzenia za granicą są normalne) — gdy kraju nie da się ustalić z adresu, zwróć null.
+- "price_currency": "EUR" tylko gdy cena jest podana w €, euro albo EUR. Cena w zł, PLN albo bez waluty to "PLN".
 
 ═══ ORGANIZATOR — szukaj w STOPCE ═══
 Organizator prawie nigdy nie jest napisany na środku plakatu. Jest NA DOLE, często jako:
@@ -233,7 +249,14 @@ Jeśli na plakacie nie ma żadnego programu ani listy atrakcji, zwróć "schedul
     return NextResponse.json({ error: data.error?.message || 'API error' }, { status: 400 })
   }
 
-  const text = data.content?.[0]?.text || '{}'
+  // Odpowiedź modeli 5.x może zaczynać się od bloku "thinking": odpowiedzią są bloki typu "text".
+  const text =
+    (Array.isArray(data.content)
+      ? data.content.filter((b: any) => b?.type === 'text').map((b: any) => b.text).join('')
+      : '') || '{}'
+  if (data.stop_reason === 'max_tokens' || data.stop_reason === 'refusal') {
+    console.error('Scan stop_reason:', data.stop_reason, 'model:', SCAN_MODEL)
+  }
 
   try {
     const clean = text.replace(/```json|```/g, '').trim()
@@ -254,6 +277,13 @@ Jeśli na plakacie nie ma żadnego programu ani listy atrakcji, zwróć "schedul
     // Numer telefonu: ta sama reguła formatu co w bazie (lib/safeTel.ts). Zły albo pusty -> null,
     // żeby formularz nigdy nie dostał śmieci z błędnego odczytu.
     parsed.reservation_phone = safeTel(typeof parsed.reservation_phone === 'string' ? parsed.reservation_phone : null)
+
+    // Nowe pola: sprawdzamy format po stronie serwera, żeby formularz nie dostał śmieci.
+    const cc = typeof parsed.country_code === 'string' ? parsed.country_code.trim().toUpperCase() : ''
+    parsed.country_code = /^[A-Z]{2}$/.test(cc) ? cc : null
+    const pc = typeof parsed.postal_code === 'string' ? parsed.postal_code.trim() : ''
+    parsed.postal_code = pc && pc.length <= 12 && /\d/.test(pc) ? pc : null
+    parsed.price_currency = parsed.price_currency === 'EUR' ? 'EUR' : 'PLN'
 
     const derived = deriveStartEnd(parsed.dates)
     parsed.start_date = derived.start_date
