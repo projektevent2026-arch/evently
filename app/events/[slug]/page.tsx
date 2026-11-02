@@ -5,6 +5,7 @@ import EventDetailWrapper from "@/components/EventDetailWrapper"
 import EndedEvent from "@/components/EndedEvent"
 import { eventState } from "@/lib/eventState"
 import { safeUrl } from "@/lib/safeUrl"
+import { loadEvent } from "@/lib/loadEvent"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -79,7 +80,14 @@ export default async function EventPage(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params
-  const event = await getEvent(slug)
+  // 2026-11-02 (B31): pełne dane wydarzenia (terminy, profil organizatora) pobieramy na serwerze,
+  // RÓWNOLEGLE z wąskim zapytaniem do metadanych, żeby nie wydłużać odpowiedzi o drugi krok.
+  // loadEvent zwraca null dla niepublikowanych i usuniętych, a gdy cokolwiek pójdzie nie tak,
+  // komponenty pobierają dane w przeglądarce jak dotychczas (initialEvent = null).
+  const [event, fullEvent] = await Promise.all([
+    getEvent(slug),
+    loadEvent(supabase, slug, false),
+  ])
 
   if (event && eventState(event) === "ended") {
     // Ten sam widok co lista na stronie głównej: tylko opublikowane i jeszcze nie zakończone terminy.
@@ -92,5 +100,6 @@ export default async function EventPage(
     return <EndedEvent title={event.title} city={event.city} upcoming={upcoming ?? []} photosUrl={safeUrl(event.photos_url)} />
   }
 
-  return <EventDetailWrapper slug={slug} />
+  const initialEvent = event && eventState(event) !== "hidden" ? fullEvent : null
+  return <EventDetailWrapper slug={slug} initialEvent={initialEvent} />
 }

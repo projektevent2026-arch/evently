@@ -120,14 +120,41 @@ function titlesLookSimilar(a: string, b: string): boolean {
   return common / (tx.size + ty.size - common) >= 0.6
 }
 
-async function findDuplicateCandidates(title: string, dateList: string[]): Promise<DuplicateCandidate[]> {
+// 2026-11-02 (B33): duplikat tylko, gdy to samo miejsce. Dwie pinezki: odległość < 2 km.
+// Brak pinezki po którejś stronie: porównujemy miasto. Brak i miasta: zostaje ostrzeżenie jak dotąd.
+const DUP_RADIUS_KM = 2
+
+type DupPlace = { lat: number | null; lon: number | null; city: string }
+
+function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(a))
+}
+
+function samePlace(mine: DupPlace, row: { latitude: unknown; longitude: unknown; city: string | null }): boolean {
+  const rLat = row.latitude != null ? Number(row.latitude) : NaN
+  const rLon = row.longitude != null ? Number(row.longitude) : NaN
+  if (mine.lat != null && mine.lon != null && Number.isFinite(rLat) && Number.isFinite(rLon)) {
+    return distanceKm(mine.lat, mine.lon, rLat, rLon) < DUP_RADIUS_KM
+  }
+  const a = normalizeTitle(mine.city)
+  const b = normalizeTitle(row.city ?? "")
+  if (a && b) return a === b
+  return true
+}
+
+async function findDuplicateCandidates(title: string, dateList: string[], place: DupPlace): Promise<DuplicateCandidate[]> {
   try {
     const uniqueDates = Array.from(new Set(dateList.filter(Boolean)))
     if (!title.trim() || uniqueDates.length === 0) return []
     const { data, error } = await publishedFilter(
       supabase
         .from("public_events")
-        .select("id, title, slug, city, venue_name, image_url, cover_image_url, event_dates!inner(date)")
+        .select("id, title, slug, city, venue_name, image_url, cover_image_url, latitude, longitude, event_dates!inner(date)")
         .in("event_dates.date", uniqueDates)
     ).limit(50)
     if (error) {
@@ -139,6 +166,7 @@ async function findDuplicateCandidates(title: string, dateList: string[]): Promi
     for (const row of (data ?? []) as any[]) {
       if (seen.has(row.id) || !row.slug) continue
       if (!titlesLookSimilar(title, row.title ?? "")) continue
+      if (!samePlace(place, row)) continue
       seen.add(row.id)
       out.push({
         id: row.id, title: row.title, slug: row.slug, city: row.city ?? null,
@@ -527,7 +555,13 @@ if (form.reservation_phone.trim()) {
 // Ostrzeżenie o duplikacie: tylko przy nowym wydarzeniu, nie przy edycji.
 if (!editId && !skipDup) {
   setSubmitting(true)
-  const found = await findDuplicateCandidates(form.title, validDates.map(d => d.date))
+  const myLat = form.latitude ? parseFloat(form.latitude) : NaN
+  const myLon = form.longitude ? parseFloat(form.longitude) : NaN
+  const found = await findDuplicateCandidates(form.title, validDates.map(d => d.date), {
+    lat: Number.isFinite(myLat) ? myLat : null,
+    lon: Number.isFinite(myLon) ? myLon : null,
+    city: form.city || "",
+  })
   if (found.length > 0) {
     setDupes(found)
     setSubmitting(false)

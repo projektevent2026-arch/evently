@@ -13,7 +13,7 @@ import EventSchedule from '@/components/EventSchedule'
 import { isRedundantSchedule } from '@/lib/scheduleRedundancy'
 import { navigationUrl } from '@/lib/navUrl'
 import { useFavorites } from '@/hooks/useFavorites'
-import { getEventWithDates } from '@/lib/getEventWithDates'
+import { getEventWithDates, trackView } from '@/lib/getEventWithDates'
 import EventDatesList from '@/components/EventDatesList'
 import AddToCalendarButton from '@/components/AddToCalendarButton'
 import { dateRange, isMultiDay, weekdayName, fmtClock, durationBetween, nextTermInfo, nextOccurrence, linkify, cleanUrlForDisplay } from '@/lib/eventFormat'
@@ -47,17 +47,24 @@ const CAT_GRADIENT: Record<CategoryKey, string> = {
   jedzenie: 'from-[#1a0010] via-[#2d0019] to-[#4a0028]',
 }
 
-export default function MobileEventDetail({ slug }: { slug: string }) {
+export default function MobileEventDetail({ slug, initialEvent }: { slug: string; initialEvent?: any }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const isPreview = searchParams.get('preview') === '1'
-  const [event, setEvent] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  // B31: wydarzenie z serwera (bez podgladu) = brak szkieletu, dane od razu
+  const serverEvent = !isPreview && initialEvent ? initialEvent : null
+  const [event, setEvent] = useState<any>(serverEvent)
+  const [loading, setLoading] = useState(!serverEvent)
   const [activeTab, setActiveTab] = useState(0)
   // Ulubione na localStorage — bez kont. Zsynchronizowane z kartami i stroną /ulubione.
   const { isFavorite, toggleFavorite } = useFavorites()
 
   useEffect(() => {
+    // B31: dane przyszly z serwera, nie pobieramy drugi raz (tylko licznik wyswietlen)
+    if (serverEvent) {
+      trackView(serverEvent.id)
+      return
+    }
     async function load() {
       const data = await getEventWithDates(slug, isPreview)
       if (data) {
@@ -67,7 +74,7 @@ export default function MobileEventDetail({ slug }: { slug: string }) {
       setLoading(false)
     }
     load()
-  }, [slug, isPreview])
+  }, [slug, isPreview, serverEvent])
 
   const handleShare = async () => {
     if (navigator.share) await navigator.share({ title: event?.title, url: window.location.href })

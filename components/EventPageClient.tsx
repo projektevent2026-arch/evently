@@ -7,7 +7,7 @@ import EventSchedule from '@/components/EventSchedule'
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { getEventWithDates } from "@/lib/getEventWithDates"
+import { getEventWithDates, trackView } from "@/lib/getEventWithDates"
 import EventDatesList from "@/components/EventDatesList"
 import { EventCard, type EventData } from "@/components/event-card"
 import AddToCalendarButton from "@/components/AddToCalendarButton"
@@ -32,11 +32,13 @@ const EventMap = dynamic(() => import("@/components/event-map").then(m => m.Even
   ),
 })
 
-export default function EventPageClient({ slug }: { slug: string }) {
+export default function EventPageClient({ slug, initialEvent }: { slug: string; initialEvent?: any }) {
   const searchParams = useSearchParams()
   const isPreview = searchParams.get('preview') === '1'
-  const [event, setEvent] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  // B31: wydarzenie z serwera (bez podgladu) = brak szkieletu, dane od razu
+  const serverEvent = !isPreview && initialEvent ? initialEvent : null
+  const [event, setEvent] = useState<any>(serverEvent)
+  const [loading, setLoading] = useState(!serverEvent)
   const [activeTab, setActiveTab] = useState("details")
   const [similarEvents, setSimilarEvents] = useState<EventData[]>([])
   const [showPoster, setShowPoster] = useState(false)
@@ -44,7 +46,8 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
   useEffect(() => {
     async function fetchEvent() {
-      const data = await getEventWithDates(slug, isPreview)
+      if (serverEvent) trackView(serverEvent.id)
+      const data = serverEvent ?? await getEventWithDates(slug, isPreview)
       if (data) {
         setEvent(data)
         // 2026-10-08: "Podobne" = ta sama kategoria i/lub ta sama miejscowość, tylko wydarzenia z przyszłym
@@ -105,7 +108,7 @@ export default function EventPageClient({ slug }: { slug: string }) {
       setLoading(false)
     }
     fetchEvent()
-  }, [slug, isPreview])
+  }, [slug, isPreview, serverEvent])
 
   const handleShare = async () => {
     if (navigator.share) await navigator.share({ title: event?.title, url: window.location.href })
