@@ -2,11 +2,29 @@
 // Jedno miejsce prawdy: kod ISO 3166-1 alfa-2 zapisywany w events.country_code
 // i ten sam kod wysyłany do geokodera (/api/geocode?country=...).
 // Dodanie kraju = jedna linijka tutaj.
+//
+// Kolejność: Polska (domyślna), potem kraje, w których najczęściej odbywają się polskie
+// wydarzenia za granicą, na końcu reszta alfabetycznie. Każdy kod ISO działa też w geokoderze.
 export const COUNTRIES = [
     { code: "PL", name: "Polska" },
     { code: "DE", name: "Niemcy" },
+    { code: "BE", name: "Belgia" },
+    { code: "NL", name: "Holandia" },
     { code: "FR", name: "Francja" },
+    { code: "GB", name: "Wielka Brytania" },
+    { code: "AT", name: "Austria" },
+    { code: "CZ", name: "Czechy" },
+    { code: "DK", name: "Dania" },
+    { code: "ES", name: "Hiszpania" },
+    { code: "IE", name: "Irlandia" },
     { code: "LT", name: "Litwa" },
+    { code: "LV", name: "Łotwa" },
+    { code: "NO", name: "Norwegia" },
+    { code: "SK", name: "Słowacja" },
+    { code: "CH", name: "Szwajcaria" },
+    { code: "SE", name: "Szwecja" },
+    { code: "UA", name: "Ukraina" },
+    { code: "IT", name: "Włochy" },
   ] as const
   
   export const DEFAULT_COUNTRY: string = "PL"
