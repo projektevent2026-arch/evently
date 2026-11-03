@@ -237,7 +237,7 @@ export default function EventPageClient({ slug, initialEvent }: { slug: string; 
         }
       `}</style>
 
-      {isPreview && event.status !== 'published' && (
+      {isPreview && event.status !== 'published' && event.status !== 'archived' && (        
         <div style={{background:"#f59e0b",color:"#111827",fontSize:12,fontWeight:700,textAlign:"center",padding:"7px 0"}}>
           🔍 Podgląd administratora — status: {event.status}, jeszcze niepubliczne
         </div>

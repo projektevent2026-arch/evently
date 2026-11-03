@@ -386,13 +386,11 @@ export default function MojeWydarzenia() {
                 return (
                 <div key={event.id} className="ev-card" style={{ position: "relative", background: "#161616", border: "1px solid #262626", borderRadius: 12, padding: "1rem 1.1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   {target && (target.external ? (
-                    <a
-                      href={target.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`Otwórz: ${event.title}`}
-                      style={overlayStyle}
-                    />
+                                      <a
+                                      href={target.href}
+                                      aria-label={`Otwórz: ${event.title}`}
+                                      style={overlayStyle}
+                                    />
                   ) : (
                     <Link
                       href={target.href}

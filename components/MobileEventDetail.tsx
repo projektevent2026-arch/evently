@@ -171,7 +171,7 @@ export default function MobileEventDetail({ slug, initialEvent }: { slug: string
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pb-28">
 
-      {isPreview && event.status !== 'published' && (
+{isPreview && event.status !== 'published' && event.status !== 'archived' && (
         <div className="bg-amber-500 text-black text-[11px] font-bold text-center py-1.5">
           🔍 Podgląd administratora — status: {event.status}, jeszcze niepubliczne
         </div>
