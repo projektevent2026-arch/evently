@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type CSSProperties } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { revalidateHome } from "@/lib/revalidateHome"
 import { safeUrl } from "@/lib/safeUrl"
 import { normalizeCategory, CATEGORY_LABELS, type CategoryKey } from "@/lib/eventCategory"
-import { MapPin, Pencil, Plus, Trash2, User, Search, Eye, RotateCcw, Camera, Image as ImageIcon } from "lucide-react"
+import { MapPin, Pencil, Plus, Trash2, User, Search, RotateCcw, Camera, Image as ImageIcon } from "lucide-react"
 import GalleryUpload, { GALLERY_MAX } from "@/components/admin/GalleryUpload"
 
 // 2026-09-29: dociągnięte do poziomu panelu admina (szukaj/filtry/
@@ -26,6 +26,14 @@ import GalleryUpload, { GALLERY_MAX } from "@/components/admin/GalleryUpload"
 // 2026-10-21: przy zakończonym (zarchiwizowanym) wydarzeniu jest przycisk "Dodaj zdjęcia" —
 // organizator wkleja tu link do albumu (events.photos_url) bez wchodzenia w pełną edycję.
 // Link pokazuje się jako przycisk na stronie zakończonego wydarzenia.
+//
+// 2026-11-03: (1) cała karta wydarzenia jest klikalna (zamiast osobnego przycisku "Podgląd"):
+// opublikowane i zarchiwizowane otwierają stronę wydarzenia, szkice i oczekujące edycję, wydarzenia
+// w koszu nie są klikalne. Technicznie to niewidoczny link rozciągnięty na całą kartę (przyciski
+// i panele mają wyższą warstwę), bo przyciski wewnątrz linku to niepoprawny HTML.
+// (2) Elementy interfejsu nie dają się zaznaczać (noSelect): długie przytrzymanie zaznaczało słowo
+// i wysuwało panel wyszukiwania Google. Pola tekstowe i panele z polami zostają zwykłe.
+// (3) Potwierdzenie usunięcia we własnym oknie zamiast window.confirm.
 const STATUS_TABS = [
   { id: "all", label: "Wszystkie" },
   { id: "published", label: "Opublikowane" },
@@ -44,11 +52,38 @@ const CAT_PILLS: { id: "all" | CategoryKey; label: string }[] = [
   { id: "jedzenie", label: CATEGORY_LABELS.jedzenie },
 ]
 
+// Brak zaznaczania tekstu i systemowego menu przytrzymania na elementach interfejsu.
+// NIE stosować na polach tekstowych (iOS Safari potrafi wtedy zablokować pisanie).
+const noSelect: CSSProperties = {
+  userSelect: "none",
+  WebkitUserSelect: "none",
+  WebkitTouchCallout: "none",
+  WebkitTapHighlightColor: "transparent",
+}
+
+// Dokąd prowadzi dotknięcie karty. Wydarzenia w koszu nie są klikalne.
+function cardTarget(e: any): { href: string; external: boolean } | null {
+  if (e.deleted_at) return null
+  if (e.slug && (e.status === "published" || e.status === "archived")) {
+    return { href: `/events/${e.slug}`, external: true }
+  }
+  return { href: `/dodaj-wydarzenie?edit=${e.id}`, external: false }
+}
+
+const overlayStyle: CSSProperties = {
+  position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+  borderRadius: 12, zIndex: 1, WebkitTapHighlightColor: "transparent",
+}
+
 export default function MojeWydarzenia() {
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  // Okno potwierdzenia usunięcia (przeniesienia do kosza).
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; title: string } | null>(null)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
 
   const [search, setSearch] = useState("")
   const [statusTab, setStatusTab] = useState("all")
@@ -91,11 +126,21 @@ export default function MojeWydarzenia() {
     load()
   }, [])
 
+  // Escape zamyka okno potwierdzenia (o ile nie trwa właśnie usuwanie).
+  useEffect(() => {
+    if (!confirmDelete) return
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === "Escape" && !deletingId) setConfirmDelete(null)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [confirmDelete, deletingId])
+
   const fmtDate = (d: string) =>
     d ? new Date(d).toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" }) : "—"
 
   const norm = (s: string) =>
-    s.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    s.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[̀-ͯ]/g, "")
 
   const filtered = events
     .filter(e => statusTab === "trash" ? e.deleted_at !== null : e.deleted_at === null)
@@ -120,7 +165,10 @@ export default function MojeWydarzenia() {
   // nieudanym usunięciu wydarzenie zostawało BEZ dat i znikało ze strony
   // głównej. Teraz terminów nie ruszamy, a kosz czyści się sam po 30 dniach
   // (purge_trash). Z kosza można wydarzenie przywrócić.
-  async function setTrashed(id: string, trashed: boolean) {
+  //
+  // 2026-11-03: zwraca komunikat błędu (albo null przy sukcesie) zamiast sam go pokazywać, bo
+  // usunięcie pokazuje błąd w oknie potwierdzenia, a przywrócenie tak jak dotąd w alercie.
+  async function setTrashed(id: string, trashed: boolean): Promise<string | null> {
     setDeleteError(null)
     setDeletingId(id)
 
@@ -134,15 +182,21 @@ export default function MojeWydarzenia() {
     setDeletingId(null)
 
     if (error || !data || data.length === 0) {
-      const msg = "Nie udało się " + (trashed ? "usunąć" : "przywrócić") + " wydarzenia" + (error ? ": " + error.message : " — brak uprawnień do tego wydarzenia.")
-      setDeleteError(msg)
-      // Komunikat na górze listy łatwo przeoczyć, gdy kliknięto przycisk niżej.
-      window.alert(msg)
-      return
+      return "Nie udało się " + (trashed ? "usunąć" : "przywrócić") + " wydarzenia" + (error ? ": " + error.message : " — brak uprawnień do tego wydarzenia.")
     }
 
     setEvents(prev => prev.map(e => (e.id === id ? { ...e, deleted_at: deletedAt } : e)))
     revalidateHome()
+    return null
+  }
+
+  async function restoreEvent(id: string) {
+    const msg = await setTrashed(id, false)
+    if (msg) {
+      setDeleteError(msg)
+      // Komunikat na górze listy łatwo przeoczyć, gdy kliknięto przycisk niżej.
+      window.alert(msg)
+    }
   }
 
   function openPhotos(id: string, current: string | null) {
@@ -205,23 +259,38 @@ export default function MojeWydarzenia() {
   }
 
   function handleDelete(id: string, title: string) {
-    const confirmed = window.confirm(
-      `Przenieść „${title}" do kosza?\n\nWydarzenie zniknie ze strony. W koszu będzie przez 30 dni i możesz je stamtąd przywrócić.`
-    )
-    if (!confirmed) return
-    void setTrashed(id, true)
+    setConfirmError(null)
+    setConfirmDelete({ id, title })
   }
 
-  const pillStyle = (active: boolean) => ({
+  async function confirmTrash() {
+    if (!confirmDelete) return
+    setConfirmError(null)
+    const msg = await setTrashed(confirmDelete.id, true)
+    if (msg) {
+      setConfirmError(msg)
+      return
+    }
+    setConfirmDelete(null)
+  }
+
+  const pillStyle = (active: boolean): CSSProperties => ({
+    ...noSelect,
     padding: "5px 12px", borderRadius: 20, fontSize: "0.78rem", fontWeight: 600,
     cursor: "pointer", border: "1px solid " + (active ? "#16a34a" : "#333"),
     background: active ? "#16a34a" : "#1f1f1f", color: active ? "white" : "#9ca3af",
-    whiteSpace: "nowrap" as const,
+    whiteSpace: "nowrap",
   })
+
+  const confirming = confirmDelete !== null && deletingId === confirmDelete.id
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "white", fontFamily: "sans-serif" }}>
-      <header style={{ background: "#141414", borderBottom: "1px solid #262626", padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <style>{`
+        .ev-card { transition: background 0.12s; }
+        .ev-card:active { background: #1c1c1c !important; }
+      `}</style>
+      <header style={{ ...noSelect, background: "#141414", borderBottom: "1px solid #262626", padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
           <div style={{ width: 32, height: 32, borderRadius: 8, background: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <MapPin size={16} color="white" />
@@ -232,7 +301,7 @@ export default function MojeWydarzenia() {
       </header>
 
       <div style={{ maxWidth: 720, margin: "2rem auto", padding: "0 1rem", paddingBottom: "3rem" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", flexWrap: "wrap", gap: 10 }}>
+        <div style={{ ...noSelect, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", flexWrap: "wrap", gap: 10 }}>
           <h1 style={{ fontSize: "1.5rem", fontWeight: 800, margin: 0 }}>Moje wydarzenia</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Link href="/moje-wydarzenia/profil" title="Mój profil — jesteś zalogowany" style={{ display: "flex", alignItems: "center", gap: 6, background: "white", border: "1px solid #e5e7eb", color: "#374151", borderRadius: 10, padding: "0.5rem 1rem 0.5rem 0.5rem", fontWeight: 600, fontSize: "0.85rem", textDecoration: "none" }}>
@@ -303,17 +372,35 @@ export default function MojeWydarzenia() {
           </div>
         ) : (
           <>
-            <p style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 10 }}>
+            <p style={{ ...noSelect, fontSize: "0.8rem", color: "#6b7280", marginBottom: 10 }}>
               {filtered.length} z {events.length}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {filtered.map(event => (
-                <div key={event.id} style={{ background: "#161616", border: "1px solid #262626", borderRadius: 12, padding: "1rem 1.1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+              {filtered.map(event => {
+                const target = cardTarget(event)
+                return (
+                <div key={event.id} className="ev-card" style={{ position: "relative", background: "#161616", border: "1px solid #262626", borderRadius: 12, padding: "1rem 1.1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  {target && (target.external ? (
+                    <a
+                      href={target.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Otwórz: ${event.title}`}
+                      style={overlayStyle}
+                    />
+                  ) : (
+                    <Link
+                      href={target.href}
+                      aria-label={`Edytuj: ${event.title}`}
+                      style={overlayStyle}
+                    />
+                  ))}
+                  <div style={{ ...noSelect, display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
                     {event.cover_image_url || event.image_url ? (
                       <img
                         src={event.cover_image_url || event.image_url}
                         alt=""
+                        draggable={false}
                         style={{ width: 56, height: 56, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "#1f1f1f" }}
                       />
                     ) : (
@@ -333,21 +420,11 @@ export default function MojeWydarzenia() {
                       )}
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", maxWidth: "100%" }}>
-                    {event.slug && !event.deleted_at && event.status === "published" && (
-                      <a
-                        href={`/events/${event.slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f1f1f", border: "1px solid #333", color: "white", borderRadius: 8, padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, textDecoration: "none" }}
-                      >
-                        <Eye size={14} /> Podgląd
-                      </a>
-                    )}
+                  <div style={{ ...noSelect, position: "relative", zIndex: 2, display: "flex", gap: 8, flexWrap: "wrap", maxWidth: "100%" }}>
                     {event.deleted_at ? (
                       <button
                         type="button"
-                        onClick={() => setTrashed(event.id, false)}
+                        onClick={() => restoreEvent(event.id)}
                         disabled={deletingId === event.id}
                         style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f1f1f", border: "1px solid #14532d", color: "#22c55e", borderRadius: 8, padding: "0.5rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, cursor: deletingId === event.id ? "not-allowed" : "pointer", opacity: deletingId === event.id ? 0.6 : 1 }}
                       >
@@ -389,7 +466,7 @@ export default function MojeWydarzenia() {
                     )}
                   </div>
                   {galleryEditId === event.id && !event.deleted_at && (
-                    <div style={{ width: "100%", borderTop: "1px solid #262626", paddingTop: 12 }}>
+                    <div style={{ position: "relative", zIndex: 2, width: "100%", borderTop: "1px solid #262626", paddingTop: 12 }}>
                       <p style={{ fontSize: "0.8rem", color: "#9ca3af", margin: "0 0 10px" }}>
                         Zdjęcia z wydarzenia (do {GALLERY_MAX}). Zmiany zapisują się od razu. Wgrywaj tylko zdjęcia, do których masz prawa, i unikaj zdjęć z wyraźnie widocznymi twarzami osób prywatnych bez ich zgody.
                       </p>
@@ -402,7 +479,7 @@ export default function MojeWydarzenia() {
                     </div>
                   )}
                   {photosEditId === event.id && !event.deleted_at && (
-                    <div style={{ width: "100%", borderTop: "1px solid #262626", paddingTop: 12 }}>
+                    <div style={{ position: "relative", zIndex: 2, width: "100%", borderTop: "1px solid #262626", paddingTop: 12 }}>
                       <label htmlFor={`photos-${event.id}`} style={{ display: "block", fontSize: "0.8rem", color: "#9ca3af", marginBottom: 6 }}>
                         Link do zdjęć z wydarzenia (album na Facebooku, Google Photos itp.). Pusty zapis usuwa link.
                       </label>
@@ -434,11 +511,60 @@ export default function MojeWydarzenia() {
                     </div>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           </>
         )}
       </div>
+
+      {/* Potwierdzenie usunięcia: własne okno zamiast systemowego confirm() */}
+      {confirmDelete && (
+        <div
+          onClick={() => { if (!confirming) setConfirmDelete(null) }}
+          style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-trash-title"
+            onClick={e => e.stopPropagation()}
+            style={{ ...noSelect, background: "#161616", border: "1px solid #262626", borderRadius: 16, padding: "1.25rem", maxWidth: 420, width: "100%" }}
+          >
+            <h2 id="confirm-trash-title" style={{ fontSize: "1.05rem", fontWeight: 800, margin: "0 0 10px" }}>
+              Przenieść do kosza?
+            </h2>
+            <p style={{ margin: "0 0 8px", fontWeight: 600, color: "#e5e7eb", overflowWrap: "anywhere" }}>
+              „{confirmDelete.title}”
+            </p>
+            <p style={{ margin: "0 0 16px", fontSize: "0.85rem", color: "#9ca3af", lineHeight: 1.5 }}>
+              Wydarzenie zniknie ze strony. W koszu będzie przez 30 dni i możesz je stamtąd przywrócić.
+            </p>
+            {confirmError && (
+              <p style={{ color: "#ef4444", fontSize: "0.82rem", margin: "0 0 12px" }}>{confirmError}</p>
+            )}
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setConfirmDelete(null)}
+                disabled={confirming}
+                style={{ background: "#1f1f1f", border: "1px solid #333", color: "white", borderRadius: 10, padding: "0.65rem 1.1rem", fontSize: "0.88rem", fontWeight: 700, cursor: confirming ? "not-allowed" : "pointer" }}
+              >
+                Anuluj
+              </button>
+              <button
+                type="button"
+                onClick={confirmTrash}
+                disabled={confirming}
+                style={{ background: "#b91c1c", border: "1px solid #7f1d1d", color: "white", borderRadius: 10, padding: "0.65rem 1.1rem", fontSize: "0.88rem", fontWeight: 700, cursor: confirming ? "not-allowed" : "pointer", opacity: confirming ? 0.6 : 1 }}
+              >
+                {confirming ? "Przenoszenie..." : "Przenieś do kosza"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
