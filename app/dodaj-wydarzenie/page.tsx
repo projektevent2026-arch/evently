@@ -537,6 +537,14 @@ if (validDates.some(d => !d.from)) {
   return
 }
 
+// B34 (2026-11-02): nowe wydarzenie musi mieć pinezkę. Bez niej wydarzenie trafiało na listę bez
+// odległości i pokazywało się w każdym mieście. Przy edycji nie wymagamy, żeby nie blokować starych.
+if (!editId && (!form.latitude || !form.longitude)) {
+  setError("Brak pinezki. Wejdź w zakładkę Lokalizacja, wpisz adres i kliknij „Znajdź” albo dotknij mapy.")
+  setActiveTab("location")
+  return
+}
+
 // Walidacja: telefon do rezerwacji (opcjonalny). Jeśli podany, musi mieć poprawny format
 // i zaznaczone oświadczenie, że organizator ma prawo go publicznie podać.
 if (form.reservation_phone.trim()) {
@@ -864,6 +872,7 @@ try {
 
           <form onSubmit={handleSubmit} style={{padding:"1.75rem",display:"flex",flexDirection:"column",gap:"1.25rem"}}>
 
+          {error && activeTab !== "media" && <p style={{color:"#ef4444",fontSize:"0.875rem",margin:"0 0 0.75rem"}}>{error}</p>}
             {activeTab === "basic" && <>
               <div>
                 <div style={{marginBottom:8}}>
