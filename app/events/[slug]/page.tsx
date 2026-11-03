@@ -77,9 +77,18 @@ export async function generateMetadata(
 }
 
 export default async function EventPage(
-  { params }: { params: Promise<{ slug: string }> }
+  { params, searchParams }: {
+    params: Promise<{ slug: string }>
+    searchParams: Promise<{ preview?: string | string[] }>
+  }
 ) {
   const { slug } = await params
+  // 2026-11-03: ?preview=1 przy zakończonym wydarzeniu pokazuje PEŁNĄ stronę (terminy, mapa, cena)
+  // zamiast widoku "zakończone". Używa tego karta archiwalnego wydarzenia w Moich wydarzeniach.
+  // Dane archiwalnych wydarzeń i tak są publiczne (polityka SELECT: published + archived), więc to
+  // niczego nie ujawnia. Wyszukiwarki dalej dostają noindex (generateMetadata dla stanu "ended").
+  const { preview } = await searchParams
+  const isPreview = preview === "1"
   // 2026-11-02 (B31): pełne dane wydarzenia (terminy, profil organizatora) pobieramy na serwerze,
   // RÓWNOLEGLE z wąskim zapytaniem do metadanych, żeby nie wydłużać odpowiedzi o drugi krok.
   // loadEvent zwraca null dla niepublikowanych i usuniętych, a gdy cokolwiek pójdzie nie tak,
@@ -89,7 +98,9 @@ export default async function EventPage(
     loadEvent(supabase, slug, false),
   ])
 
-  if (event && eventState(event) === "ended") {
+  const ended = !!event && eventState(event) === "ended"
+
+  if (ended && !isPreview) {
     // Ten sam widok co lista na stronie głównej: tylko opublikowane i jeszcze nie zakończone terminy.
     const { data: upcoming } = await supabase
       .from("published_events_with_next_date")
@@ -100,6 +111,8 @@ export default async function EventPage(
     return <EndedEvent title={event.title} city={event.city} upcoming={upcoming ?? []} photosUrl={safeUrl(event.photos_url)} />
   }
 
-  const initialEvent = event && eventState(event) !== "hidden" ? fullEvent : null
-  return <EventDetailWrapper slug={slug} initialEvent={initialEvent} />
+  // Dla zakończonego wydarzenia w podglądzie nie przekazujemy danych z serwera (loadEvent zwraca
+  // tylko opublikowane): komponenty pobiorą je w przeglądarce w trybie podglądu.
+  const initialEvent = event && !ended && eventState(event) !== "hidden" ? fullEvent : null
+  return <EventDetailWrapper slug={slug} initialEvent={initialEvent} endedPreview={ended} />
 }

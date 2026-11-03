@@ -62,10 +62,15 @@ const noSelect: CSSProperties = {
 }
 
 // Dokąd prowadzi dotknięcie karty. Wydarzenia w koszu nie są klikalne.
+// Zarchiwizowane otwierają pełną stronę w trybie podglądu (?preview=1),
+// bo bez tego zwykły link pokazuje innym tylko ekran "Wydarzenie zakończone".
 function cardTarget(e: any): { href: string; external: boolean } | null {
   if (e.deleted_at) return null
-  if (e.slug && (e.status === "published" || e.status === "archived")) {
+  if (e.slug && e.status === "published") {
     return { href: `/events/${e.slug}`, external: true }
+  }
+  if (e.slug && e.status === "archived") {
+    return { href: `/events/${e.slug}?preview=1`, external: true }
   }
   return { href: `/dodaj-wydarzenie?edit=${e.id}`, external: false }
 }
