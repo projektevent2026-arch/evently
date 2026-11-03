@@ -678,7 +678,11 @@ try {
   // Nowe wydarzenie — formularz publiczny (status pending, source public)
   // albo organizator dodający coś nowego (status published od razu,
   // source organizer, created_by ustawiony żeby mógł to później edytować).
+    // B17/B8: id nadajemy sami, bo po zawężeniu polityki SELECT anonim nie odczyta własnego, jeszcze
+  // oczekującego wiersza, więc zapis z .select("id") przestałby działać.
+  const newEventId = crypto.randomUUID()
   const insertEvent = () => supabase.from("events").insert([{
+    id: newEventId,
     title: form.title,
     slug: generateSlug(form.title),
     description: form.description || null,
@@ -709,9 +713,9 @@ try {
     status: isOrganizer ? "published" : "pending",
     source: isOrganizer ? "organizer" : "public",
     created_by: userId || null,
-  }]).select("id").single()
+  }])
 
-  let { data: savedEvent, error: supabaseError } = await insertEvent()
+  let { error: supabaseError } = await insertEvent()
 
   // 2026-09-27: slug ma wbudowany znacznik czasu w milisekundach
   // (generateSlug), więc realne zderzenie jest praktycznie niemożliwe —
@@ -721,7 +725,7 @@ try {
   // znacznik czasu prawie na pewno będzie inny). Kod 23505 = Postgres
   // unique_violation.
   if (supabaseError?.code === "23505") {
-    ;({ data: savedEvent, error: supabaseError } = await insertEvent())
+    ;({ error: supabaseError } = await insertEvent())
   }
 
     if (supabaseError) {
@@ -734,9 +738,9 @@ try {
       return
     }
 
-    if (savedEvent?.id) {
+    if (newEventId) {
       const rows = sortedDates.map(d => ({
-        event_id: savedEvent.id,
+        event_id: newEventId,
         date: d.date,
         start_time: d.from || null,
         end_time: d.to || null,
@@ -753,7 +757,7 @@ try {
       if (form.organizer_email.trim()) {
         const { error: contactError } = await supabase
           .from("event_contacts")
-          .insert({ event_id: savedEvent.id, email: form.organizer_email.trim() })
+          .insert({ event_id: newEventId, email: form.organizer_email.trim() })
         if (contactError) console.error("[Evently] Nie udało się zapisać e-maila kontaktowego:", contactError.message)
       }
     }
