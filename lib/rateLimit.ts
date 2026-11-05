@@ -1,4 +1,5 @@
 import "server-only"
+import { createHmac } from "node:crypto"
 import { Ratelimit } from "@upstash/ratelimit"
 import { Redis } from "@upstash/redis"
 
@@ -18,11 +19,20 @@ import { Redis } from "@upstash/redis"
 //   całej apki (jeden shared rate limit na cały serwis), więc limit
 //   luźniejszy, ale jest.
 //
+// 2026-11-04: dwa limity wgrywania zdjęć (/api/upload-url):
+// - uploadAnonLimit: bez konta, po SKRÓCIE adresu IP (hashKey), nie po
+//   surowym IP (RODO: mniej danych osobowych w Redisie).
+// - uploadUserLimit: zalogowany, po identyfikatorze konta (IP w ogóle
+//   nie jest potrzebne).
+//
 // Wymaga darmowego konta na upstash.com (Redis), dwóch zmiennych w
 // .env.local i na Vercelu:
 //   UPSTASH_REDIS_REST_URL=...
 //   UPSTASH_REDIS_REST_TOKEN=...
 // oraz pakietów: npm install @upstash/ratelimit @upstash/redis
+// Opcjonalnie RATE_LIMIT_SALT (dowolny długi losowy ciąg) — klucz do
+// skrótu IP. Bez niego używany jest SUPABASE_SERVICE_ROLE_KEY (też tajny,
+// nigdy nie opuszcza serwera).
 // ============================================================
 
 const redis = Redis.fromEnv()
@@ -44,9 +54,37 @@ export const geocodeRateLimit = new Ratelimit({
   prefix: "ratelimit:geocode",
 })
 
+// Wgrywanie zdjęć bez konta. 20/h na adres: operatorzy komórkowi dzielą
+// jeden adres IP między wielu użytkowników, więc zbyt ciasny limit
+// blokowałby uczciwych. Zwykła osoba wgrywa 1 do 3 plików.
+export const uploadAnonLimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(20, "1 h"),
+  prefix: "ratelimit:upload-anon",
+})
+
+// Wgrywanie zdjęć przez zalogowanego organizatora. Jedno wydarzenie to
+// maks. 8 plików (okładka, plakat, 6 zdjęć w galerii), więc 200 na dobę
+// wystarcza na ok. 25 wydarzeń z pełną galerią dodanych jednego dnia.
+export const uploadUserLimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(200, "1 d"),
+  prefix: "ratelimit:upload-user",
+})
+
 /** Adres IP wywołującego, z nagłówków, które Vercel realnie ustawia. */
 export function getClientIp(req: Request): string {
   const fwd = req.headers.get("x-forwarded-for")
   if (fwd) return fwd.split(",")[0].trim()
   return req.headers.get("x-real-ip") || "unknown"
+}
+
+/**
+ * Skrót (HMAC-SHA256) wartości, np. adresu IP, do użycia jako klucz w
+ * limiterze zamiast surowego adresu. To pseudonimizacja, nie anonimizacja,
+ * ale z Redisa nie da się odczytać adresu bez klucza.
+ */
+export function hashKey(value: string): string {
+  const secret = process.env.RATE_LIMIT_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY || "evently"
+  return createHmac("sha256", secret).update(value).digest("hex").slice(0, 32)
 }

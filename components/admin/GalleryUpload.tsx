@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { uploadEventImage } from '@/lib/uploadImage'
 
 // Galeria zdjęć wydarzenia: do 6 sztuk, kompresja do WebP przed wysłaniem (tak samo jak ImageUpload),
 // usuwanie i zmiana kolejności. Komponent jest sterowany z zewnątrz: dostaje listę adresów (value)
@@ -53,12 +53,6 @@ async function compressToWebP(file: File): Promise<{ blob: Blob; ext: string }> 
   const jpeg = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/jpeg', 0.85))
   if (!jpeg) throw new Error('Kompresja nieudana')
   return { blob: jpeg, ext: 'jpg' }
-}
-
-function extFromType(type: string): string {
-  if (type === 'image/png') return 'png'
-  if (type === 'image/webp') return 'webp'
-  return 'jpg'
 }
 
 interface GalleryUploadProps {
@@ -117,11 +111,9 @@ export default function GalleryUpload({ value, onChange, max = GALLERY_MAX, dark
         if (file.size > MAX_FILE_BYTES) { problems.push(`${file.name}: większe niż 15 MB`); continue }
 
         let blob: Blob
-        let ext: string
         try {
           const r = await withTimeout(compressToWebP(file), COMPRESSION_TIMEOUT_MS, 'Kompresja trwała zbyt długo.')
           blob = r.blob
-          ext = r.ext
         } catch (err) {
           console.warn('[Evently] Galeria: kompresja nieudana, próbuję oryginału:', err)
           if (!ALLOWED_ORIGINAL_TYPES.includes(file.type)) {
@@ -129,18 +121,13 @@ export default function GalleryUpload({ value, onChange, max = GALLERY_MAX, dark
             continue
           }
           blob = file
-          ext = extFromType(file.type)
         }
 
-        const fileName = `event_${crypto.randomUUID()}.${ext}`
+        // Wgranie przez podpisany adres z /api/upload-url (limit wgrań, nazwę pliku ustala serwer).
         let up
         try {
           up = await withTimeout(
-            supabase.storage.from('event-images').upload(fileName, blob, {
-              upsert: false,
-              contentType: blob.type || file.type,
-              cacheControl: '31536000',
-            }),
+            uploadEventImage(blob, blob.type || file.type),
             UPLOAD_TIMEOUT_MS,
             'Wysyłanie trwało zbyt długo.'
           )
@@ -148,10 +135,9 @@ export default function GalleryUpload({ value, onChange, max = GALLERY_MAX, dark
           problems.push(`${file.name}: wysyłanie trwało zbyt długo (sprawdź połączenie)`)
           continue
         }
-        if (up.error) { problems.push(`${file.name}: ${up.error.message}`); continue }
+        if ('error' in up) { problems.push(`${file.name}: ${up.error}`); continue }
 
-        const { data: urlData } = supabase.storage.from('event-images').getPublicUrl(up.data.path)
-        const next = [...current, urlData.publicUrl]
+        const next = [...current, up.url]
         const ok = await commit(next)
         if (!ok) { problems.push(`${file.name}: nie udało się zapisać zdjęcia w wydarzeniu`); break }
         current = next

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
+import { uploadEventImage } from '@/lib/uploadImage'
 
 interface ImageUploadProps {
   onUploadComplete: (url: string) => void
@@ -103,30 +103,22 @@ export default function ImageUpload({ onUploadComplete, currentUrl }: ImageUploa
       // nigdy nie wywoła callbacku toBlob (znany problem w niektórych WebView),
       // po COMPRESSION_TIMEOUT_MS lecimy do fallbacku zamiast wisieć w nieskończoność.
       let blob: Blob
-      let ext: string
       try {
         const result = await withTimeout(compressToWebP(file), COMPRESSION_TIMEOUT_MS)
         blob = result.blob
-        ext = result.ext
       } catch (compressErr) {
         console.warn('[Evently] Kompresja nieudana/timeout, wysyłam oryginał bez kompresji:', compressErr)
         blob = file
-        ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
         setInfo('Kompresja niedostępna w tej przeglądarce — wysyłam oryginalne zdjęcie (może być wolniej).')
       }
 
-      // 2) Upload skompresowanego (albo oryginału, jeśli krok 1 zawiódł) —
-      // też z limitem czasu. Duży oryginał na słabym mobilnym łączu (fallback
-      // z kroku 1) mógłby wisieć bardzo długo bez żadnego komunikatu.
-      const fileName = `event_${crypto.randomUUID()}.${ext}`
+      // 2) Upload skompresowanego (albo oryginału, jeśli krok 1 zawiódł) przez
+      // podpisany adres z /api/upload-url (limit wgrań, nazwę pliku ustala serwer).
+      // Też z limitem czasu: duży oryginał na słabym łączu mógłby wisieć bardzo długo.
       let uploadResult
       try {
         uploadResult = await withTimeout(
-          supabase.storage.from('event-images').upload(fileName, blob, {
-            upsert: false,
-            contentType: blob.type || file.type,
-            cacheControl: '31536000', // 1 rok — plakaty się nie zmieniają
-          }),
+          uploadEventImage(blob, blob.type || file.type),
           UPLOAD_TIMEOUT_MS
         )
       } catch (uploadTimeoutErr) {
@@ -134,24 +126,19 @@ export default function ImageUpload({ onUploadComplete, currentUrl }: ImageUploa
         setUploading(false)
         return
       }
-      const { data, error: uploadError } = uploadResult
 
-      if (uploadError) {
-        setError('Upload nieudany: ' + uploadError.message)
+      if ('error' in uploadResult) {
+        setError(uploadResult.error)
         setUploading(false)
         return
       }
-
-      const { data: urlData } = supabase.storage
-        .from('event-images')
-        .getPublicUrl(data.path)
 
       const kb = (n: number) => Math.round(n / 1024)
       if (blob !== (file as Blob)) {
         setInfo(`Skompresowano: ${kb(before)} kB → ${kb(blob.size)} kB`)
       }
 
-      onUploadComplete(urlData.publicUrl)
+      onUploadComplete(uploadResult.url)
     } catch (err: any) {
       console.error('[Evently] Kompresja/upload nieudany:', err)
       setError('Nie udało się przetworzyć zdjęcia. Spróbuj innego pliku.')

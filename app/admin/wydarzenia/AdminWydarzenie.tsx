@@ -1,5 +1,6 @@
 "use client"
 
+import { uploadEventImage } from "@/lib/uploadImage"
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -415,16 +416,10 @@ export default function AdminWydarzenie({ eventId }: { eventId?: string }) {
     // żeby zeskanowany plakat automatycznie stał się plakatem/zdjęciem eventu
     const uploadPromise = (async () => {
       try {
-        const ext = file.name.split(".").pop() || "jpg"
-        const fileName = `event_${crypto.randomUUID()}.${ext}`
-        const { data, error: uploadError } = await supabase.storage
-          .from("event-images")
-          .upload(fileName, file, { upsert: false })
-        if (uploadError || !data) return null
-        const { data: urlData } = supabase.storage
-          .from("event-images")
-          .getPublicUrl(data.path)
-        return urlData.publicUrl
+        // Dozwolone tylko jpeg/png/webp (tak jak w buckecie); inny typ = brak wgrania, skan i tak działa.
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return null
+        const res = await uploadEventImage(file, file.type)
+        return "url" in res ? res.url : null
       } catch {
         return null
       }
