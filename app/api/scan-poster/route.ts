@@ -62,6 +62,33 @@ function deriveStartEnd(dates: any[]): { start_date: string | null; start_time: 
   }
 }
 
+// Odczyt JSON-a z odpowiedzi modelu. Model czasem (1) dopisuje zdanie przed lub po JSON-ie,
+// (2) zamienia cudzysłów typograficzny z plakatu na prosty " wewnątrz wartości tekstowej,
+// co psuje JSON (np. tytuł: „Zadbaj o zdrowie z Cardiovitą"). Wycinamy tekst od pierwszego "{"
+// do ostatniego "}", a przy błędzie naprawiamy cudzysłowy WEWNĄTRZ wartości w liniach
+// "klucz": "wartość" (model zwraca jedno pole w linii). Przy innym błędzie rzucamy wyjątek jak dotąd.
+function parseModelJson(raw: string): any {
+  const clean = raw.replace(/```json|```/g, '').trim()
+  const start = clean.indexOf('{')
+  const end = clean.lastIndexOf('}')
+  const body = start >= 0 && end > start ? clean.slice(start, end + 1) : clean
+  try {
+    return JSON.parse(body)
+  } catch {
+    const repaired = body
+      .split('\n')
+      .map(line => {
+        const m = line.match(/^(\s*"[^"]+"\s*:\s*")(.*)("\s*,?\s*)$/)
+        if (!m) return line
+        const inner = m[2].replace(/(?<!\\)"/g, '”')
+        return m[1] + inner + m[3]
+      })
+      .join('\n')
+    return JSON.parse(repaired)
+  }
+}
+
+
 export async function POST(req: NextRequest) {
   if (!isAllowedOrigin(req)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -162,6 +189,11 @@ Przeanalizuj ten plakat wydarzenia i wyciągnij informacje. Odpowiedz TYLKO w fo
   ]
 }
 
+═══ CUDZYSŁOWY W TEKŚCIE ═══
+- Wewnątrz wartości tekstowych NIGDY nie używaj prostego znaku " (psuje JSON). Cudzysłowy z plakatu zapisuj typograficznie: „ na początku i ” na końcu.
+- Przykład: z plakatu „Zadbaj o zdrowie z Cardiovitą" zapisz jako „Zadbaj o zdrowie z Cardiovitą” (ostatni znak to ” a nie ").
+- Jeśli nie możesz użyć znaków typograficznych, zamień cudzysłowy na apostrof '.
+
 ═══ MIASTO vs NAZWA MIEJSCA — częsty błąd ═══
 To są DWA RÓŻNE pola, nie wpisuj tego samego w oba:
 - "city" = nazwa miejscowości tak, jak jest na plakacie (w Polsce albo za granicą): Suwałki, Radziłów, Przerośl, Bübingen. Same nazwy miejscowości, bez kodu pocztowego i bez nazwy kraju.
@@ -259,8 +291,7 @@ Jeśli na plakacie nie ma żadnego programu ani listy atrakcji, zwróć "schedul
   }
 
   try {
-    const clean = text.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(clean)
+    const parsed = parseModelJson(text)
 
     // Pas bezpieczeństwa: podbij rok każdej daty, jeśli AI mimo wszystko
     // zwróciło przeszłość (może się zdarzyć osobno dla każdego wpisu).
