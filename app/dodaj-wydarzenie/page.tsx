@@ -93,6 +93,32 @@ type DuplicateCandidate = {
   cover_image_url: string | null
 }
 
+function DuplicatePreview({ slug, title }: { slug: string; title: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}
+        style={{fontSize:"0.85rem",fontWeight:600,color:"#16a34a",background:"none",border:"none",cursor:"pointer",whiteSpace:"nowrap",padding:"0.4rem 0.2rem"}}>
+        Podgląd
+      </button>
+      {open && (
+        <div role="dialog" aria-modal="true" aria-label={`Podgląd: ${title}`}
+          style={{position:"fixed",inset:0,zIndex:9999,background:"white",display:"flex",flexDirection:"column"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"0.6rem 0.8rem",borderBottom:"1px solid #e5e7eb",background:"white"}}>
+            <span style={{fontWeight:600,fontSize:"0.9rem",color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</span>
+            <button type="button" onClick={() => setOpen(false)}
+              style={{padding:"0.5rem 0.9rem",background:"#16a34a",color:"white",border:"none",borderRadius:8,cursor:"pointer",fontWeight:600,fontSize:"0.85rem",flexShrink:0}}>
+              Zamknij
+            </button>
+          </div>
+          <iframe src={`/events/${slug}`} title={`Podgląd: ${title}`}
+            style={{flex:1,width:"100%",border:"none"}} />
+        </div>
+      )}
+    </>
+  )
+}
+
 function normalizeTitle(s: string): string {
   return s
     .toLowerCase()
@@ -1345,10 +1371,7 @@ try {
                               {[d.city, d.venue_name].filter(Boolean).join(" · ")}
                             </div>
                           </div>
-                          <a href={`/events/${d.slug}`} target="_blank" rel="noopener noreferrer"
-                            style={{fontSize:"0.85rem",fontWeight:600,color:"#16a34a",textDecoration:"none",whiteSpace:"nowrap",padding:"0.4rem 0.2rem"}}>
-                            Zobacz ↗
-                          </a>
+                          <DuplicatePreview slug={d.slug} title={d.title} />
                         </div>
                       )
                     })}
