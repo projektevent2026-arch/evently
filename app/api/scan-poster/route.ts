@@ -67,6 +67,7 @@ function deriveStartEnd(dates: any[]): { start_date: string | null; start_time: 
 // co psuje JSON (np. tytuł: „Zadbaj o zdrowie z Cardiovitą"). Wycinamy tekst od pierwszego "{"
 // do ostatniego "}", a przy błędzie naprawiamy cudzysłowy WEWNĄTRZ wartości w liniach
 // "klucz": "wartość" (model zwraca jedno pole w linii). Przy innym błędzie rzucamy wyjątek jak dotąd.
+
 function parseModelJson(raw: string): any {
   const clean = raw.replace(/```json|```/g, '').trim()
   const start = clean.indexOf('{')
@@ -75,6 +76,7 @@ function parseModelJson(raw: string): any {
   try {
     return JSON.parse(body)
   } catch {
+    // Naprawa 1: linie "klucz": "wartość" (jedno pole w linii).
     const repaired = body
       .split('\n')
       .map(line => {
@@ -84,7 +86,12 @@ function parseModelJson(raw: string): any {
         return m[1] + inner + m[3]
       })
       .join('\n')
-    return JSON.parse(repaired)
+    try {
+      return JSON.parse(repaired)
+    } catch {
+      // Naprawa 2: obiekty w jednej linii (punkty programu): „tekst" -> „tekst”
+      return JSON.parse(repaired.replace(/„([^„”"\n]*)"/g, '„$1”'))
+    }
   }
 }
 
@@ -266,7 +273,11 @@ Plakaty często mają ozdobne, stylizowane czcionki, w których łatwo pomylić 
 - Jeśli plakat NIE podaje roku (np. tylko "25 lipca"), wybierz NAJBLIŻSZĄ PRZYSZŁĄ datę względem ${todayISO}. Zwykle rok ${currentYear} lub ${currentYear + 1}.
 - start_date NIGDY nie może być wcześniejsze niż ${todayISO}.
 
-Jeśli na plakacie nie ma żadnego programu ani listy atrakcji, zwróć "schedule": [].`,
+Jeśli na plakacie nie ma żadnego programu ani listy atrakcji, zwróć "schedule": [].
+
+ZASADY FORMATU JSON (bardzo ważne):
+- W wartościach tekstowych NIGDY nie używaj prostego cudzysłowu ". Nazwy w cudzysłowie z plakatu zapisuj jako „tak” (dolny „ i górny ”) albo pomiń cudzysłów. Prosty cudzysłów psuje JSON.
+- Nie wstawiaj znaków nowej linii wewnątrz wartości tekstowych.`,
             },
           ],
         },
