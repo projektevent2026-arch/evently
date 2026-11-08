@@ -334,8 +334,8 @@ ZASADY FORMATU JSON (bardzo ważne):
     parsed.end_time = derived.end_time
 
     return NextResponse.json(parsed)
-  } catch {
-    console.error('JSON parse error:', text)
+  } catch (e) {
+    console.error('Scan error:', e instanceof Error ? e.message : e, '| odpowiedz modelu:', text)
     return NextResponse.json({ error: 'Nie udało się przeanalizować plakatu' }, { status: 400 })
   }
 }
