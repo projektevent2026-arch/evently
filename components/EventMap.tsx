@@ -322,6 +322,95 @@ export default function EventMap() {
     })
   }, [userPosition, urlCenter, mapReady])
 
+
+  // B40: przycisk "Pokaż moją pozycję na mapie" (kontrolka Leaflet nad +/−).
+  // Tylko centruje mapę i pokazuje niebieską kropkę. Celowo NIE ustawia userPosition
+  // ani lat/lng w adresie, bo to włączałoby filtr promienia i zmieniało liczbę wydarzeń.
+  const myPosMarkerRef = useRef<any>(null)
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map || !mapReady) return
+    let control: any = null
+    let cancelled = false
+    const iconSvg = (color: string) =>
+      `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1.8" fill="${color}"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>`
+
+    import('leaflet').then(({ default: L }) => {
+      if (cancelled) return
+      const Ctl = (L.Control as any).extend({
+        onAdd() {
+          const box = L.DomUtil.create('div', 'leaflet-bar leaflet-control')
+          const btn = L.DomUtil.create('a', 'leaflet-control-zoom-in', box) as HTMLAnchorElement
+          btn.href = '#'
+          btn.setAttribute('role', 'button')
+          btn.setAttribute('aria-label', 'Pokaż moją pozycję na mapie')
+          btn.setAttribute('aria-pressed', 'false')
+          btn.title = 'Pokaż moją pozycję na mapie'
+          btn.style.display = 'flex'
+          btn.style.alignItems = 'center'
+          btn.style.justifyContent = 'center'
+          btn.innerHTML = iconSvg('#15803d')
+
+          const setPressed = (on: boolean) => {
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false')
+            btn.style.background = on ? '#16a34a' : ''
+            btn.innerHTML = iconSvg(on ? '#ffffff' : '#15803d')
+          }
+          const showMessage = (text: string) => {
+            L.popup().setLatLng(map.getCenter()).setContent(text).openOn(map)
+          }
+
+          let busy = false
+          L.DomEvent.disableClickPropagation(box)
+          L.DomEvent.on(btn, 'click', (ev: any) => {
+            L.DomEvent.preventDefault(ev)
+            if (busy) return
+            // Drugie dotknięcie wyłącza kropkę.
+            if (myPosMarkerRef.current) {
+              myPosMarkerRef.current.remove()
+              myPosMarkerRef.current = null
+              setPressed(false)
+              return
+            }
+            if (!navigator.geolocation) {
+              showMessage('Ta przeglądarka nie obsługuje lokalizacji.')
+              return
+            }
+            busy = true
+            navigator.geolocation.getCurrentPosition(
+              pos => {
+                busy = false
+                const { latitude: lat, longitude: lng } = pos.coords
+                const icon = L.divIcon({
+                  html: '<div style="width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid white;box-shadow:0 0 0 4px rgba(37,99,235,0.3)"></div>',
+                  className: '', iconSize: [16, 16], iconAnchor: [8, 8],
+                })
+                myPosMarkerRef.current = L.marker([lat, lng], { icon, interactive: false }).addTo(map)
+                map.flyTo([lat, lng], 14, { duration: 1.2 })
+                setPressed(true)
+              },
+              () => {
+                busy = false
+                showMessage('Nie udało się ustalić pozycji. Włącz lokalizację i zezwól na dostęp w ustawieniach przeglądarki.')
+              },
+              { timeout: 10000, maximumAge: 30000, enableHighAccuracy: true },
+            )
+          })
+          return box
+        },
+      })
+      control = new Ctl({ position: 'bottomright' })
+      control.addTo(map)
+    })
+
+    return () => {
+      cancelled = true
+      control?.remove()
+      myPosMarkerRef.current?.remove()
+      myPosMarkerRef.current = null
+    }
+  }, [mapReady])
+
   const categories = ['kultura', 'muzyka', 'sport', 'festyny', 'targi', 'jedzenie']
 
   function updateParams(updates: Record<string, string | null>) {
