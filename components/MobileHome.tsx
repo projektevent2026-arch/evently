@@ -551,6 +551,33 @@ export function MobileHome({ initialEvents }: { initialEvents?: Event[] }) {
     loadEvents()
   }, [router, loadEvents])
 
+
+  // Powrót do aplikacji po dłuższej przerwie (PWA w tle): ciche odświeżenie listy,
+  // żeby nie pokazywać wydarzeń, które się skończyły lub zostały usunięte, i żeby
+  // plakietki "DZIŚ"/"JUTRO" przeliczyły się od nowa. Bez spinnera; przy błędzie
+  // zostaje dotychczasowa lista.
+  const hiddenAtRef = useRef<number | null>(null)
+  useEffect(() => {
+    const STALE_MS = 5 * 60 * 1000
+    const onVisibilityChange = async () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAtRef.current = Date.now()
+        return
+      }
+      const hiddenAt = hiddenAtRef.current
+      hiddenAtRef.current = null
+      if (hiddenAt === null || Date.now() - hiddenAt < STALE_MS) return
+      try {
+        const list = await fetchEventsWithRetry()
+        setEvents(list)
+      } catch {
+        // cicho: lepsza stara lista niż ekran z błędem po powrocie do aplikacji
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [])
+
   useEffect(() => {
     const savedLat = localStorage.getItem('evently_lat')
     const savedLon = localStorage.getItem('evently_lon')
