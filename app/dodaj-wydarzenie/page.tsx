@@ -214,6 +214,7 @@ export default function DodajWydarzenie() {
   const [activeTab, setActiveTab] = useState("basic")
   const [geocoding, setGeocoding] = useState(false)
   const [locationApprox, setLocationApprox] = useState(false)
+  const [createdSlug, setCreatedSlug] = useState<string | null>(null)
   // Komunikat pod polem Adres (zakładka Lokalizacja). Wcześniej błędy geokodera szły do
   // `error`, który widać tylko na ostatniej zakładce, a brak wyniku nie dawał żadnej informacji.
   const [geoMsg, setGeoMsg] = useState("")
@@ -721,10 +722,11 @@ try {
     // B17/B8: id nadajemy sami, bo po zawężeniu polityki SELECT anonim nie odczyta własnego, jeszcze
   // oczekującego wiersza, więc zapis z .select("id") przestałby działać.
   const newEventId = crypto.randomUUID()
+  let usedSlug = ""
   const insertEvent = () => supabase.from("events").insert([{
     id: newEventId,
     title: form.title,
-    slug: generateSlug(form.title),
+    slug: (usedSlug = generateSlug(form.title)),
     description: form.description || null,
     short_description: generateShortDescription(form.description) || null,
     start_date: start,
@@ -806,7 +808,8 @@ try {
     // natychmiast. Zwykłe zgłoszenie (status "pending") nie jest jeszcze
     // widoczne publicznie, więc nie ma czego odświeżać.
     if (isOrganizer) await revalidateHome()
-    setSubmitted(true)
+      if (isOrganizer) setCreatedSlug(usedSlug)
+      setSubmitted(true)
   } catch (err) {
     setError("Błąd sieci. Sprawdź połączenie i spróbuj ponownie.")
   } finally {
@@ -843,13 +846,32 @@ try {
               ? (editId ? "Zmiany zostały zapisane." : "Twoje wydarzenie zostało opublikowane.")
               : "Twoje wydarzenie zostało przesłane do weryfikacji. Sprawdzimy je i opublikujemy tak szybko, jak to możliwe."}
           </p>
-          {/* 2026-10-08: zwykły <a> zamiast <Link> — pełne przejście z pobraniem strony z serwera. <Link> korzystał z
+               {/* 2026-10-08: zwykły <a> zamiast <Link> — pełne przejście z pobraniem strony z serwera. <Link> korzystał z
               pamięci podręcznej routera w przeglądarce (do 5 minut dla stron statycznych) i pokazywał stronę główną
-              sprzed dodania wydarzenia, dopóki ktoś nie odświeżył jej ręcznie. */}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a href="/" style={{display:"inline-block",background:"#16a34a",color:"white",padding:"0.75rem 2rem",borderRadius:10,fontWeight:700,textDecoration:"none",fontSize:"0.95rem"}}>
-            Wróć do strony głównej
-          </a>
+              sprzed dodania wydarzenia, dopóki ktoś nie odświeżył jej ręcznie. Dotyczy też linków poniżej. */}
+          {(() => {
+            const primary: React.CSSProperties = {display:"inline-block",background:"#16a34a",color:"white",padding:"0.75rem 2rem",borderRadius:10,fontWeight:700,textDecoration:"none",fontSize:"0.95rem"}
+            const secondary: React.CSSProperties = {display:"inline-block",background:"white",color:"#16a34a",border:"1.5px solid #16a34a",padding:"0.7rem 2rem",borderRadius:10,fontWeight:700,textDecoration:"none",fontSize:"0.95rem"}
+            const plain: React.CSSProperties = {display:"inline-block",color:"#6b7280",padding:"0.4rem",fontWeight:600,textDecoration:"none",fontSize:"0.9rem"}
+            return (
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
+                {createdSlug && (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+                    <a href={`/events/${createdSlug}`} style={{...primary, order:1}}>Zobacz wydarzenie</a>
+                  </>
+                )}
+                {!editId && (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+                    <a href="/dodaj-wydarzenie" style={{...secondary, order:2}}>Dodaj kolejne wydarzenie</a>
+                  </>
+                )}
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+                <a href="/" style={createdSlug ? {...plain, order:3} : {...primary, order:1}}>Wróć do strony głównej</a>
+              </div>
+            )
+          })()}
           <p style={{marginTop:20,marginBottom:0,fontSize:"0.85rem",color:"#6b7280"}}>
             Masz uwagi albo pomysł?{" "}
             <Link href="/kontakt#inne" style={{color:"#16a34a",fontWeight:600}}>Napisz do nas</Link>
