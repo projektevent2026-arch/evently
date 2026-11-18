@@ -58,7 +58,7 @@ export async function geocodeAddress(
   address: string,
   city: string,
   opts?: { countryCode?: string; postalCode?: string }
-): Promise<{ lat: string; lon: string; suggestedCity: string | null; countryCode: string | null } | null> {
+): Promise<{ lat: string; lon: string; suggestedCity: string | null; countryCode: string | null; approximate: boolean } | null> {
   const postal = (opts?.postalCode ?? "").trim()
   const cc = /^[A-Za-z]{2}$/.test(opts?.countryCode ?? "") ? (opts!.countryCode as string).toLowerCase() : ""
   const cityQuery = [postal, city.trim()].filter(Boolean).join(" ")
@@ -114,11 +114,14 @@ export async function geocodeAddress(
       ? result.address.country_code.toUpperCase()
       : null
 
-  const withSuggestion = (result: any) => ({
+  // approximate: pinezka stoi w środku miejscowości, a nie pod adresem.
+  // Domyślnie true, gdy zapytanie nie miało adresu. Fallback na samo miasto wymusza true.
+  const withSuggestion = (result: any, approximate: boolean = !(address ?? "").trim()) => ({
     lat: result.lat,
     lon: result.lon,
     suggestedCity: extractSuggestedCity(result.address, city || address),
     countryCode: countryOf(result),
+    approximate,
   })
 
   const first = await tryQuery(full)
@@ -146,7 +149,7 @@ export async function geocodeAddress(
     await sleep(1100)
     const second = await tryQuery(cityQuery)
     if (second) {
-      const suggestion = withSuggestion(second)
+      const suggestion = withSuggestion(second, true)
       // Zapytanie samą wsią zwraca tylko środek CAŁEJ wsi (granica
       // administracyjna), nie konkretny adres — mniej precyzyjne niż
       // pełne zapytanie z numerem domu. Skoro już wiemy, jakie miasto
@@ -157,7 +160,7 @@ export async function geocodeAddress(
         const betterFull = [address, [postal, suggestion.suggestedCity].filter(Boolean).join(" ")].filter(Boolean).join(", ")
         const better = await tryQuery(betterFull)
         if (better) {
-          return { lat: better.lat, lon: better.lon, suggestedCity: suggestion.suggestedCity, countryCode: countryOf(better) ?? suggestion.countryCode }
+          return { lat: better.lat, lon: better.lon, suggestedCity: suggestion.suggestedCity, countryCode: countryOf(better) ?? suggestion.countryCode, approximate: !(address ?? "").trim() }
         }
       }
       return suggestion

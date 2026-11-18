@@ -213,6 +213,7 @@ export default function DodajWydarzenie() {
   const [dates, setDates] = useState<DateEntry[]>([{ date: "", from: "", to: "" }])
   const [activeTab, setActiveTab] = useState("basic")
   const [geocoding, setGeocoding] = useState(false)
+  const [locationApprox, setLocationApprox] = useState(false)
   // Komunikat pod polem Adres (zakładka Lokalizacja). Wcześniej błędy geokodera szły do
   // `error`, który widać tylko na ostatniej zakładce, a brak wyniku nie dawał żadnej informacji.
   const [geoMsg, setGeoMsg] = useState("")
@@ -430,6 +431,12 @@ export default function DodajWydarzenie() {
           }
         })
       }
+      if (result) {
+        setLocationApprox(result.approximate)
+        if (result.approximate) {
+          setGeoMsg("Znaleziono tylko miejscowość, nie dokładny adres. Dotknij mapy i ustaw pinezkę w miejscu wydarzenia.")
+        }
+      }
     } catch (err: any) {
       setGeoMsg(err?.message || "Nie udało się wyszukać lokalizacji.")
     }
@@ -571,6 +578,13 @@ if (!editId && (!form.latitude || !form.longitude)) {
   return
 }
 
+// B54 (2026-11-18): pinezka z samej miejscowości (plakat bez ulicy, nieznaleziony adres)
+// nie przechodzi jako dokładna. Dotknięcie mapy albo dokładny adres zdejmują flagę.
+if (!editId && locationApprox) {
+  setError("Pinezka stoi tylko w środku miejscowości. Wejdź w zakładkę Lokalizacja i dotknij mapy tam, dokąd ma prowadzić nawigacja.")
+  setActiveTab("location")
+  return
+}
 // Walidacja: telefon do rezerwacji (opcjonalny). Jeśli podany, musi mieć poprawny format
 // i zaznaczone oświadczenie, że organizator ma prawo go publicznie podać.
 if (form.reservation_phone.trim()) {
@@ -970,6 +984,7 @@ try {
                         try {
                           const result = await geocodeAddress(scanned.address, data.city || "", { postalCode: scanPostal, countryCode: scanCountry || undefined })
                           if (result) {
+                            setLocationApprox(result.approximate)
                             setForm(prev => {
                               // 2026-09-23: było "tylko gdy AI w ogóle nie
                               // odczytało miasta" — ale AI CZĘSTO odczytuje
@@ -1251,20 +1266,23 @@ try {
               <LocationPicker
                 latitude={form.latitude}
                 longitude={form.longitude}
-                onChange={(lat, lng) => setForm(prev => ({...prev, latitude: lat, longitude: lng}))}
+                onChange={(lat, lng) => { setLocationApprox(false); setForm(prev => ({...prev, latitude: lat, longitude: lng})) }}
               />
 
-              {(() => {
+{(() => {
                 const hasPin = !!form.latitude && !!form.longitude
                 const needsCheck = !scanReviewed
+                const warn = !hasPin || needsCheck || locationApprox
                 return (
                   <div style={{
                     fontSize:"0.8rem", lineHeight:1.5, borderRadius:10, padding:"8px 12px",
-                    background: !hasPin || needsCheck ? "#fffbeb" : "#f9fafb",
-                    border: `1px solid ${!hasPin || needsCheck ? "#fde68a" : "#e5e7eb"}`,
-                    color: !hasPin || needsCheck ? "#92400e" : "#6b7280",
+                    background: warn ? "#fffbeb" : "#f9fafb",
+                    border: `1px solid ${warn ? "#fde68a" : "#e5e7eb"}`,
+                    color: warn ? "#92400e" : "#6b7280",
                   }}>
-                    {hasPin
+                    {locationApprox
+                      ? "Pinezka stoi tylko w środku miejscowości, nie w miejscu wydarzenia. Dotknij mapy tam, dokąd ma prowadzić nawigacja (wejście, parking)."
+                      : hasPin
                       ? "Sprawdź, czy pinezka stoi tam, dokąd ma prowadzić nawigacja (wejście, parking, wjazd na teren). Dotknij mapy, żeby ją przesunąć."
                       : "Brak pinezki. Wpisz adres i kliknij „Znajdź” albo dotknij mapy. Bez tego nawigacja użyje samego adresu, a przy wydarzeniu w terenie może wskazać złe miejsce."}
                   </div>
